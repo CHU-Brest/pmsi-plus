@@ -105,7 +105,12 @@ function celluleValeur(v) {
   if (typeof v === "boolean") {
     return el("td", { class: v ? "oui" : "non" }, v ? "✓" : "");
   }
-  return el("td", {}, v ?? "");
+  // Une seule ligne par cellule (tronquée avec « … » en CSS) : un libellé
+  // long ne doit pas rendre sa ligne plus haute que les autres, sans quoi
+  // la hauteur du tableau varie encore d'une page ou d'une recherche à
+  // l'autre. Le texte complet reste lisible via l'infobulle au survol.
+  const texte = v ?? "";
+  return el("td", { title: texte || undefined }, texte);
 }
 
 // Les référentiels les plus gros (actes, médicaments) dépassent 20 000
@@ -115,7 +120,52 @@ function celluleValeur(v) {
 // virtualisation (seules les lignes visibles sont montées) ; on n'a pas
 // cette mécanique ici, donc on pagine : quel que soit le nombre de
 // résultats, au plus TAILLE_PAGE lignes sont dans le DOM à la fois.
-const TAILLE_PAGE = 10;
+const TAILLE_PAGE = 5;
+
+// Largeur naturelle d'une colonne : assez pour son en-tête ET son contenu
+// moyen sur une seule ligne chacun, sans repli sur plusieurs lignes ni
+// troncature du nom de colonne — un nom de colonne coupé n'importe où
+// (EMPOISONNEMENT_NON_DETERMINEE, Ffm - Membre Supérieur/Inférieur...)
+// est illisible. Si la somme des largeurs naturelles dépasse la largeur
+// disponible, `.zone-tableau` (overflow-x: auto) fait défiler le tableau
+// plutôt que de comprimer les colonnes ; si elle tient dedans (petits
+// référentiels : germes, contextes, acronymes), on étire au prorata pour
+// ne pas laisser d'espace vide à droite.
+const LARGEUR_MIN = 56;
+const LARGEUR_MAX_TEXTE = 700;
+const CARACTERE_PX = 7.5;
+const PADDING_CELLULE = 28;
+
+function largeurTexte(nbCaracteres) {
+  return nbCaracteres * CARACTERE_PX + PADDING_CELLULE;
+}
+
+function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible) {
+  const naturelles = new Map();
+  for (const c of colonnes) {
+    const largeurEntete = largeurTexte(c.length);
+    let largeurContenu;
+    if (colonnesCases.has(c)) {
+      largeurContenu = LARGEUR_MIN;
+    } else {
+      let somme = 0;
+      for (const ligne of lignes) somme += String(ligne[c] ?? "").length;
+      largeurContenu = largeurTexte(lignes.length ? somme / lignes.length : 0);
+    }
+    naturelles.set(
+      c,
+      Math.min(LARGEUR_MAX_TEXTE, Math.max(LARGEUR_MIN, largeurEntete, largeurContenu))
+    );
+  }
+
+  const totalNaturel = [...naturelles.values()].reduce((a, b) => a + b, 0);
+  if (!largeurDisponible || totalNaturel >= largeurDisponible) {
+    return new Map([...naturelles].map(([c, l]) => [c, Math.round(l)]));
+  }
+
+  const echelle = largeurDisponible / totalNaturel;
+  return new Map([...naturelles].map(([c, l]) => [c, Math.round(l * echelle)]));
+}
 
 /** Tableau simple, colonnes triables au clic — pendant du tri intégré à
  *  `st.dataframe` côté application Streamlit d'origine — et paginé. */
@@ -123,6 +173,14 @@ export function tableau(conteneur, lignes) {
   conteneur.innerHTML = "";
   const colonnes = colonnesVisibles(lignes);
   if (!colonnes.length) return;
+
+  // Colonnes booléennes (coches) : largeur figée pour que la largeur de
+  // chaque colonne ne dépende plus des lignes affichées — sans ça,
+  // `table-layout: fixed` répartirait l'espace en fonction de la première
+  // ligne rendue, qui change à chaque page ou tri.
+  const colonnesCases = new Set(
+    colonnes.filter((c) => typeof lignes[0][c] === "boolean")
+  );
 
   let triPar = null;
   let triAsc = true;
@@ -133,6 +191,8 @@ export function tableau(conteneur, lignes) {
   const pagination = el("div", { class: "pagination" });
   conteneur.append(zone, pagination);
 
+  const largeurs = largeursColonnes(colonnes, colonnesCases, lignes, zone.clientWidth || 800);
+
   function nbPages() {
     return Math.max(1, Math.ceil(lignesTriees.length / TAILLE_PAGE));
   }
@@ -140,9 +200,20 @@ export function tableau(conteneur, lignes) {
   function rendreCorps(tbody) {
     tbody.innerHTML = "";
     const debut = page * TAILLE_PAGE;
-    for (const ligne of lignesTriees.slice(debut, debut + TAILLE_PAGE)) {
+    const lignesPage = lignesTriees.slice(debut, debut + TAILLE_PAGE);
+    for (const ligne of lignesPage) {
       const tr = el("tr", {});
       for (const c of colonnes) tr.append(celluleValeur(ligne[c]));
+      tbody.append(tr);
+    }
+    // Lignes de remplissage, invisibles mais occupant leur place : sans
+    // elles, une dernière page incomplète (ou une recherche qui tombe sous
+    // TAILLE_PAGE résultats) raccourcit le tableau et fait sauter
+    // verticalement ce qui suit — par exemple la section « Substances »,
+    // juste sous « Médicaments » sur le thème Intox.
+    for (let i = lignesPage.length; i < TAILLE_PAGE; i++) {
+      const tr = el("tr", { class: "ligne-remplissage" });
+      for (const c of colonnes) tr.append(el("td", {}, " "));
       tbody.append(tr);
     }
   }
@@ -150,7 +221,6 @@ export function tableau(conteneur, lignes) {
   function rendrePagination() {
     pagination.innerHTML = "";
     const total = nbPages();
-    if (total <= 1) return;
     pagination.append(
       el(
         "button",
@@ -198,7 +268,9 @@ export function tableau(conteneur, lignes) {
   const thead = el("thead", {});
   const trEntete = el("tr", {});
   for (const c of colonnes) {
-    trEntete.append(el("th", { onclick: () => trier(c) }, c));
+    trEntete.append(
+      el("th", { style: `width:${largeurs.get(c)}px`, onclick: () => trier(c) }, c)
+    );
   }
   thead.append(trEntete);
 

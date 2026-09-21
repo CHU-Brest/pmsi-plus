@@ -244,17 +244,35 @@ hr.separateur {
 
 table.tableau-donnees {
   border-collapse: collapse;
-  width: 100%;
+  table-layout: fixed;
   font-size: 0.88rem;
 }
 
+/* La largeur de chaque colonne est posée en style inline par tableau()
+   (interface.js), sur la base de son en-tête et de son contenu moyen — pas
+   de largeur imposée ici : si la somme dépasse la largeur disponible, le
+   tableau déborde et `.zone-tableau` (overflow-x: auto) le fait défiler
+   plutôt que de comprimer les colonnes. */
 table.tableau-donnees th,
 table.tableau-donnees td {
   padding: 0.45rem 0.7rem;
   text-align: left;
   border-bottom: 1px solid var(--couleur-bordure);
-  white-space: normal;
-  overflow-wrap: anywhere;
+}
+
+table.tableau-donnees th {
+  white-space: nowrap;
+}
+
+/* Une seule ligne par cellule de données, tronquée avec « … » : une valeur
+   longue (nom de médicament, libellé d'acte...) ne doit pas agrandir sa
+   ligne, sans quoi la hauteur du tableau varie d'une page à l'autre. Le
+   texte complet reste lisible via l'infobulle posée par celluleValeur(). */
+table.tableau-donnees td {
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 table.tableau-donnees thead th {
@@ -272,6 +290,10 @@ table.tableau-donnees thead th:hover {
 
 table.tableau-donnees tbody tr:hover {
   background: #f8f9fb;
+}
+
+table.tableau-donnees tr.ligne-remplissage {
+  visibility: hidden;
 }
 
 td.oui {
