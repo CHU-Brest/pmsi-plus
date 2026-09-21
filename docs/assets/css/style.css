@@ -98,7 +98,6 @@ a {
   flex: 1;
   min-width: 0;
   padding: 2rem 2.5rem 4rem;
-  max-width: 980px;
 }
 
 .contenu h1 {
@@ -108,6 +107,23 @@ a {
 .sous-titre {
   color: var(--couleur-texte-att);
   margin: 0 0 1rem;
+}
+
+/* Les tableaux de données (zone-tableau ci-dessous) profitent de toute la
+   largeur disponible ; le texte courant (accueil, page médicaments) garde
+   une largeur de lecture confortable plutôt que de s'étirer sur tout
+   l'écran. */
+.contenu > h1,
+.contenu > h2,
+.contenu > p,
+.contenu > ul,
+.contenu > ol,
+.contenu .message-info,
+.contenu .message-avertissement,
+.contenu .message-erreur,
+.contenu .message-succes,
+table.themes {
+  max-width: 980px;
 }
 
 hr.separateur {
@@ -237,11 +253,8 @@ table.tableau-donnees td {
   padding: 0.45rem 0.7rem;
   text-align: left;
   border-bottom: 1px solid var(--couleur-bordure);
-  white-space: nowrap;
-}
-
-table.tableau-donnees td {
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 table.tableau-donnees thead th {
@@ -250,6 +263,7 @@ table.tableau-donnees thead th {
   top: 0;
   cursor: pointer;
   user-select: none;
+  vertical-align: bottom;
 }
 
 table.tableau-donnees thead th:hover {
