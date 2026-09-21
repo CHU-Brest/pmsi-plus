@@ -108,8 +108,17 @@ function celluleValeur(v) {
   return el("td", {}, v ?? "");
 }
 
+// Les référentiels les plus gros (actes, médicaments) dépassent 20 000
+// lignes : sans pagination, une recherche large — y compris la page vide,
+// au premier chargement — reconstruisait des dizaines de milliers de <tr>
+// à chaque frappe. `st.dataframe`, côté pmsi_plus, évite ce coût par
+// virtualisation (seules les lignes visibles sont montées) ; on n'a pas
+// cette mécanique ici, donc on pagine : quel que soit le nombre de
+// résultats, au plus TAILLE_PAGE lignes sont dans le DOM à la fois.
+const TAILLE_PAGE = 10;
+
 /** Tableau simple, colonnes triables au clic — pendant du tri intégré à
- *  `st.dataframe` côté application Streamlit d'origine. */
+ *  `st.dataframe` côté application Streamlit d'origine — et paginé. */
 export function tableau(conteneur, lignes) {
   conteneur.innerHTML = "";
   const colonnes = colonnesVisibles(lignes);
@@ -118,17 +127,57 @@ export function tableau(conteneur, lignes) {
   let triPar = null;
   let triAsc = true;
   let lignesTriees = lignes;
+  let page = 0;
 
   const zone = el("div", { class: "zone-tableau" });
-  conteneur.append(zone);
+  const pagination = el("div", { class: "pagination" });
+  conteneur.append(zone, pagination);
+
+  function nbPages() {
+    return Math.max(1, Math.ceil(lignesTriees.length / TAILLE_PAGE));
+  }
 
   function rendreCorps(tbody) {
     tbody.innerHTML = "";
-    for (const ligne of lignesTriees) {
+    const debut = page * TAILLE_PAGE;
+    for (const ligne of lignesTriees.slice(debut, debut + TAILLE_PAGE)) {
       const tr = el("tr", {});
       for (const c of colonnes) tr.append(celluleValeur(ligne[c]));
       tbody.append(tr);
     }
+  }
+
+  function rendrePagination() {
+    pagination.innerHTML = "";
+    const total = nbPages();
+    if (total <= 1) return;
+    pagination.append(
+      el(
+        "button",
+        {
+          type: "button",
+          disabled: page === 0 ? "" : undefined,
+          onclick: () => allerPage(page - 1),
+        },
+        "← Précédent"
+      ),
+      el("span", { class: "pagination-statut" }, `Page ${nombre(page + 1)} sur ${nombre(total)}`),
+      el(
+        "button",
+        {
+          type: "button",
+          disabled: page === total - 1 ? "" : undefined,
+          onclick: () => allerPage(page + 1),
+        },
+        "Suivant →"
+      )
+    );
+  }
+
+  function allerPage(cible) {
+    page = Math.min(Math.max(cible, 0), nbPages() - 1);
+    rendreCorps(tbody);
+    rendrePagination();
   }
 
   function trier(colonne) {
@@ -141,7 +190,9 @@ export function tableau(conteneur, lignes) {
       const sens = va > vb ? 1 : -1;
       return triAsc ? sens : -sens;
     });
+    page = 0;
     rendreCorps(tbody);
+    rendrePagination();
   }
 
   const thead = el("thead", {});
@@ -153,26 +204,16 @@ export function tableau(conteneur, lignes) {
 
   const tbody = el("tbody", {});
   rendreCorps(tbody);
+  rendrePagination();
 
   zone.append(el("table", { class: "tableau-donnees" }, thead, tbody));
 }
 
-// Les référentiels les plus gros (actes, médicaments) dépassent 20 000
-// lignes : sans plafond, une recherche large — y compris la page vide, au
-// premier chargement — reconstruisait des dizaines de milliers de <tr> à
-// chaque frappe. `st.dataframe`, côté pmsi_plus, évite ce coût en ne
-// montant que les lignes visibles (virtualisation) ; on n'a pas cette
-// mécanique ici, donc on limite l'affichage et on renvoie l'utilisateur
-// vers la recherche pour aller plus loin.
-const MAX_LIGNES_AFFICHEES = 300;
-
-function compteur(affiches, total, tronque) {
-  const base =
-    total == null || affiches === total
-      ? `${nombre(affiches)} résultat${affiches > 1 ? "s" : ""}`
-      : `${nombre(affiches)} résultats sur ${nombre(total)}`;
-  if (!tronque) return base;
-  return `${base} — ${nombre(MAX_LIGNES_AFFICHEES)} premiers affichés, affinez la recherche pour voir les autres.`;
+function compteur(affiches, total) {
+  if (total == null || affiches === total) {
+    return `${nombre(affiches)} résultat${affiches > 1 ? "s" : ""}`;
+  }
+  return `${nombre(affiches)} résultats sur ${nombre(total)}`;
 }
 
 /** `tableau()` précédé de son compteur, ou un message si la recherche ne
@@ -185,11 +226,8 @@ export function resultats(conteneur, lignes, { total } = {}) {
     );
     return;
   }
-  const tronque = lignes.length > MAX_LIGNES_AFFICHEES;
-  conteneur.append(
-    el("p", { class: "compteur" }, compteur(lignes.length, total, tronque))
-  );
+  conteneur.append(el("p", { class: "compteur" }, compteur(lignes.length, total)));
   const zone = el("div", {});
   conteneur.append(zone);
-  tableau(zone, tronque ? lignes.slice(0, MAX_LIGNES_AFFICHEES) : lignes);
+  tableau(zone, lignes);
 }

@@ -285,6 +285,38 @@ td.non {
   text-align: center;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0.75rem 0;
+}
+
+.pagination button {
+  background: #fff;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: var(--rayon);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pagination button:hover:not(:disabled) {
+  border-color: var(--couleur-accent);
+  color: var(--couleur-accent);
+}
+
+.pagination button:disabled {
+  color: var(--couleur-bordure);
+  cursor: default;
+}
+
+.pagination-statut {
+  font-size: 0.85rem;
+  color: var(--couleur-texte-att);
+}
+
 .message-info {
   background: var(--couleur-fond-secondaire);
   border: 1px solid var(--couleur-bordure);
