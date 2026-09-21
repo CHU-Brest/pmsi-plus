@@ -113,7 +113,14 @@ def convertir(jeu: Jeu) -> None:
     dossier_sortie.mkdir(parents=True, exist_ok=True)
     cible = dossier_sortie / f"{source.stem}.json"
 
-    payload = {"millesime": millesime(source), "lignes": lignes}
+    # Format colonnaire (en-têtes une fois + lignes en tableaux) plutôt
+    # qu'un objet par ligne : ces jeux répètent jusqu'à 19 clefs identiques
+    # sur des milliers de lignes, ce qui gonflait le JSON transféré au
+    # navigateur de plus de moitié pour rien. `donnees.js` reconstitue les
+    # objets à la volée au chargement, donc rien d'autre ne change côté site.
+    colonnes = list(lignes[0].keys()) if lignes else []
+    valeurs = [[ligne[c] for c in colonnes] for ligne in lignes]
+    payload = {"millesime": millesime(source), "colonnes": colonnes, "valeurs": valeurs}
     cible.write_text(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",

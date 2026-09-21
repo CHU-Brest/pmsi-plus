@@ -157,11 +157,22 @@ export function tableau(conteneur, lignes) {
   zone.append(el("table", { class: "tableau-donnees" }, thead, tbody));
 }
 
-function compteur(affiches, total) {
-  if (total == null || affiches === total) {
-    return `${nombre(affiches)} résultat${affiches > 1 ? "s" : ""}`;
-  }
-  return `${nombre(affiches)} résultats sur ${nombre(total)}`;
+// Les référentiels les plus gros (actes, médicaments) dépassent 20 000
+// lignes : sans plafond, une recherche large — y compris la page vide, au
+// premier chargement — reconstruisait des dizaines de milliers de <tr> à
+// chaque frappe. `st.dataframe`, côté pmsi_plus, évite ce coût en ne
+// montant que les lignes visibles (virtualisation) ; on n'a pas cette
+// mécanique ici, donc on limite l'affichage et on renvoie l'utilisateur
+// vers la recherche pour aller plus loin.
+const MAX_LIGNES_AFFICHEES = 300;
+
+function compteur(affiches, total, tronque) {
+  const base =
+    total == null || affiches === total
+      ? `${nombre(affiches)} résultat${affiches > 1 ? "s" : ""}`
+      : `${nombre(affiches)} résultats sur ${nombre(total)}`;
+  if (!tronque) return base;
+  return `${base} — ${nombre(MAX_LIGNES_AFFICHEES)} premiers affichés, affinez la recherche pour voir les autres.`;
 }
 
 /** `tableau()` précédé de son compteur, ou un message si la recherche ne
@@ -174,8 +185,11 @@ export function resultats(conteneur, lignes, { total } = {}) {
     );
     return;
   }
-  conteneur.append(el("p", { class: "compteur" }, compteur(lignes.length, total)));
+  const tronque = lignes.length > MAX_LIGNES_AFFICHEES;
+  conteneur.append(
+    el("p", { class: "compteur" }, compteur(lignes.length, total, tronque))
+  );
   const zone = el("div", {});
   conteneur.append(zone);
-  tableau(zone, lignes);
+  tableau(zone, tronque ? lignes.slice(0, MAX_LIGNES_AFFICHEES) : lignes);
 }
