@@ -1,0 +1,3 @@
+# Dépendance unique du script de conversion : lire un classeur xlsx en pur Python,
+# sans passer par polars/pandas — inutiles pour produire du JSON.
+openpyxl==3.1.5

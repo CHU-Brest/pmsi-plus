@@ -1,0 +1,6 @@
+__pycache__/
+.venv/
+
+# Utilisé le temps de `python scripts/build_data.py` ; jamais committé lui-même —
+# seul le paquet `openpyxl` téléchargé importe, pas ses métadonnées locales.
+*.egg-info/
