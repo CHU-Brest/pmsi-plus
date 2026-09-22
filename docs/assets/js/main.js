@@ -6,7 +6,6 @@
 
 import { REGISTRY, themeParDefaut, themeParSlug } from "./registry.js";
 import { el, squelette } from "./interface.js";
-import { installerBasculeTheme } from "./theme.js";
 
 const contenu = document.getElementById("contenu");
 const nav = document.getElementById("nav-themes");
@@ -107,9 +106,5 @@ function auChangementHash(premierRendu = false) {
 }
 
 construireNav();
-installerBasculeTheme(
-  document.getElementById("bascule-theme"),
-  document.getElementById("libelle-theme")
-);
 window.addEventListener("hashchange", () => auChangementHash());
 auChangementHash(true);

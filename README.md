@@ -48,10 +48,9 @@ scripts/
 docs/                         racine servie par GitHub Pages
   index.html                  coquille : barre latérale + zone de contenu
   assets/
-    css/style.css             jetons de conception (couleurs, rayons, typo) puis composants
+    css/style.css             jetons du système de design du CDC, puis composants
     js/
       main.js                 routage par hash (#/slug), navigation, tiroir mobile
-      theme.js                bascule clair/sombre, retenue dans localStorage
       registry.js             sections/thèmes
       recherche.js             normalisation + filtre multi mots clefs
       interface.js             drapeau de fraîcheur, champ de recherche, tableau
@@ -59,6 +58,7 @@ docs/                         racine servie par GitHub Pages
       themes/<slug>.js         une vue par thème
     data/<theme>/<jeu>.json    généré par build_data.py, ne pas éditer à la main
     img/{rh,les}.png           copies de data/medicaments/ servies par le site
+    img/chu-brest.jpg          logo institutionnel, fourni par la charte — jamais redessiné
 ```
 
 Pas de bundler ni de `node_modules` : les modules JS sont chargés nativement par le
@@ -73,15 +73,27 @@ build pour un résultat équivalent.
 
 ## Interface
 
-Le thème visuel tient dans les variables CSS en tête de `docs/assets/css/style.css` :
-une palette pour le mode clair, la même redéfinie une fois pour le mode sombre. Aucun
-composant n'écrit de couleur en dur — ajouter une couleur littérale, c'est ajouter un
-endroit qui ne suivra pas le thème.
+Le site suit le **système de design du CDC** (Entrepôt de Données de Santé, CHU de
+Brest). Ses jetons — couleurs, typographie, formes, espacement, ombres — sont repris en
+tête de `docs/assets/css/style.css`, sous les mêmes noms que dans la charte, pour qu'une
+évolution de celle-ci se reporte ici d'un coup d'œil. Aucun composant n'écrit de couleur
+en dur.
 
-Le site suit par défaut le réglage clair/sombre du système ; la bascule en bas de la
-barre latérale pose un choix explicite, retenu dans `localStorage` et relu par le petit
-script en tête d'`index.html`, avant le premier rendu — sans lui, une page en mode
-sombre clignoterait en clair au chargement.
+Trois partis pris de la charte gouvernent tout le reste, et ne doivent pas être
+contournés au cas par cas :
+
+- **angles droits partout** (`--radius-0`) ; le seul rayon admis est la pastille d'état
+  du drapeau de fraîcheur ;
+- **une seule famille de police**, IBM Plex Sans — le rôle « données » (codes CIM-10 et
+  CCAM, compteurs, pagination) n'est pas une chasse fixe mais la même police en chiffres
+  tabulaires (`--num-tabular`) ;
+- **ombres sans flou**, décalage plein (`--shadow-*`), bordures hairline 1px et filet
+  d'accent 3px.
+
+Les polices ne sont pas embarquées dans le dépôt : `--font-sans` demande IBM Plex Sans
+puis retombe sur la pile système déclarée par la charte. Les icônes sont des tracés
+Lucide posés en masque CSS (`--i-*`), donc toujours de la couleur du texte courant —
+aucun emoji sur le site.
 
 Côté clavier : `/` ramène au champ de recherche, `Échap` l'efface (et referme le tiroir
 sur petit écran), les en-têtes de colonnes se trient à `Entrée` ou `Espace`.
