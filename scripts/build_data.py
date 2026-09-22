@@ -6,9 +6,9 @@ Usage :
     python scripts/build_data.py
 
 Un seul rôle : lire chaque xlsx déclaré dans JEUX et écrire son JSON dans
-docs/assets/data/<theme>/<fichier>.json. Aucune dépendance à l'application
-Streamlit d'origine — seul openpyxl est nécessaire pour lire le xlsx, et rien
-d'autre que la bibliothèque standard pour écrire le JSON.
+docs/assets/data/<theme>/<fichier>.json. Seul openpyxl est nécessaire pour
+lire le xlsx, et rien d'autre que la bibliothèque standard pour écrire le
+JSON.
 
 Remplacer un xlsx dans data/, relancer ce script, committer le xlsx et le
 JSON regénéré : c'est tout ce qu'il faut pour mettre à jour un référentiel.
@@ -47,9 +47,8 @@ JEUX: tuple[Jeu, ...] = (
 )
 
 # Colonnes techniques dont un null xlsx doit se lire comme une chaîne vide et
-# non comme une absence de valeur — même raison que `combler()` côté app
-# Streamlit d'origine : xlsxwriter ne distingue pas une cellule vide d'une
-# cellule nulle, donc le comblement se fait à la lecture.
+# non comme une absence de valeur : xlsxwriter ne distingue pas une cellule
+# vide d'une cellule nulle, donc le comblement se fait à la lecture.
 COLONNES_TEXTE_VIDE_SI_NULLE = {"_caracteristiques"}
 
 
@@ -86,11 +85,9 @@ def millesime(chemin: Path) -> str:
 
     Le mtime du fichier sur disque ne survit pas à un `git clone` : il vaut
     la date du checkout, pas celle de la dernière vraie mise à jour du
-    référentiel — à la différence de l'app Streamlit d'origine, déployée par
-    rsync incrémental, où le mtime est fiable. `git log` est donc la source
-    de vérité ici. Repli sur la date du jour si le fichier n'est pas encore
-    suivi par git (première conversion avant le premier commit) ou si git
-    est indisponible.
+    référentiel. `git log` est donc la source de vérité ici. Repli sur la
+    date du jour si le fichier n'est pas encore suivi par git (première
+    conversion avant le premier commit) ou si git est indisponible.
     """
     try:
         sortie = subprocess.run(

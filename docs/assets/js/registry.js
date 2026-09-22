@@ -1,13 +1,12 @@
 // La table des matières du site : sections et thèmes de la barre latérale.
 //
 // C'est la seule liste à tenir à jour pour ajouter, renommer ou réordonner un
-// thème — jumeau de `src/registre.py` dans pmsi_plus. `module` nomme le
-// fichier dans assets/js/themes/ qui exporte une fonction `rendre(conteneur)`,
-// cf. main.js pour le contrat exact.
+// thème. `module` nomme le fichier dans assets/js/themes/ qui exporte une
+// fonction `rendre(conteneur)`, cf. main.js pour le contrat exact.
 //
-// La rubrique « Analyse DIM » du dépôt d'origine (durée de séjour, occupation
-// des lits) n'a pas de contrepartie ici : ce sont des agrégats tirés des
-// séjours réels du CHU de Brest, qui n'ont pas vocation à être publiés.
+// Aucun thème ne doit porter d'agrégat tiré des séjours réels du CHU (durée
+// de séjour, occupation des lits...) : ce site ne publie que des
+// référentiels de codage, jamais de donnée d'activité ou d'établissement.
 
 export const REGISTRY = [
   { section: "PMSI+", slug: "accueil", titre: "Bienvenue !", module: "accueil", defaut: true },

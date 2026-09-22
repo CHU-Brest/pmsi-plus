@@ -1,5 +1,3 @@
-/* Jetons repris de .streamlit/config.toml de pmsi_plus, pour que ce site et
-   l'application interne restent visuellement cohérents pour les mêmes équipes. */
 :root {
   --couleur-accent: #2a78d6;
   --couleur-fond: #fcfcfb;

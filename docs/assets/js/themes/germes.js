@@ -1,4 +1,4 @@
-// Germes CIM-10 — recherche et tableau. Port de src/themes/germes/page.py.
+// Germes CIM-10 — recherche et tableau.
 
 import { chargerJeu } from "../donnees.js";
 import * as recherche from "../recherche.js";

@@ -1,6 +1,6 @@
 // Médicaments de la réserve hospitalière et de la liste en sus — page
-// statique, sans donnée tabulée. Port de src/themes/medicaments/page.py :
-// où lire le statut d'un médicament, et à quoi le reconnaître.
+// statique, sans donnée tabulée : où lire le statut d'un médicament, et à
+// quoi le reconnaître.
 
 import { el } from "../interface.js";
 

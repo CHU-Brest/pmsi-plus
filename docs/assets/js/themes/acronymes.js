@@ -1,11 +1,10 @@
 // Acronymes & abréviations médicales — recherche et tableau.
-// Port de src/themes/acronymes/page.py.
 
 import { chargerJeu } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
 
-const COLONNES_CHERCHABLES = ["Abréviation", "Signification", "Spécialité"];
+const COLONNES_CHERCHABLES = ["Abréviation"];
 
 export async function rendre(conteneur) {
   const jeu = await chargerJeu(

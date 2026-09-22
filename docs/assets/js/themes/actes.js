@@ -1,5 +1,4 @@
 // Actes CCAM — recherche, filtre par caractéristique, tableau.
-// Port de src/themes/actes/page.py.
 
 import { chargerJeu } from "../donnees.js";
 import * as recherche from "../recherche.js";

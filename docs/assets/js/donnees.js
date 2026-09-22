@@ -1,6 +1,5 @@
 // Chargement des jeux JSON produits par scripts/build_data.py, avec cache
-// mémoire — pendant du `@st.cache_data` de `socle._lire()` : un thème visité
-// deux fois ne retélécharge pas son JSON.
+// mémoire : un thème visité deux fois ne retélécharge pas son JSON.
 
 const cache = new Map();
 

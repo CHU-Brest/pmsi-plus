@@ -1,4 +1,4 @@
-// Contexte patient — recherche et tableau. Port de src/themes/contextes/page.py.
+// Contexte patient — recherche et tableau.
 
 import { chargerJeu } from "../donnees.js";
 import * as recherche from "../recherche.js";

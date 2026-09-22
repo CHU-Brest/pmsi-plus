@@ -39,7 +39,7 @@ export async function rendre(conteneur) {
       "p",
       { class: "sous-titre" },
       "Département d'information médicale et Centre de Données Cliniques, CHU de Brest. ",
-      "Ce site republie les référentiels d'aide au codage de l'application interne PMSI+ ; ",
+      "Ce site republie uniquement des référentiels d'aide au codage ; ",
       "les analyses tirées des séjours du CHU (durée de séjour, occupation des lits) ne sont pas publiées ici."
     )
   );

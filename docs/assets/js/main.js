@@ -1,8 +1,7 @@
 // Point d'entrée : barre de navigation et routage par hash (`#/<slug>`).
 //
 // Chaque thème vit dans assets/js/themes/<module>.js et exporte une fonction
-// async `rendre(conteneur)` qui vide puis remplit `conteneur` — jumeau du
-// `st.navigation` construit par `socle.construire()` dans pmsi_plus.
+// async `rendre(conteneur)` qui vide puis remplit `conteneur`.
 
 import { REGISTRY, themeParDefaut, themeParSlug } from "./registry.js";
 import { el } from "./interface.js";

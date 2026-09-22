@@ -1,5 +1,4 @@
 // Intox CIM-10 — deux sections de recherche indépendantes.
-// Port de src/themes/intox/page.py.
 
 import { chargerJeu } from "../donnees.js";
 import * as recherche from "../recherche.js";

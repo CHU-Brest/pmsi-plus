@@ -1,7 +1,9 @@
 // Composants d'interface partagés par les thèmes : drapeau de fraîcheur,
-// champ de recherche, tableau de résultats. Port de `src/interface.py` de
-// pmsi_plus — un seul rendu de tableau, un seul rendu de drapeau, pour que
-// deux thèmes ne puissent pas afficher la même chose de deux façons.
+// champ de recherche, tableau de résultats. Un seul rendu de tableau, un
+// seul rendu de drapeau, pour que deux thèmes ne puissent pas afficher la
+// même chose de deux façons.
+
+import { normaliser } from "./recherche.js";
 
 const AIDE_MOTS_CLEFS =
   "Recherche insensible à la casse et aux accents. Plusieurs mots clefs " +
@@ -37,7 +39,7 @@ function jour(iso) {
   return `${j}/${m}/${a}`;
 }
 
-/** L'âge d'une donnée en clair : « il y a 5 mois » — port de `_depuis()`. */
+/** L'âge d'une donnée en clair : « il y a 5 mois ». */
 function depuis(iso, aujourdhui) {
   const millesime = new Date(iso + "T00:00:00");
   const jours = Math.round((aujourdhui - millesime) / 86_400_000);
@@ -116,10 +118,8 @@ function celluleValeur(v) {
 // Les référentiels les plus gros (actes, médicaments) dépassent 20 000
 // lignes : sans pagination, une recherche large — y compris la page vide,
 // au premier chargement — reconstruisait des dizaines de milliers de <tr>
-// à chaque frappe. `st.dataframe`, côté pmsi_plus, évite ce coût par
-// virtualisation (seules les lignes visibles sont montées) ; on n'a pas
-// cette mécanique ici, donc on pagine : quel que soit le nombre de
-// résultats, au plus TAILLE_PAGE lignes sont dans le DOM à la fois.
+// à chaque frappe. On pagine donc : quel que soit le nombre de résultats,
+// au plus TAILLE_PAGE lignes sont dans le DOM à la fois.
 const TAILLE_PAGE = 5;
 
 // Largeur naturelle d'une colonne : assez pour son en-tête ET son contenu
@@ -135,6 +135,23 @@ const LARGEUR_MIN = 56;
 const LARGEUR_MAX_TEXTE = 700;
 const CARACTERE_PX = 7.5;
 const PADDING_CELLULE = 28;
+
+// Colonne « vedette » : le libellé ou le nom est le texte qui identifie la
+// ligne pour l'utilisateur, contrairement aux colonnes voisines (code,
+// justification, catégorie...) qui peuvent être aussi longues en moyenne
+// sans être ce qu'on a besoin de lire en entier. On l'élargit donc d'office
+// plutôt que de se fier à la seule longueur moyenne du contenu — avec son
+// propre plafond, plus haut que LARGEUR_MAX_TEXTE : sur les actes CCAM par
+// exemple, la longueur moyenne du libellé (~90 caractères) atteint déjà
+// LARGEUR_MAX_TEXTE à elle seule, donc un simple facteur multiplicatif n'a
+// aucun effet visible tant que le plafond général reste le même.
+const COLONNES_VEDETTES = /^(nom|libelle)/;
+const FACTEUR_COLONNE_VEDETTE = 1.6;
+const LARGEUR_MAX_TEXTE_VEDETTE = 1100;
+
+function estColonneVedette(nom) {
+  return COLONNES_VEDETTES.test(normaliser(nom));
+}
 
 function largeurTexte(nbCaracteres) {
   return nbCaracteres * CARACTERE_PX + PADDING_CELLULE;
@@ -152,10 +169,11 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible) {
       for (const ligne of lignes) somme += String(ligne[c] ?? "").length;
       largeurContenu = largeurTexte(lignes.length ? somme / lignes.length : 0);
     }
-    naturelles.set(
-      c,
-      Math.min(LARGEUR_MAX_TEXTE, Math.max(LARGEUR_MIN, largeurEntete, largeurContenu))
-    );
+    const vedette = estColonneVedette(c);
+    let largeur = Math.max(largeurEntete, largeurContenu);
+    if (vedette) largeur *= FACTEUR_COLONNE_VEDETTE;
+    const plafond = vedette ? LARGEUR_MAX_TEXTE_VEDETTE : LARGEUR_MAX_TEXTE;
+    naturelles.set(c, Math.min(plafond, Math.max(LARGEUR_MIN, largeur)));
   }
 
   const totalNaturel = [...naturelles.values()].reduce((a, b) => a + b, 0);
@@ -167,8 +185,7 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible) {
   return new Map([...naturelles].map(([c, l]) => [c, Math.round(l * echelle)]));
 }
 
-/** Tableau simple, colonnes triables au clic — pendant du tri intégré à
- *  `st.dataframe` côté application Streamlit d'origine — et paginé. */
+/** Tableau simple, colonnes triables au clic, et paginé. */
 export function tableau(conteneur, lignes) {
   conteneur.innerHTML = "";
   const colonnes = colonnesVisibles(lignes);
@@ -289,7 +306,7 @@ function compteur(affiches, total) {
 }
 
 /** `tableau()` précédé de son compteur, ou un message si la recherche ne
- *  rend rien — port de `resultats()`. */
+ *  rend rien. */
 export function resultats(conteneur, lignes, { total } = {}) {
   conteneur.innerHTML = "";
   if (!lignes.length) {

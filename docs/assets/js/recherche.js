@@ -1,5 +1,5 @@
 // Recherche plein texte : insensible à la casse, aux accents, multi mots
-// clefs cumulatifs. Port direct de `src/recherche.py` de pmsi_plus.
+// clefs cumulatifs.
 //
 // `normaliser()` s'applique aux données comme à la saisie : ne normaliser
 // que la saisie revient à ne rien normaliser.
