@@ -211,7 +211,13 @@ function celluleValeur(v, colonne) {
   // la hauteur du tableau varie encore d'une page ou d'une recherche à
   // l'autre. Le texte complet reste lisible via l'infobulle au survol.
   const texte = v ?? "";
-  const classe = COLONNES_CODES.test(normaliser(colonne)) ? "code" : undefined;
+  // Une colonne vedette porte un libellé, jamais un code, même quand son nom
+  // finit par « code » : « Libellé code » ne doit pas basculer en chiffres
+  // tabulaires sous prétexte que COLONNES_CODES y trouve son suffixe.
+  const classe =
+    !estColonneVedette(colonne) && COLONNES_CODES.test(normaliser(colonne))
+      ? "code"
+      : undefined;
   return el("td", { class: classe, title: texte || undefined }, texte);
 }
 
@@ -241,6 +247,16 @@ const CARACTERE_PX = 7.5;
 // « Code acte » revenait tronqué en « CODE ACT ».
 const CARACTERE_ENTETE_PX = 9.6;
 const PADDING_CELLULE = 32;
+
+// Codes et identifiants (AAFA001-00/0, D-0101, F07.2) : capitales et
+// chiffres, donc sensiblement plus larges à nombre de caractères égal que
+// la prose mesurée par CARACTERE_PX. Et surtout, un code tronqué ne veut
+// plus rien dire, là où un libellé coupé reste lisible à l'infobulle — une
+// colonne d'identifiants se dimensionne donc sur sa valeur la *plus
+// longue*, pas sur la longueur moyenne de la colonne. On les reconnaît à
+// ça : aucune valeur ne dépasse quelques caractères.
+const CARACTERE_CODE_PX = 9.2;
+const LONGUEUR_MAX_IDENTIFIANT = 20;
 
 // Colonne « vedette » : le libellé ou le nom est le texte qui identifie la
 // ligne pour l'utilisateur, contrairement aux colonnes voisines (code,
@@ -272,14 +288,22 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible) {
   for (const c of colonnes) {
     const largeurEntete = largeurEnteteTexte(c.length);
     let largeurContenu;
+    const vedette = estColonneVedette(c);
     if (colonnesCases.has(c)) {
       largeurContenu = LARGEUR_MIN;
     } else {
       let somme = 0;
-      for (const ligne of lignes) somme += String(ligne[c] ?? "").length;
-      largeurContenu = largeurTexte(lignes.length ? somme / lignes.length : 0);
+      let plusLong = 0;
+      for (const ligne of lignes) {
+        const longueur = String(ligne[c] ?? "").length;
+        somme += longueur;
+        if (longueur > plusLong) plusLong = longueur;
+      }
+      largeurContenu =
+        !vedette && plusLong <= LONGUEUR_MAX_IDENTIFIANT
+          ? plusLong * CARACTERE_CODE_PX + PADDING_CELLULE
+          : largeurTexte(lignes.length ? somme / lignes.length : 0);
     }
-    const vedette = estColonneVedette(c);
     let largeur = Math.max(largeurEntete, largeurContenu);
     if (vedette) largeur *= FACTEUR_COLONNE_VEDETTE;
     const plafond = vedette ? LARGEUR_MAX_TEXTE_VEDETTE : LARGEUR_MAX_TEXTE;
