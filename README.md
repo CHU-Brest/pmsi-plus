@@ -98,6 +98,13 @@ aucun emoji sur le site.
 Côté clavier : `/` ramène au champ de recherche, `Échap` l'efface (et referme le tiroir
 sur petit écran), les en-têtes de colonnes se trient à `Entrée` ou `Espace`.
 
+**En cas de changement visuel du site, incrémenter `?v=` sur le lien vers `style.css`
+dans `docs/index.html`.** GitHub Pages sert les fichiers statiques avec un cache de
+quelques minutes : sans ce numéro, un navigateur peut afficher le nouveau HTML avec
+l'ancienne feuille de style — page à moitié mise en forme, logo à sa taille naturelle.
+Le logo porte d'ailleurs sa taille d'affichage en attributs `width`/`height` pour rester
+correct même sans CSS.
+
 ## Mettre à jour un référentiel
 
 1. Remplacer le fichier dans `data/<theme>/<fichier>.xlsx` (même nom, mêmes colonnes).
