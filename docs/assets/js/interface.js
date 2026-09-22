@@ -169,7 +169,7 @@ export function champMotsClefs({ id, exemple, onInput }) {
       "aria-label": "Effacer la recherche",
       onclick: viderChamp,
     },
-    "✕"
+    el("span", { class: "icone", "aria-hidden": "true" })
   );
   const raccourci = el("span", { class: "raccourci", "aria-hidden": "true" }, "/");
 
@@ -180,7 +180,7 @@ export function champMotsClefs({ id, exemple, onInput }) {
     el(
       "div",
       { class: "champ-recherche" },
-      el("span", { class: "loupe", "aria-hidden": "true" }),
+      el("span", { class: "icone loupe", "aria-hidden": "true" }),
       input,
       raccourci,
       effacer
@@ -202,11 +202,9 @@ const COLONNES_CODES = /^code|code$/;
 
 function celluleValeur(v, colonne) {
   if (typeof v === "boolean") {
-    return el(
-      "td",
-      { class: v ? "oui" : "non", "aria-label": v ? "oui" : "non" },
-      v ? "✓" : ""
-    );
+    // La coche est dessinée en CSS (masque Lucide sur `td.oui`) : la cellule
+    // ne porte que son étiquette accessible, jamais de glyphe.
+    return el("td", { class: v ? "oui" : "non", "aria-label": v ? "oui" : "non" });
   }
   // Une seule ligne par cellule (tronquée avec « … » en CSS) : un libellé
   // long ne doit pas rendre sa ligne plus haute que les autres, sans quoi
@@ -237,7 +235,12 @@ const TAILLE_PAGE_DEFAUT = 10;
 const LARGEUR_MIN = 56;
 const LARGEUR_MAX_TEXTE = 700;
 const CARACTERE_PX = 7.5;
-const PADDING_CELLULE = 28;
+// Les en-têtes sont rendus en capitales très espacées (jeton « eyebrow » du
+// système de design) : à nombre de caractères égal, ils prennent nettement
+// plus de place que le contenu de leur colonne. Sans ce coefficient propre,
+// « Code acte » revenait tronqué en « CODE ACT ».
+const CARACTERE_ENTETE_PX = 9.6;
+const PADDING_CELLULE = 32;
 
 // Colonne « vedette » : le libellé ou le nom est le texte qui identifie la
 // ligne pour l'utilisateur, contrairement aux colonnes voisines (code,
@@ -260,10 +263,14 @@ function largeurTexte(nbCaracteres) {
   return nbCaracteres * CARACTERE_PX + PADDING_CELLULE;
 }
 
+function largeurEnteteTexte(nbCaracteres) {
+  return nbCaracteres * CARACTERE_ENTETE_PX + PADDING_CELLULE;
+}
+
 function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible) {
   const naturelles = new Map();
   for (const c of colonnes) {
-    const largeurEntete = largeurTexte(c.length);
+    const largeurEntete = largeurEnteteTexte(c.length);
     let largeurContenu;
     if (colonnesCases.has(c)) {
       largeurContenu = LARGEUR_MIN;
@@ -364,10 +371,12 @@ export function tableau(conteneur, lignes) {
         "button",
         {
           type: "button",
+          class: "precedent",
           disabled: page === 0 ? "" : undefined,
           onclick: () => allerPage(page - 1),
         },
-        "← Précédent"
+        el("span", { class: "icone", "aria-hidden": "true" }),
+        "Précédent"
       ),
       el(
         "span",
@@ -378,10 +387,12 @@ export function tableau(conteneur, lignes) {
         "button",
         {
           type: "button",
+          class: "suivant",
           disabled: page === total - 1 ? "" : undefined,
           onclick: () => allerPage(page + 1),
         },
-        "Suivant →"
+        "Suivant",
+        el("span", { class: "icone", "aria-hidden": "true" })
       ),
       el("span", { class: "pagination-taille" }, "Lignes par page", selecteur)
     );

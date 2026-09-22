@@ -80,7 +80,8 @@ export async function rendre(conteneur) {
     el(
       "a",
       { class: "bouton", href: VIDAL, target: "_blank", rel: "noopener" },
-      "Ouvrir le VIDAL Hoptimal ↗"
+      "Ouvrir le VIDAL Hoptimal",
+      el("span", { class: "icone", "aria-hidden": "true" })
     ),
 
     el("h2", {}, "Précautions de lecture"),
