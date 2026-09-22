@@ -15,6 +15,7 @@ individuelle — sont repris ici :
 | HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
 | HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
 | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
+| Référentiels | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
 | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
 Ce dépôt est public : rien de ce qui touche à l'activité de l'établissement ou à un
@@ -22,7 +23,7 @@ patient n'y a sa place, même agrégé ou censuré. Un thème qui n'est pas un r
 générique de codage ne rejoint pas ce dépôt.
 
 Les référentiels publiés ici (intoxications, germes, actes CCAM, contexte patient,
-acronymes) sont des tables de correspondance codes/référentiels maintenues par le DIM —
+listes de la fonction groupage, acronymes) sont des tables de correspondance codes/référentiels maintenues par le DIM —
 aucune ne porte de donnée patient. En cas de doute sur un futur ajout, trancher avant
 de committer, pas après.
 
@@ -39,6 +40,8 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   actes/actes.xlsx
   contextes/contextes.xlsx
   acronymes/acronymes.xlsx
+  groupage/diagnostics.xlsx
+  groupage/actes.xlsx
   medicaments/{rh,les}.png    captures VIDAL Hoptimal, sans donnée tabulée
 
 scripts/
