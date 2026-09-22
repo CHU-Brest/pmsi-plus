@@ -113,10 +113,9 @@ export async function rendre(conteneur) {
       )
     ),
 
-    el("hr", { class: "separateur" }),
     el(
       "p",
-      { class: "sous-titre" },
+      { class: "pied-page" },
       "Cette page ne tabule aucun statut : un statut périmé se lit avec la même confiance qu'un statut à jour, et le rythme d'actualisation d'un tel tableau dépasse ce que le service peut tenir. Le VIDAL Hoptimal, lui, est maintenu hors du service."
     )
   );
