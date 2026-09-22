@@ -133,6 +133,8 @@
   --sp-11: 80px;
 
   --pad-card: var(--sp-6);
+  /* Repris de la charte pour mémoire ; le site ne l'applique nulle part, cf.
+     le commentaire de `.contenu`. */
   --container-max: 1280px;
   --field-height: 44px;
   --control-height: 44px;
@@ -416,10 +418,14 @@ a:hover {
 }
 
 /* ==== Contenu ==== */
+/* Pas de `--container-max` ici, contrairement au reste du système de design :
+   la zone de contenu porte des tableaux de référentiels à une vingtaine de
+   colonnes, qui doivent prendre toute la largeur disponible plutôt que de
+   laisser du vide à droite et de défiler horizontalement plus tôt. Le texte
+   courant, lui, reste borné à `--largeur-lecture` (voir plus bas). */
 .contenu {
   flex: 1;
   min-width: 0;
-  max-width: var(--container-max);
   padding: var(--sp-8) var(--sp-7) var(--sp-11);
   outline: none;
 }
