@@ -7,8 +7,8 @@ import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
 const COLONNES_CHERCHABLES = ["Code acte", "Libellé acte", "Sous-Paragraphe", "_caracteristiques"];
 
 /** Caractéristiques disponibles, lues sur les données et non déclarées en
- *  dur : toute colonne booléenne du fichier entre dans le filtre — pendant
- *  de `entree.caracteristiques()`, qui lit le schéma polars. */
+ *  dur : toute colonne booléenne du fichier entre dans le filtre. Ajouter
+ *  une caractéristique au xlsx suffit donc à la voir apparaître ici. */
 function caracteristiques(lignes) {
   if (!lignes.length) return [];
   return Object.keys(lignes[0]).filter(

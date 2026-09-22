@@ -17,11 +17,9 @@ individuelle — sont repris ici :
 | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
 | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
-Aucun agrégat calculé sur les séjours réels du CHU de Brest (durée de séjour, occupation
-des lits...) ne doit jamais être publié ici, même censuré (seuil de diffusion à onze
-séjours) : ce sont des données d'établissement, pas des référentiels génériques. Si un
-thème futur touche, même indirectement, à l'activité ou aux séjours du CHU, il ne doit pas
-rejoindre ce dépôt.
+Ce dépôt est public : rien de ce qui touche à l'activité de l'établissement ou à un
+patient n'y a sa place, même agrégé ou censuré. Un thème qui n'est pas un référentiel
+générique de codage ne rejoint pas ce dépôt.
 
 Les référentiels publiés ici (intoxications, germes, actes CCAM, contexte patient,
 acronymes) sont des tables de correspondance codes/référentiels maintenues par le DIM —
