@@ -47,8 +47,7 @@ export async function rendre(conteneur) {
       "p",
       { class: "pied-page" },
       "Département d'information médicale et Centre de Données Cliniques, CHU de Brest. ",
-      "Ce site republie uniquement des référentiels d'aide au codage ; ",
-      "les analyses tirées des séjours du CHU (durée de séjour, occupation des lits) ne sont pas publiées ici."
+      "Ce site publie uniquement des référentiels d'aide au codage."
     )
   );
 }

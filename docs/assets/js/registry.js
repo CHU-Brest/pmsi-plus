@@ -5,9 +5,8 @@
 // fonction `rendre(conteneur)`, cf. main.js pour le contrat exact ; `resume`
 // est la phrase affichée sur la carte du thème en page d'accueil.
 //
-// Aucun thème ne doit porter d'agrégat tiré des séjours réels du CHU (durée
-// de séjour, occupation des lits...) : ce site ne publie que des
-// référentiels de codage, jamais de donnée d'activité ou d'établissement.
+// Un thème ne porte qu'un référentiel de codage : jamais de donnée patient,
+// jamais de donnée d'activité de l'établissement.
 
 export const REGISTRY = [
   {
