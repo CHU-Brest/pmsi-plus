@@ -53,6 +53,13 @@ export const REGISTRY = [
   },
   {
     section: "Référentiels",
+    slug: "groupage",
+    titre: "Listes de la fonction groupage",
+    module: "groupage",
+    resume: "Listes de diagnostics et d'actes de la fonction groupage, par CMD.",
+  },
+  {
+    section: "Référentiels",
     slug: "acronymes",
     titre: "Acronymes & abréviations médicales",
     module: "acronymes",

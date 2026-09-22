@@ -44,6 +44,8 @@ JEUX: tuple[Jeu, ...] = (
     Jeu("actes", "actes.xlsx"),
     Jeu("contextes", "contextes.xlsx"),
     Jeu("acronymes", "acronymes.xlsx"),
+    Jeu("groupage", "diagnostics.xlsx"),
+    Jeu("groupage", "actes.xlsx"),
 )
 
 # Colonnes techniques dont un null xlsx doit se lire comme une chaîne vide et
