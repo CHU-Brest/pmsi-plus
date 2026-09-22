@@ -1,14 +1,18 @@
-// Point d'entrée : barre de navigation et routage par hash (`#/<slug>`).
+// Point d'entrée : barre de navigation, tiroir sur petit écran, bascule de
+// thème et routage par hash (`#/<slug>`).
 //
 // Chaque thème vit dans assets/js/themes/<module>.js et exporte une fonction
 // async `rendre(conteneur)` qui vide puis remplit `conteneur`.
 
 import { REGISTRY, themeParDefaut, themeParSlug } from "./registry.js";
-import { el } from "./interface.js";
+import { el, squelette } from "./interface.js";
+import { installerBasculeTheme } from "./theme.js";
 
 const contenu = document.getElementById("contenu");
 const nav = document.getElementById("nav-themes");
 const miseEnPage = document.getElementById("mise-en-page");
+const bascule = document.getElementById("bascule-barre-laterale");
+const voile = document.getElementById("voile");
 
 function construireNav() {
   const sections = new Map();
@@ -32,16 +36,46 @@ function construireNav() {
 
 function marquerLienActif(slug) {
   nav.querySelectorAll("a[data-slug]").forEach((a) => {
-    a.classList.toggle("actif", a.dataset.slug === slug);
+    const actif = a.dataset.slug === slug;
+    a.classList.toggle("actif", actif);
+    // `aria-current` dit la page courante aux lecteurs d'écran ; la classe
+    // ne fait que la colorer.
+    if (actif) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
   });
 }
 
-async function rendreTheme(slug) {
+// ==== Tiroir (petit écran) ====
+
+function ouvrirBarre(ouverte) {
+  miseEnPage.classList.toggle("barre-ouverte", ouverte);
+  bascule.setAttribute("aria-expanded", String(ouverte));
+}
+
+bascule.addEventListener("click", () => {
+  ouvrirBarre(!miseEnPage.classList.contains("barre-ouverte"));
+});
+voile.addEventListener("click", () => ouvrirBarre(false));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && miseEnPage.classList.contains("barre-ouverte")) {
+    ouvrirBarre(false);
+    bascule.focus();
+  }
+});
+
+// ==== Routage ====
+
+async function rendreTheme(slug, premierRendu) {
   const theme = themeParSlug(slug) ?? themeParDefaut();
   marquerLienActif(theme.slug);
-  miseEnPage.classList.remove("barre-ouverte");
+  ouvrirBarre(false);
+  document.title =
+    theme.slug === "accueil"
+      ? "PMSI+ — Aide au codage PMSI"
+      : `${theme.titre} — PMSI+`;
 
-  contenu.innerHTML = '<p class="compteur">Chargement…</p>';
+  contenu.innerHTML = "";
+  contenu.append(squelette());
   try {
     const module = await import(`./themes/${theme.module}.js`);
     await module.rendre(contenu);
@@ -57,17 +91,25 @@ async function rendreTheme(slug) {
       )
     );
   }
+
+  // Naviguer d'un thème à l'autre ramène en haut et déplace le focus sur le
+  // contenu : sans ça, le clavier reste dans la barre latérale et l'écran
+  // garde le défilement de la page précédente.
+  if (!premierRendu) {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    contenu.focus({ preventScroll: true });
+  }
 }
 
-function auChangementHash() {
+function auChangementHash(premierRendu = false) {
   const slug = location.hash.replace(/^#\/?/, "") || themeParDefaut().slug;
-  rendreTheme(slug);
+  rendreTheme(slug, premierRendu);
 }
-
-document.getElementById("bascule-barre-laterale").addEventListener("click", () => {
-  miseEnPage.classList.toggle("barre-ouverte");
-});
 
 construireNav();
-window.addEventListener("hashchange", auChangementHash);
-auChangementHash();
+installerBasculeTheme(
+  document.getElementById("bascule-theme"),
+  document.getElementById("libelle-theme")
+);
+window.addEventListener("hashchange", () => auChangementHash());
+auChangementHash(true);

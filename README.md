@@ -50,9 +50,10 @@ scripts/
 docs/                         racine servie par GitHub Pages
   index.html                  coquille : barre latérale + zone de contenu
   assets/
-    css/style.css
+    css/style.css             jetons de conception (couleurs, rayons, typo) puis composants
     js/
-      main.js                 routage par hash (#/slug) et barre de navigation
+      main.js                 routage par hash (#/slug), navigation, tiroir mobile
+      theme.js                bascule clair/sombre, retenue dans localStorage
       registry.js             sections/thèmes
       recherche.js             normalisation + filtre multi mots clefs
       interface.js             drapeau de fraîcheur, champ de recherche, tableau
@@ -71,6 +72,21 @@ chaque thème gardé ici est une recherche plein texte sur un petit référentie
 24 000 lignes, quelques centaines de kilo-octets par jeu), une recherche câblée dans le
 navigateur — sans aller-retour serveur — est plus simple à maintenir qu'un pipeline de
 build pour un résultat équivalent.
+
+## Interface
+
+Le thème visuel tient dans les variables CSS en tête de `docs/assets/css/style.css` :
+une palette pour le mode clair, la même redéfinie une fois pour le mode sombre. Aucun
+composant n'écrit de couleur en dur — ajouter une couleur littérale, c'est ajouter un
+endroit qui ne suivra pas le thème.
+
+Le site suit par défaut le réglage clair/sombre du système ; la bascule en bas de la
+barre latérale pose un choix explicite, retenu dans `localStorage` et relu par le petit
+script en tête d'`index.html`, avant le premier rendu — sans lui, une page en mode
+sombre clignoterait en clair au chargement.
+
+Côté clavier : `/` ramène au champ de recherche, `Échap` l'efface (et referme le tiroir
+sur petit écran), les en-têtes de colonnes se trient à `Entrée` ou `Espace`.
 
 ## Mettre à jour un référentiel
 
