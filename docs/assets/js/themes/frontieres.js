@@ -13,7 +13,7 @@ const COLONNES_CHERCHABLES = ["CMD", "Code", "Racines", "Liste", "Libellé code"
 
 /** Racines de GHM (et groupes d'erreur, renvois) atteignables depuis un
  *  nœud, en suivant toutes ses sorties. */
-function racinesAtteintes(arbre, depart, memo) {
+export function racinesAtteintes(arbre, depart, memo) {
   if (memo.has(depart)) return memo.get(depart);
   memo.set(depart, new Set()); // garde-fou : l'arbre n'a pas de boucle
   const n = arbre.noeuds[depart];
