@@ -11,7 +11,7 @@
 
 import { chargerJson, chargerJeu } from "../donnees.js";
 import * as recherche from "../recherche.js";
-import { el, fraicheur, champMotsClefs, resultats, nombre } from "../interface.js";
+import { el, fraicheur, champMotsClefs, nombre } from "../interface.js";
 
 const ORIENTATION = "orientation";
 // Un code de liste dans un libellé, avec ses parenthèses s'il en a : la
@@ -714,19 +714,19 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
             zone.append(
               el(
                 "div",
-                { class: "barre-outils barre-outils-compacte" },
+                { class: "filtre-liste" },
                 champMotsClefs({
                   id: `liste_${code}_${Math.floor(performance.now())}`,
                   libelle: `Filtrer la liste ${code} :`,
                   raccourci: false,
                   exemple: nature === "actes" ? "ex. : arthroscopie" : "ex. : sans précision",
-                  onInput: (v) => resultats(zoneTable, indexees.filter(recherche.filtre(v)), { total: lignes.length }),
+                  onInput: (v) => tableCodes(zoneTable, indexees.filter(recherche.filtre(v)), lignes.length),
                 })
               )
             );
           }
           zone.append(zoneTable);
-          resultats(zoneTable, lignes, { total: lignes.length });
+          tableCodes(zoneTable, lignes, lignes.length);
         })
         .catch((erreur) => {
           console.error(erreur);
@@ -735,6 +735,39 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         });
       return panneau;
     });
+  }
+
+  /** Les codes d'une liste, en entier : deux colonnes qui tiennent dans le
+   *  panneau (le libellé passe à la ligne), sans pagination — au-delà de
+   *  quelques écrans, la zone défile d'elle-même. */
+  function tableCodes(zone, lignes, total) {
+    zone.innerHTML = "";
+    if (!lignes.length) {
+      zone.append(el("p", { class: "compteur", role: "status" }, "Aucun code pour ce filtre."));
+      return;
+    }
+    zone.append(
+      el(
+        "p",
+        { class: "compteur", role: "status" },
+        el("strong", {}, nombre(lignes.length)),
+        lignes.length === total ? ` code${total > 1 ? "s" : ""}` : ` code${lignes.length > 1 ? "s" : ""} sur ${nombre(total)}`
+      ),
+      el(
+        "div",
+        { class: "codes-liste" },
+        el(
+          "table",
+          {},
+          el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Code"), el("th", { scope: "col" }, "Libellé"))),
+          el(
+            "tbody",
+            {},
+            ...lignes.map((l) => el("tr", {}, el("td", { class: "code" }, l.Code), el("td", {}, l["Libellé code"])))
+          )
+        )
+      )
+    );
   }
 
   function basculerChemin(bouton, n, depuis) {

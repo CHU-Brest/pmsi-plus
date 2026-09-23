@@ -1679,10 +1679,62 @@ li.fin::before {
   mask-image: var(--i-x);
 }
 
-.barre-outils-compacte {
+/* Le panneau passe au-dessus du filet de la colonne qu'il interrompt. */
+.panneau {
+  position: relative;
+  z-index: 1;
+}
+
+.filtre-liste {
   margin: var(--sp-3) 0 0;
-  padding: var(--sp-3);
-  border-top-width: var(--bw-hair);
+}
+
+.filtre-liste .champ-aide {
+  display: none;
+}
+
+.codes-liste {
+  max-height: 420px;
+  overflow-y: auto;
+  border: var(--bw-hair) solid var(--border-default);
+}
+
+.codes-liste table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--text-body-sm);
+}
+
+.codes-liste th {
+  position: sticky;
+  top: 0;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-muted);
+  border-bottom: var(--bw-hair) solid var(--border-default);
+  font: var(--text-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--slate-600);
+  text-align: left;
+}
+
+.codes-liste td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: var(--bw-hair) solid var(--slate-200);
+  vertical-align: top;
+  color: var(--text-secondary);
+}
+
+.codes-liste tr:last-child td {
+  border-bottom: none;
+}
+
+.codes-liste td.code {
+  width: 1%;
+  white-space: nowrap;
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
 }
 
 ol.chemin {
