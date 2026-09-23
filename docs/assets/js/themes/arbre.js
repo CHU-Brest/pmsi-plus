@@ -12,6 +12,8 @@
 import { chargerJson, chargerJeu } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, nombre } from "../interface.js";
+import { couvre, couvreRacine } from "./cma.js";
+import { racinesAtteintes } from "./frontieres.js";
 
 const ORIENTATION = "orientation";
 // Un code de liste dans un libellé, avec ses parenthèses s'il en a : la
@@ -678,7 +680,20 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     );
   }
 
+  /** Le test d'où la liste est ouverte, et ce qu'il en découle pour les
+   *  exclusions de CMA : les racines que sa branche peut atteindre, et, si
+   *  c'est un test sur le DP, les DP possibles (les codes de la liste). */
+  function contexteDeListe(bouton, code) {
+    const n = arbre.noeuds[bouton.closest("[data-noeud]")?.dataset.noeud];
+    const b = n?.branches?.find((x) => x.listes.includes(code));
+    if (!b) return null;
+    if (!arbre._memoRacines) arbre._memoRacines = new Map();
+    const racines = [...racinesAtteintes(arbre, b.vers, arbre._memoRacines)].filter((r) => /^\d{2}[CKMZ]\d{2}$/.test(r));
+    return { racines, dp: n.genre === "test" && n.symbole === "DP" };
+  }
+
   function basculerListe(bouton, code) {
+    const contexte = contexteDeListe(bouton, code);
     basculerPanneau(bouton, (fermer) => {
       const fiche = arbre.listes[code];
       const nature = fiche?.nature ?? (code.startsWith("A") ? "actes" : "diagnostics");
@@ -705,7 +720,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         );
         return panneau;
       }
-      codesDeListe(nature, code)
+      codesDeListe(nature, code, contexte)
         .then((lignes) => {
           zone.innerHTML = "";
           const zoneTable = el("div", {});
@@ -769,7 +784,17 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
               {},
               el("th", { scope: "col" }, "Code"),
               el("th", { scope: "col" }, "Libellé"),
-              avecCma ? el("th", { scope: "col", title: "Niveau de CMA en diagnostic associé" }, "CMA") : null
+              avecCma
+                ? el(
+                    "th",
+                    {
+                      scope: "col",
+                      title:
+                        "Niveau de CMA en diagnostic associé, et ses exclusions à cette étape : par les racines que la branche peut atteindre et, pour un test sur le DP, par les DP de la liste",
+                    },
+                    "CMA"
+                  )
+                : null
             )
           ),
           el(
@@ -781,7 +806,13 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
                 {},
                 el("td", { class: "code" }, l.Code),
                 el("td", {}, l["Libellé code"]),
-                avecCma ? el("td", { class: "code" }, l._cma ? String(l._cma) : "—") : null
+                avecCma
+                  ? el(
+                      "td",
+                      { class: `code cma-${l._cma?.statut ?? "aucune"}`, title: l._cma?.detail ?? "Pas une CMA" },
+                      l._cma ? `${l._cma.niveau}${l._cma.statut === "exclue" ? " · exclue" : l._cma.statut === "partielle" ? " · en partie" : ""}` : "—"
+                    )
+                  : null
               )
             )
           )
@@ -807,7 +838,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         ol.append(
           el(
             "li",
-            {},
+            { "data-noeud": e.de },
             pictogramme(noeud),
             el("span", { class: "chemin-libelle" }, ...libelleEtape(noeud, e)),
             el("span", { class: `issue ${e.role === "non" ? "non" : "oui"}` }, issue(e))
@@ -1130,31 +1161,53 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 
 /** Les codes d'une liste, sans doublon : une même liste apparaît sous
  *  plusieurs CMD dans les listes publiées, avec le même contenu. */
-async function codesDeListe(nature, code) {
+async function codesDeListe(nature, code, contexte) {
   const { lignes } = await chargerJeu(
     "groupage",
     nature,
     nature === "actes" ? "listes d'actes de la fonction groupage" : "listes de diagnostics de la fonction groupage"
   );
-  // Le niveau de CMA de chaque diagnostic, s'il en est une (liste des CMA
-  // chargée à la première liste de diagnostics ouverte).
-  let cma = null;
-  if (nature === "diagnostics") {
-    try {
-      const jeu = await chargerJeu("groupage", "cma", "liste des CMA de la fonction groupage");
-      cma = new Map(jeu.lignes.map((l) => [l.Code, l.Niveau]));
-    } catch (erreur) {
-      console.error(erreur);
-    }
-  }
   const vus = new Set();
   const resultat = [];
   for (const l of lignes) {
     if (l.Liste !== code || vus.has(l.Code)) continue;
     vus.add(l.Code);
-    resultat.push({ Code: l.Code, "Libellé code": l["Libellé code"], ...(cma ? { _cma: cma.get(l.Code) ?? null } : {}) });
+    resultat.push({ Code: l.Code, "Libellé code": l["Libellé code"] });
   }
+  if (nature !== "diagnostics") return resultat;
+  // Le niveau de CMA de chaque diagnostic et ses exclusions à cette étape
+  // (volume 1, annexes 4 et 5), chargés à la première liste ouverte.
+  let exclusions;
+  try {
+    exclusions = await chargerJson("groupage", "cma_exclusions");
+  } catch (erreur) {
+    console.error(erreur);
+    return resultat;
+  }
+  if (!exclusions.parCode) exclusions.parCode = new Map(exclusions.cma.map((c) => [c[0], c]));
+  const dps = contexte?.dp ? resultat.map((r) => r.Code) : [];
+  const racines = contexte?.racines ?? [];
+  for (const r of resultat) r._cma = statutCma(exclusions, r.Code, dps, racines);
   return resultat;
+}
+
+/** Niveau d'une CMA et ce qu'en retiennent les exclusions : `exclue` si
+ *  toutes les racines atteignables, ou tous les DP possibles, l'excluent ;
+ *  `partielle` si certains seulement ; `retenue` sinon. */
+function statutCma(exclusions, code, dps, racines) {
+  const fiche = exclusions.parCode.get(code);
+  if (!fiche) return null;
+  const [, niveau, listeDp, listeRacine] = fiche;
+  const parRacine =
+    listeRacine == null ? [] : racines.filter((r) => exclusions.racines[listeRacine].some((e) => couvreRacine(e, r)));
+  const parDp = listeDp == null ? [] : dps.filter((d) => exclusions.dp[listeDp].some((e) => couvre(e, d)));
+  const toutes = (parRacine.length && parRacine.length === racines.length) || (parDp.length && parDp.length === dps.length);
+  const statut = toutes ? "exclue" : parRacine.length || parDp.length ? "partielle" : "retenue";
+  const details = [`CMA de niveau ${niveau}`];
+  if (parRacine.length) details.push(`exclue dans ${parRacine.length === racines.length ? "toutes les racines atteignables" : parRacine.join(", ")}`);
+  if (parDp.length) details.push(`exclue avec ${parDp.length === dps.length ? "tous les" : `${parDp.length} des ${dps.length}`} DP de cette liste`);
+  if (statut === "retenue") details.push(racines.length || dps.length ? "retenue à cette étape" : "exclusions non évaluées ici");
+  return { niveau, statut, detail: details.join(" ; ") };
 }
 
 /** Une racine de GHM ou un code de GHM, entier ou en partie. */
