@@ -1842,6 +1842,34 @@ ol.chemin > li::before {
   color: var(--text-primary);
 }
 
+/* ==== Vérificateur de CMA ==== */
+.outil-cma {
+  display: block;
+}
+
+.outil-cma > h2 {
+  margin: 0 0 var(--sp-3);
+}
+
+.outil-cma-champs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+
+.verdict-cma:empty {
+  display: none;
+}
+
+.verdict-cma {
+  margin-top: var(--sp-4);
+}
+
+.verdict-cma .sous-titre {
+  margin-top: var(--sp-2);
+  word-break: break-word;
+}
+
 /* ==== Petit écran ==== */
 @media (max-width: 860px) {
   .barre-haute {
