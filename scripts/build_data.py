@@ -16,6 +16,7 @@ JSON regénéré : c'est tout ce qu'il faut pour mettre à jour un référentiel
 
 from __future__ import annotations
 
+import csv
 import json
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -33,7 +34,7 @@ DOSSIER_SORTIE = RACINE / "docs" / "assets" / "data"
 @dataclass(frozen=True)
 class Jeu:
     theme: str  # sous-dossier commun à data/<theme>/ et docs/assets/data/<theme>/
-    fichier: str  # nom du xlsx dans data/<theme>/
+    fichier: str  # nom du xlsx (ou csv) dans data/<theme>/
 
 
 # La seule liste à tenir à jour : ajouter un référentiel, c'est ajouter une
@@ -47,7 +48,33 @@ JEUX: tuple[Jeu, ...] = (
     Jeu("acronymes", "acronymes.xlsx"),
     Jeu("groupage", "diagnostics.xlsx"),
     Jeu("groupage", "actes.xlsx"),
+    Jeu("groupage", "cma.csv"),
 )
+
+# Liste des CMA livrée par l'ATIH en csv (point-virgule, Windows-1252),
+# codes CIM-10 sans point (« C169+0 ») et en-tête abrégé (« diag ; niv ;
+# libellé ») : relue sous les noms et la graphie des autres jeux, pour que le
+# site la croise code pour code avec les listes de la fonction groupage.
+COLONNES_CSV = {"cma.csv": ("Code", "Niveau", "Libellé")}
+
+
+def code_cim(code: str) -> str:
+    """« C169+0 » → « C16.9+0 », « B24+0 » → « B24.+0 », « A09 » → « A09 »."""
+    code = code.strip()
+    return code if len(code) <= 3 else f"{code[:3]}.{code[3:]}"
+
+
+def lire_csv(chemin: Path) -> list[dict]:
+    colonnes = COLONNES_CSV[chemin.name]
+    texte = chemin.read_bytes().decode("cp1252")
+    lignes = list(csv.reader(texte.splitlines(), delimiter=";"))[1:]
+    resultat = []
+    for ligne in lignes:
+        if not any(v.strip() for v in ligne):
+            continue
+        code, niveau, libelle = (v.strip() for v in ligne[:3])
+        resultat.append({colonnes[0]: code_cim(code), colonnes[1]: int(niveau), colonnes[2]: libelle})
+    return resultat
 
 # Colonnes techniques dont un null xlsx doit se lire comme une chaîne vide et
 # non comme une absence de valeur : xlsxwriter ne distingue pas une cellule
@@ -85,7 +112,7 @@ def lire(chemin: Path) -> list[dict]:
 
 def convertir(jeu: Jeu) -> None:
     source = DOSSIER_DONNEES / jeu.theme / jeu.fichier
-    lignes = lire(source)
+    lignes = lire_csv(source) if source.suffix == ".csv" else lire(source)
 
     dossier_sortie = DOSSIER_SORTIE / jeu.theme
     dossier_sortie.mkdir(parents=True, exist_ok=True)

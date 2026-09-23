@@ -77,6 +77,22 @@ export const REGISTRY = [
   },
   {
     section: "Référentiels",
+    slug: "actes-frontieres",
+    titre: "Actes frontières",
+    module: "actes_frontieres",
+    travaux: true,
+    resume: "Actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes.",
+  },
+  {
+    section: "Référentiels",
+    slug: "cma",
+    titre: "Niveaux de sévérité (CMA)",
+    module: "cma",
+    travaux: true,
+    resume: "Liste des CMA de la fonction groupage et leur niveau, de 2 à 4.",
+  },
+  {
+    section: "Référentiels",
     slug: "acronymes",
     titre: "Acronymes & abréviations médicales",
     module: "acronymes",

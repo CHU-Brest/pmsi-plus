@@ -17,6 +17,8 @@ individuelle — sont repris ici :
 | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
 | Référentiels | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
 | Référentiels | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes |
+| Référentiels | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
+| Référentiels | Niveaux de sévérité (CMA) | liste des CMA de la fonction groupage et leur niveau nominal (2 à 4) ; aussi affiché dans les listes de diagnostics de l'algorithme |
 | Référentiels | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
 | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
@@ -45,11 +47,12 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   acronymes/acronymes.xlsx
   groupage/diagnostics.xlsx
   groupage/actes.xlsx
+  groupage/cma.csv            liste des CMA de l'ATIH, telle que livrée (csv ; Windows-1252)
   groupage/manuel_ghm_volume_3.pdf   Manuel des GHM, volume 3, tel que livré par l'ATIH
   medicaments/{rh,les}.png    captures VIDAL Hoptimal, sans donnée tabulée
 
 scripts/
-  build_data.py               xlsx → JSON, seule dépendance : openpyxl
+  build_data.py               xlsx (et cma.csv) → JSON, seule dépendance : openpyxl
   build_arbre.py              PDF du manuel → arbre.json, seule dépendance : pymupdf
   millesime.py                date du drapeau de fraîcheur, commune aux deux scripts
   requirements.txt

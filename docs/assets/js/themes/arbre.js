@@ -742,6 +742,8 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
    *  quelques écrans, la zone défile d'elle-même. */
   function tableCodes(zone, lignes, total) {
     zone.innerHTML = "";
+    // Colonne CMA pour une liste de diagnostics seulement (cf. codesDeListe).
+    const avecCma = lignes.length > 0 && "_cma" in lignes[0];
     if (!lignes.length) {
       zone.append(el("p", { class: "compteur", role: "status" }, "Aucun code pour ce filtre."));
       return;
@@ -759,11 +761,29 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         el(
           "table",
           {},
-          el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Code"), el("th", { scope: "col" }, "Libellé"))),
+          el(
+            "thead",
+            {},
+            el(
+              "tr",
+              {},
+              el("th", { scope: "col" }, "Code"),
+              el("th", { scope: "col" }, "Libellé"),
+              avecCma ? el("th", { scope: "col", title: "Niveau de CMA en diagnostic associé" }, "CMA") : null
+            )
+          ),
           el(
             "tbody",
             {},
-            ...lignes.map((l) => el("tr", {}, el("td", { class: "code" }, l.Code), el("td", {}, l["Libellé code"])))
+            ...lignes.map((l) =>
+              el(
+                "tr",
+                {},
+                el("td", { class: "code" }, l.Code),
+                el("td", {}, l["Libellé code"]),
+                avecCma ? el("td", { class: "code" }, l._cma ? String(l._cma) : "—") : null
+              )
+            )
           )
         )
       )
@@ -1116,12 +1136,23 @@ async function codesDeListe(nature, code) {
     nature,
     nature === "actes" ? "listes d'actes de la fonction groupage" : "listes de diagnostics de la fonction groupage"
   );
+  // Le niveau de CMA de chaque diagnostic, s'il en est une (liste des CMA
+  // chargée à la première liste de diagnostics ouverte).
+  let cma = null;
+  if (nature === "diagnostics") {
+    try {
+      const jeu = await chargerJeu("groupage", "cma", "liste des CMA de la fonction groupage");
+      cma = new Map(jeu.lignes.map((l) => [l.Code, l.Niveau]));
+    } catch (erreur) {
+      console.error(erreur);
+    }
+  }
   const vus = new Set();
   const resultat = [];
   for (const l of lignes) {
     if (l.Liste !== code || vus.has(l.Code)) continue;
     vus.add(l.Code);
-    resultat.push({ Code: l.Code, "Libellé code": l["Libellé code"] });
+    resultat.push({ Code: l.Code, "Libellé code": l["Libellé code"], ...(cma ? { _cma: cma.get(l.Code) ?? null } : {}) });
   }
   return resultat;
 }
