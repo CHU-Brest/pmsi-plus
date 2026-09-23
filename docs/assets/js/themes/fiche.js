@@ -38,7 +38,22 @@ const jeux = {
   diagnostics: () => chargerJeu("groupage", "diagnostics", "listes de diagnostics de la fonction groupage"),
   actes: () => chargerJeu("groupage", "actes", "listes d'actes de la fonction groupage"),
   cma: () => chargerJeu("groupage", "cma", "liste des CMA de la fonction groupage"),
+  racines: () => chargerJeu("groupage", "racines", "libellés des racines de GHM"),
 };
+
+// Libellé de chaque racine de GHM, chargé à l'ouverture de la page : il
+// permet au codeur de vérifier d'un coup d'œil la cohérence du classement.
+let libellesRacines = new Map();
+const libelleRacine = (r) => libellesRacines.get(r) ?? "";
+
+/** « 06M10 Ulcères gastroduodénaux compliqués » pour une liste de racines
+ *  séparées par des virgules. */
+const racinesEnClair = (racines) =>
+  racines
+    .split(", ")
+    .filter(Boolean)
+    .map((r) => (libelleRacine(r) ? `${r} ${libelleRacine(r)}` : r))
+    .join(" ; ");
 
 /** « g409 », « G40.9 » → « G40.9 » ; « aafa001 » → « AAFA001 ». */
 function graphie(saisie) {
@@ -73,7 +88,8 @@ function racinesDe(arbre, vers) {
 // ==== Vue ====
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
-  const arbre = await chargerJson("groupage", "arbre");
+  const [arbre, racines] = await Promise.all([chargerJson("groupage", "arbre"), jeux.racines().catch(() => null)]);
+  if (racines) libellesRacines = new Map(racines.lignes.map((l) => [l.ListeRacineGHM, l["Libellé liste"]]));
   conteneur.innerHTML = "";
 
   const saisie = el("input", {
@@ -255,6 +271,13 @@ function lienArbre(e) {
   return el("a", { href: `#/arbre/${e.n.cmd}/${e.id}${cas}` }, `CMD ${e.n.cmd} · p. ${e.n.page}`);
 }
 
+function celluleRacines(racines) {
+  if (!racines.length) return ["—"];
+  return racines.map((r) =>
+    el("span", { class: "racine-libellee" }, el("strong", { class: "code" }, r), libelleRacine(r) ? ` ${libelleRacine(r)}` : "")
+  );
+}
+
 function tableEtapes(arbre, etapes) {
   return el(
     "div",
@@ -278,7 +301,7 @@ function tableEtapes(arbre, etapes) {
             {},
             el("td", { class: "code" }, lienArbre(e)),
             el("td", {}, `${symbole} : ${b.libelle}`),
-            el("td", { class: "code" }, racinesDe(arbre, b.vers).join(", ") || "—")
+            el("td", { class: "racines" }, ...celluleRacines(racinesDe(arbre, b.vers)))
           );
         })
       )
@@ -298,7 +321,7 @@ function blocFrontiere(code, frontiere, voisins) {
       "ul",
       {},
       ...ailleurs.slice(0, 15).map((v) =>
-        el("li", {}, el("a", { href: `#/fiche/${v.Code}` }, v.Code), ` ${v["Libellé code"]} → ${v.Racines}`)
+        el("li", {}, el("a", { href: `#/fiche/${v.Code}` }, v.Code), ` ${v["Libellé code"]} → ${racinesEnClair(v.Racines)}`)
       ),
       ailleurs.length > 15 ? el("li", {}, `… et ${ailleurs.length - 15} autres (voir les codes frontières en DP).`) : null
     )
@@ -349,7 +372,9 @@ function blocCma(exclusions, code) {
       { class: "fiche-sous-titre" },
       listeRacine != null ? `Racines de GHM où elle est exclue (liste ${listeRacine}) :` : "Aucune racine de GHM ne l'exclut."
     ),
-    elementsRacines.length ? el("p", { class: "puces-exclusion" }, ...elementsRacines.map((e) => el("span", { class: "puce-exclusion" }, e.replace(/_/g, " ")))) : null,
+    elementsRacines.length ? el("p", { class: "puces-exclusion" }, ...elementsRacines.map((e) =>
+          el("span", { class: "puce-exclusion", title: libelleRacine(e) || undefined }, libelleRacine(e) ? `${e} ${libelleRacine(e)}` : e.replace(/_/g, " "))
+        )) : null,
     el(
       "p",
       { class: "sous-titre" },
@@ -403,7 +428,7 @@ async function ficheActe(arbre, code) {
             "ul",
             {},
             ...voisins.slice(0, 15).map((v) =>
-              el("li", {}, el("a", { href: `#/fiche/${codeCcam(v.Code)}` }, codeCcam(v.Code)), ` ${v["Libellé code"]} → ${v.Racines} (CMD ${v.CMD})`)
+              el("li", {}, el("a", { href: `#/fiche/${codeCcam(v.Code)}` }, codeCcam(v.Code)), ` ${v["Libellé code"]} → ${racinesEnClair(v.Racines)} (CMD ${v.CMD})`)
             )
           )
         )

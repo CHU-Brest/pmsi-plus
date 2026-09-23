@@ -1964,6 +1964,21 @@ ol.chemin > li::before {
   color: var(--brand);
 }
 
+.racine-libellee {
+  display: block;
+}
+
+.racine-libellee + .racine-libellee {
+  margin-top: var(--sp-1);
+}
+
+.racine-libellee .code {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
+  margin-right: var(--sp-1);
+}
+
 .fiche-listes {
   margin: 0;
   padding-left: var(--sp-5);
