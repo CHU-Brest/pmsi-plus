@@ -20,6 +20,7 @@ const voile = document.getElementById("voile");
 function construireNav() {
   const sections = new Map();
   for (const theme of REGISTRY) {
+    if (theme.cache) continue;
     if (!sections.has(theme.section)) sections.set(theme.section, []);
     sections.get(theme.section).push(theme);
   }

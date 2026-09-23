@@ -16,7 +16,7 @@ function carte(theme) {
 export async function rendre(conteneur) {
   conteneur.innerHTML = "";
 
-  const cartes = REGISTRY.filter((t) => t.slug !== "accueil").map(carte);
+  const cartes = REGISTRY.filter((t) => t.slug !== "accueil" && !t.cache).map(carte);
 
   conteneur.append(
     el("h1", {}, "PMSI+"),

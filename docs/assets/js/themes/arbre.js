@@ -804,7 +804,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
               el(
                 "tr",
                 {},
-                el("td", { class: "code" }, l.Code),
+                el("td", { class: "code" }, el("a", { href: `#/fiche/${l.Code.split("-")[0]}`, title: "Fiche du code" }, l.Code)),
                 el("td", {}, l["Libellé code"]),
                 avecCma
                   ? el(

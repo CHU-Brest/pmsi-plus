@@ -15,11 +15,12 @@ individuelle — sont repris ici :
 | HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
 | HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
 | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
-| Référentiels | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
-| Référentiels | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes |
-| Référentiels | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
-| Référentiels | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
-| Référentiels | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
+| Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : étapes de l'arbre qui le testent, racines possibles, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
+| Groupage | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
+| Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes |
+| Groupage (depuis la fiche) | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
+| Groupage (depuis la fiche) | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
+| Groupage (depuis la fiche) | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
 | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
 Ce dépôt est public : rien de ce qui touche à l'activité de l'établissement ou à un

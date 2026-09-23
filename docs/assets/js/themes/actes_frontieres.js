@@ -17,7 +17,7 @@ function typesDe(racines) {
   return [...new Set(racines.split(", ").map((r) => (/^\d{2}[CKMZ]/.test(r) ? r[2] : "?")))].sort().join("");
 }
 
-function calculer(arbre, actes) {
+export function calculer(arbre, actes) {
   const codesDeListe = new Map();
   const libelleCode = new Map();
   for (const l of actes) {
