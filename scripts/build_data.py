@@ -17,12 +17,13 @@ JSON regénéré : c'est tout ce qu'il faut pour mettre à jour un référentiel
 from __future__ import annotations
 
 import json
-import subprocess
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
 from openpyxl import load_workbook
+
+from millesime import millesime
 
 RACINE = Path(__file__).resolve().parent.parent
 DOSSIER_DONNEES = RACINE / "data"
@@ -80,28 +81,6 @@ def lire(chemin: Path) -> list[dict]:
         return resultat
     finally:
         classeur.close()
-
-
-def millesime(chemin: Path) -> str:
-    """Date ISO de la dernière modification *committée* de `chemin`.
-
-    Le mtime du fichier sur disque ne survit pas à un `git clone` : il vaut
-    la date du checkout, pas celle de la dernière vraie mise à jour du
-    référentiel. `git log` est donc la source de vérité ici. Repli sur la
-    date du jour si le fichier n'est pas encore suivi par git (première
-    conversion avant le premier commit) ou si git est indisponible.
-    """
-    try:
-        sortie = subprocess.run(
-            ["git", "log", "-1", "--format=%aI", "--", str(chemin)],
-            cwd=RACINE,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        sortie = ""
-    return sortie[:10] if sortie else date.today().isoformat()
 
 
 def convertir(jeu: Jeu) -> None:

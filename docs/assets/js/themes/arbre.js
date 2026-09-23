@@ -94,7 +94,10 @@ function texteDeRecherche(arbre, n) {
   if (n.genre === "ghm") return `${n.racine} ${codesGhm(n).join(" ")}`;
   if (n.genre === "erreur") return n.racine;
   if (n.genre === "renvoi") return n.texte;
-  const morceaux = [intituleCourt(n)];
+  // Pour un test, le seul code de son symbole (« A », « DP ») : sa légende
+  // fixe (« L'un au moins des actes du RSS ») ferait remonter tous les
+  // tests du même symbole à chaque mot courant.
+  const morceaux = [n.genre === "test" ? SYMBOLES[n.symbole].texte : intituleCourt(n)];
   for (const b of n.branches ?? []) {
     morceaux.push(b.libelle);
     for (const code of b.listes) morceaux.push(code, arbre.listes[code]?.libelle ?? "");
@@ -238,7 +241,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     onInput: (valeur) => chercher(valeur),
   });
 
-  const zoneRecherche = el("div", { class: "resultats-arbre", "aria-live": "polite" });
+  const zoneRecherche = el("div", { class: "resultats-arbre" });
   const zoneArbre = el("div", { class: "zone-arbre" });
 
   conteneur.append(
@@ -272,7 +275,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       const cible = `#/arbre/${cmd}${noeud ? `/${noeud}` : ""}${noeud && cas != null ? `/${cas}` : ""}`;
       if (location.hash !== cible) history.replaceState(null, "", cible);
     }
-    if (noeud) montrer(noeud, cas);
+    return noeud ? montrer(noeud, cas) : false;
   }
 
   function vueOrientation() {
@@ -315,7 +318,8 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       ol.append(
         el(
           "li",
-          { class: "etape", "data-entree": i ? "non" : null },
+          { class: "etape" },
+          marqueEntree(i ? "non" : null),
           el(
             "div",
             { class: "etape-tete" },
@@ -402,11 +406,11 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     for (;;) {
       const n = arbre.noeuds[lien.vers];
       if (lien.rejoint) {
-        ol.append(el("li", { class: "fin", "data-entree": arrivee }, renvoiInterne(n)));
+        ol.append(el("li", { class: "fin" }, marqueEntree(arrivee), renvoiInterne(n)));
         break;
       }
       if (FEUILLES.has(n.genre)) {
-        ol.append(el("li", { class: "fin", "data-entree": arrivee }, feuille(n, lien.depuis)));
+        ol.append(el("li", { class: "fin" }, marqueEntree(arrivee), feuille(n, lien.depuis)));
         break;
       }
       ol.append(etape(n, arrivee));
@@ -434,7 +438,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   function etape(n, entree) {
     const b = n.branches ?? [];
     const seuleIssue = b.length === 1 && !n.sinon;
-    const li = el("li", { class: "etape", "data-entree": entree, "data-noeud": n._id });
+    const li = el("li", { class: "etape", "data-noeud": n._id }, marqueEntree(entree));
     const tete = el(
       "div",
       { class: "etape-tete", id: `n-${n._id}`, tabindex: "-1" },
@@ -526,6 +530,14 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     return div;
   }
 
+  /** « non », « oui » ou « puis », posé sur le filet au-dessus de l'étape :
+   *  du vrai texte, lu avant l'étape par un lecteur d'écran, et non un
+   *  contenu CSS qui ne serait lu qu'après tout son sous-arbre. */
+  function marqueEntree(entree) {
+    if (!entree) return null;
+    return el("span", { class: "entree" }, entree, el("span", { class: "visuellement-cache" }, " :"));
+  }
+
   function flecheVers() {
     return el("span", { class: "fleche", "aria-hidden": "true" }, "→");
   }
@@ -554,6 +566,8 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         {
           class: "renvoi",
           title: "Le séjour n'est pas classé dans cette catégorie : l'orientation se poursuit",
+          "data-feuille": n._id,
+          tabindex: "-1",
         },
         "Orientation vers ",
         n.texte
@@ -633,14 +647,19 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       bouton.setAttribute("aria-expanded", "false");
       return;
     }
-    const ligne = bouton.closest(".etape-tete, .branche-condition, li.fin");
+    // Un code de liste cliqué dans le chemin d'un GHM ouvre sa liste dans
+    // ce panneau-là, qui l'emporte en se refermant.
+    const hote = bouton.closest(".panneau");
+    const ligne = hote
+      ? bouton.closest(".panneau li") ?? hote
+      : bouton.closest(".etape-tete, .branche-condition, li.fin");
     const panneau = construire(() => {
       panneau.remove();
       bouton._panneau = null;
       bouton.setAttribute("aria-expanded", "false");
-      bouton.focus();
+      if (bouton.isConnected) bouton.focus();
     });
-    if (ligne.matches("li.fin")) ligne.append(panneau);
+    if (hote || ligne.matches("li.fin")) ligne.append(panneau);
     else ligne.after(panneau);
     bouton._panneau = panneau;
     bouton.setAttribute("aria-expanded", "true");
@@ -698,6 +717,8 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
                 { class: "barre-outils barre-outils-compacte" },
                 champMotsClefs({
                   id: `liste_${code}_${Math.floor(performance.now())}`,
+                  libelle: `Filtrer la liste ${code} :`,
+                  raccourci: false,
                   exemple: nature === "actes" ? "ex. : arthroscopie" : "ex. : sans précision",
                   onInput: (v) => resultats(zoneTable, indexees.filter(recherche.filtre(v)), { total: lignes.length }),
                 })
@@ -800,7 +821,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       (cas != null ? zoneArbre.querySelector(`#n-${CSS.escape(id)}-c${cas}`) : null) ??
       zoneArbre.querySelector(`#n-${CSS.escape(id)}`) ??
       zoneArbre.querySelector(`[data-feuille="${CSS.escape(id)}"]`);
-    if (!cible) return;
+    if (!cible) return false;
     // Une étape dans une branche repliée : on déplie ses ancêtres.
     for (let b = cible.closest(".branche.repliee"); b; b = b.parentElement?.closest(".branche.repliee")) {
       replierBranche(b, false);
@@ -811,6 +832,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     // Relancer l'animation si on montre deux fois la même étape.
     void cible.offsetWidth;
     cible.classList.add("surbrillance");
+    return true;
   }
 
   // ---- Recherche ----
@@ -833,7 +855,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     // ce qui demande les listes complètes (chargées à la première demande).
     const nature = natureDeCode(requete);
     if (!nature) return;
-    blocCodes.append(el("p", { class: "compteur" }, "Recherche du code dans les listes…"));
+    blocCodes.append(el("p", { class: "compteur", role: "status" }, "Recherche du code dans les listes…"));
     try {
       const { lignes } = await chargerJeu(
         "groupage",
@@ -850,9 +872,17 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       }
       blocCodes.innerHTML = "";
       if (!parCode.size) {
-        blocCodes.append(
-          el("p", { class: "message-info" }, `Aucune liste de la fonction groupage ne contient de code commençant par « ${requete} ».`)
-        );
+        // « a180 » est la liste A-180 comme le code A18.0 : l'absence de
+        // code ne s'annonce que si rien d'autre n'a répondu.
+        if (!trouves.length) {
+          blocCodes.append(
+            el(
+              "p",
+              { class: "message-info", role: "status" },
+              `Aucune étape ni aucun GHM, et aucune liste de la fonction groupage ne contient de code commençant par « ${requete} ».`
+            )
+          );
+        }
         return;
       }
       const listes = new Set([...parCode.values()].flatMap((c) => [...c.listes]));
@@ -863,7 +893,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
           { class: "panneau panneau-codes" },
           el(
             "p",
-            { class: "panneau-titre" },
+            { class: "panneau-titre", role: "status" },
             `${nombre(parCode.size)} code${parCode.size > 1 ? "s" : ""} dans ${nombre(listes.size)} liste${listes.size > 1 ? "s" : ""} :`
           ),
           el(
@@ -911,23 +941,39 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
    *  montrer ce cas plutôt que tout le test (le DP de la CMD 01 en compte
    *  27). */
   function noeudsCorrespondants(requete) {
+    const compact = recherche.normaliser(requete).replace(/\s+/g, "");
+    // Un code GHM, entier ou en partie : « 01M », « 01M24 », « 01M241 »,
+    // « 90Z02Z ». Comparé aux codes de chaque case, si bien que « 25M02C »
+    // ne rend que la case C.
+    const ghm = RE_REQUETE_GHM.test(compact) ? compact : null;
+    // Un code de liste, avec ou sans tiret : comparé code pour code, faute
+    // de quoi « D-030 » ramènerait aussi D-0301 à D-0309.
+    const liste = codeDeListe(requete);
     const filtre = recherche.filtre(requete);
-    const ghm = /^\d{2}[a-z]\d{2}/i.test(requete) ? recherche.normaliser(requete).slice(0, 5) : null;
     const entrees = [];
     for (const n of Object.values(arbre.noeuds)) {
-      if (n.genre === "ghm") {
-        if (ghm && recherche.normaliser(n.racine).startsWith(ghm)) entrees.push({ n, i: null });
+      if (n.genre === "ghm" || n.genre === "erreur") {
+        const codes = n.genre === "ghm" ? codesGhm(n) : [n.racine];
+        if (ghm && codes.some((c) => recherche.normaliser(c).startsWith(ghm))) entrees.push({ n, i: null });
         continue;
       }
-      if (FEUILLES.has(n.genre)) {
-        if (!ghm && filtre({ _recherche: n._recherche })) entrees.push({ n, i: null });
+      if (ghm) continue;
+      if (n.genre === "renvoi") {
+        if (!liste && filtre({ _recherche: n._recherche })) entrees.push({ n, i: null });
+        continue;
+      }
+      const b = n.branches ?? [];
+      const cas = b
+        .map((x, i) => ({ x, i }))
+        .filter(({ x }) =>
+          liste ? x.listes.includes(liste) : filtre({ _recherche: recherche.normaliser(texteDeBranche(x)) })
+        );
+      if (liste) {
+        entrees.push(...cas.map(({ i }) => ({ n, i: b.length > 1 ? i : null })));
         continue;
       }
       if (!filtre({ _recherche: n._recherche })) continue;
-      const cas = (n.branches ?? [])
-        .map((b, i) => ({ b, i }))
-        .filter(({ b }) => filtre({ _recherche: recherche.normaliser(texteDeBranche(b)) }));
-      if (n.branches?.length > 1 && cas.length) entrees.push(...cas.map(({ i }) => ({ n, i })));
+      if (b.length > 1 && cas.length) entrees.push(...cas.map(({ i }) => ({ n, i })));
       else entrees.push({ n, i: null });
     }
     return entrees;
@@ -954,7 +1000,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     bloc.append(
       el(
         "p",
-        { class: "compteur" },
+        { class: "compteur", role: "status" },
         el("strong", {}, nombre(entrees.length)),
         ` étape${entrees.length > 1 ? "s" : ""} ou GHM`,
         entrees.length > affiches.length
@@ -1019,8 +1065,10 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 
   // ---- Premier affichage ----
 
+  // Rendu vrai quand la vue s'est placée d'elle-même sur une étape (lien
+  // profond) : le routeur ne la ramène alors pas en haut de page.
   const [cmdDemandee, noeudDemande, casDemande] = chemin;
-  afficherCmd(cmdDemandee ?? ORIENTATION, {
+  return afficherCmd(cmdDemandee ?? ORIENTATION, {
     noeud: noeudDemande,
     cas: casDemande != null && /^\d+$/.test(casDemande) ? Number(casDemande) : null,
     historique: Boolean(cmdDemandee),
@@ -1043,6 +1091,15 @@ async function codesDeListe(nature, code) {
     resultat.push({ Code: l.Code, "Libellé code": l["Libellé code"] });
   }
   return resultat;
+}
+
+/** Une racine de GHM ou un code de GHM, entier ou en partie. */
+const RE_REQUETE_GHM = /^\d{2}[ckmz]\d{0,2}[a-z0-9]?$/;
+
+/** « D-0103 », « d0103 », « A 180 » → le code de liste canonique, ou null. */
+function codeDeListe(requete) {
+  const m = requete.trim().match(/^([ad])\s*-?\s*(\d{3,4})$/i);
+  return m ? `${m[1].toUpperCase()}-${m[2]}` : null;
 }
 
 /** « G40.9 » ou « g409 » → diagnostics ; « AAFA001 » → actes. */
@@ -1072,7 +1129,7 @@ function legende() {
       el(
         "div",
         {},
-        el("h3", {}, "Tests sur les données médicales du RSS"),
+        el("p", { class: "legende-titre" }, "Tests sur les données médicales du RSS"),
         el(
           "ul",
           {},
@@ -1084,7 +1141,7 @@ function legende() {
       el(
         "div",
         {},
-        el("h3", {}, "Tests sur les autres données"),
+        el("p", { class: "legende-titre" }, "Tests sur les autres données"),
         el(
           "ul",
           {},
@@ -1102,7 +1159,7 @@ function legende() {
           ),
           ligne(pictogramme({ genre: "gnn" }), "Détermination du groupe du nouveau-né.")
         ),
-        el("h3", {}, "Groupes"),
+        el("p", { class: "legende-titre" }, "Groupes"),
         el(
           "ul",
           {},

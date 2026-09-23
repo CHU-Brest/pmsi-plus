@@ -4,7 +4,9 @@
    possible, pour qu'une évolution de la charte se reporte ici d'un coup d'œil.
 
    Trois partis pris de la charte gouvernent tout le reste :
-   angles droits partout (aucun rayon, sauf pastilles d'état), une seule
+   angles droits partout (aucun rayon, sauf pastilles d'état — et les
+   pictogrammes de l'algorithme de la fonction groupage, qui reprennent la
+   notation du Manuel des GHM, cf. `--picto-*`), une seule
    famille de police (le rôle « données » n'est pas une chasse fixe mais la
    même police en chiffres tabulaires), et des ombres sans flou.
 
@@ -154,6 +156,18 @@
   --shadow-md: 4px 4px 0 rgb(15 27 45 / 0.1);
   --shadow-lg: 6px 6px 0 rgb(15 27 45 / 0.14);
 
+  /* Pictogrammes de l'arbre de la fonction groupage. La notation du Manuel
+     des GHM porte du sens dans sa forme (cercle : test sur les données
+     médicales, losange : sur les autres données, trapèze : test spécial) et
+     dans son trait (cercle simple, double ou épais : un, deux ou tous les
+     diagnostics ou actes) : ces valeurs sont les siennes, pas celles de la
+     charte, et ne servent qu'aux pictogrammes. */
+  --picto-taille: 32px;
+  --picto-rayon: 50%;
+  --picto-trait: 1.5px;
+  --picto-trait-epais: 4px;
+  --picto-texte-mini: 8px; /* « DR/DP » tient dans un cercle de 32px */
+
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --dur-fast: 120ms;
   --dur-base: 180ms;
@@ -205,6 +219,12 @@ a {
 a:hover {
   color: var(--text-link-hover);
   text-decoration: underline;
+}
+
+/* Un lien au fil du texte se distingue autrement que par sa couleur. */
+.lien-texte {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 ::selection {
@@ -1110,12 +1130,12 @@ kbd {
 
 .legende-grille {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: var(--sp-2) var(--sp-7);
   padding: 0 var(--sp-4) var(--sp-4);
 }
 
-.legende-grille h3 {
+.legende-titre {
   font: var(--text-eyebrow);
   letter-spacing: var(--ls-eyebrow);
   text-transform: uppercase;
@@ -1146,45 +1166,45 @@ kbd {
 }
 
 /* -- Pictogrammes --
-   Seule exception aux angles droits de la charte : ces symboles reprennent
-   la notation du Manuel des GHM (cercle : test sur les données médicales,
-   losange : test sur les autres données). Les dessiner carrés leur ferait
-   perdre leur sens pour qui a le manuel en tête. */
+   Autre exception aux angles droits de la charte, avec les pastilles
+   d'état : ces symboles reprennent la notation du Manuel des GHM (cercle,
+   losange, trapèze ; cf. les jetons `--picto-*`). Les dessiner carrés leur
+   ferait perdre leur sens pour qui a le manuel en tête. */
 .picto {
   position: relative;
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: var(--picto-taille);
+  height: var(--picto-taille);
   font: var(--fw-bold) var(--fs-3xs) / 1 var(--font-sans);
   color: var(--text-primary);
   background: var(--surface-card);
 }
 
 .picto.cercle {
-  border: 1.5px solid var(--ink);
-  border-radius: 50%;
+  border: var(--picto-trait) solid var(--ink);
+  border-radius: var(--picto-rayon);
 }
 
 .picto.cercle.double {
-  border: 4px double var(--ink);
+  border: var(--picto-trait-epais) double var(--ink);
 }
 
 .picto.cercle.epais {
-  border-width: 4px;
+  border-width: var(--picto-trait-epais);
 }
 
 .picto.cercle.inversion {
-  font-size: 8px;
+  font-size: var(--picto-texte-mini);
   letter-spacing: -0.02em;
 }
 
 .picto.cercle.barre::after {
   content: "";
   position: absolute;
-  width: 26px;
-  height: 1.5px;
+  width: calc(var(--picto-taille) * 0.8);
+  height: var(--picto-trait);
   background: var(--ink);
   transform: rotate(-45deg);
 }
@@ -1211,13 +1231,13 @@ kbd {
 .picto.trapeze::before {
   content: "";
   position: absolute;
-  inset: 1.5px;
+  inset: var(--picto-trait);
   background: var(--surface-card);
   clip-path: inherit;
 }
 
 .picto.losange.epais::before {
-  inset: 3.5px;
+  inset: calc(var(--picto-trait-epais) - 0.5px);
 }
 
 .picto.trapeze > span {
@@ -1230,15 +1250,15 @@ kbd {
   width: auto;
   height: 26px;
   padding: 0 var(--sp-2);
-  border: 1.5px solid var(--ink);
-  border-bottom-width: 3.5px;
+  border: var(--picto-trait) solid var(--ink);
+  border-bottom-width: calc(var(--picto-trait-epais) - 0.5px);
 }
 
 /* Cadre de texte de la page d'orientation. */
 .picto.cadre {
   width: 28px;
   height: 20px;
-  border: 1.5px solid var(--ink);
+  border: var(--picto-trait) solid var(--ink);
 }
 
 .grille-cmd {
@@ -1415,8 +1435,7 @@ ol.colonne > li:not(:last-child)::before {
 }
 
 /* « non », « oui » ou « puis » posé sur le filet, au-dessus de l'étape. */
-ol.colonne > li[data-entree]::after {
-  content: attr(data-entree);
+ol.colonne > li > .entree {
   position: absolute;
   left: calc(var(--colonne-x) + var(--sp-2));
   top: calc(-1 * var(--sp-4) + 2px);
@@ -1437,7 +1456,6 @@ ol.colonne > li + li {
   align-items: center;
   gap: var(--sp-3);
   min-height: 32px;
-  outline: none;
   scroll-margin: var(--sp-10);
 }
 
@@ -1472,7 +1490,6 @@ ol.colonne > li + li {
 }
 
 .branche-condition[id] {
-  outline: none;
   scroll-margin: var(--sp-10);
 }
 
@@ -1678,6 +1695,7 @@ ol.chemin {
 ol.chemin > li {
   counter-increment: chemin;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-2) 0;
@@ -1852,6 +1870,12 @@ ol.chemin > li::before {
 
   .branche > ol.colonne {
     padding-left: var(--sp-3);
+  }
+
+  /* Le bouton de repli déborde à gauche de sa branche d'autant que son
+     retrait : sans quoi il sortirait de la zone de l'arbre. */
+  .replier {
+    margin-left: calc(-1 * var(--sp-6));
   }
 
   li.fin,

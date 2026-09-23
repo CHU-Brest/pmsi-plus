@@ -58,7 +58,7 @@ export async function rendre(conteneur) {
         "entre-t-il ? », et chercher un libellé de liste donne tous les codes qu'elle " +
         "contient. Les tests qui emploient chaque liste, et les GHM auxquels ils mènent, " +
         "sont dans ",
-      el("a", { href: "#/arbre" }, "l'algorithme de la fonction groupage"),
+      el("a", { class: "lien-texte", href: "#/arbre" }, "l'algorithme de la fonction groupage"),
       "."
     ),
     el("hr", { class: "separateur" })

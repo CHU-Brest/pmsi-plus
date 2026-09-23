@@ -35,14 +35,14 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import subprocess
 import sys
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import date
 from pathlib import Path
 
 import pymupdf
+
+from millesime import millesime
 
 RACINE = Path(__file__).resolve().parent.parent
 SOURCE = RACINE / "data" / "groupage" / "manuel_ghm_volume_3.pdf"
@@ -53,6 +53,11 @@ LISTES_PUBLIEES = [
     RACINE / "docs" / "assets" / "data" / "groupage" / "diagnostics.json",
     RACINE / "docs" / "assets" / "data" / "groupage" / "actes.json",
 ]
+
+# Listes que l'arbre cite sans qu'elles figurent parmi les listes publiées.
+LISTES_NON_PUBLIEES = {
+    "A-001": "Acte opératoire : l'ensemble des actes classants opératoires",
+}
 
 # Tolérance de raccord entre deux traits, en points PDF.
 TOL = 1.6
@@ -436,11 +441,14 @@ def decouper(segments: list[Segment], objets: list[Objet]) -> list[Segment]:
 
 def prolonger_pointes(
     segments: list[Segment], pointes: list[tuple[str, float, float]]
-) -> list[Segment]:
+) -> tuple[list[Segment], list[tuple[str, float, float]]]:
     """Une pointe de flèche vectorielle s'arrête parfois à quelques points
     du trait qu'elle rejoint (page 32) : on comble l'écart par un segment,
-    dans le sens de la pointe, jusqu'au premier trait rencontré."""
+    dans le sens de la pointe, jusqu'au premier trait rencontré. Le bout de
+    ce segment devient à son tour une pointe, pour que le raccord reste à
+    sens unique (cf. `raccorder`)."""
     ajouts = []
+    bouts = []
     for sens, px, py in pointes:
         porteurs = [s for s in segments if s.porte(px, py)]
         if any(
@@ -455,8 +463,59 @@ def prolonger_pointes(
                 x0, x1 = sorted((px, x))
                 y0, y1 = sorted((py, y))
                 ajouts.append(Segment(len(segments) + len(ajouts), x0, y0, x1, y1))
+                bouts.append((sens, x, y))
                 break
-    return ajouts
+    return ajouts, bouts
+
+
+def porte_la_pointe(s: Segment, sens: str, x: float, y: float) -> bool:
+    """`s` est-il le trait qui arrive sur la pointe (x, y) orientée `sens` ?
+    Il y finit, et s'étend du côté opposé à la pointe."""
+    if sens in ("droite", "gauche") and s.horizontal and abs(s.y0 - y) <= TOL:
+        return abs((s.x1 if sens == "droite" else s.x0) - x) <= 3.5
+    if sens in ("haut", "bas") and s.vertical and abs(s.x0 - x) <= TOL:
+        return abs((s.y0 if sens == "haut" else s.y1) - y) <= 3.5
+    return False
+
+
+def raccorder(
+    segments: list[Segment],
+    fleches: list[tuple[str, float, float]],
+    exclus: dict[int, set[tuple[float, float]]],
+    dans_un_objet,
+) -> tuple[dict[int, set[int]], set[tuple[int, int]]]:
+    """Raccords entre segments : une extrémité posée sur un autre trait.
+
+    Un raccord ordinaire se parcourt dans les deux sens. Celui qu'une
+    pointe de flèche marque est à sens unique, du trait qui porte la pointe
+    vers celui qu'il rejoint : sans quoi, depuis la colonne rejointe, on
+    remonterait le trait qui la rejoint (page 32). Une extrémité située
+    dans un symbole, ou déjà accrochée à un symbole, n'est pas un
+    embranchement mais une entrée ou une sortie."""
+    suivants: dict[int, set[int]] = defaultdict(set)
+    fleches_raccord: set[tuple[int, int]] = set()
+    for s in segments:
+        for x, y in s.extremites():
+            if dans_un_objet(x, y) or (x, y) in exclus.get(s.i, set()):
+                continue
+            pointes = [p for p in fleches if abs(p[1] - x) <= 3.5 and abs(p[2] - y) <= 3.5]
+            for t in segments:
+                if t.i == s.i or not t.porte(x, y):
+                    continue
+                if any(porte_la_pointe(s, sens, x, y) for sens, _, _ in pointes):
+                    suivants[s.i].add(t.i)
+                    fleches_raccord.add((s.i, t.i))
+                elif any(porte_la_pointe(t, sens, x, y) for sens, _, _ in pointes):
+                    suivants[t.i].add(s.i)
+                    fleches_raccord.add((t.i, s.i))
+                else:
+                    suivants[s.i].add(t.i)
+                    suivants[t.i].add(s.i)
+    # Un raccord marqué par une pointe l'emporte sur le raccord ordinaire
+    # que l'autre extrémité aurait posé dans l'autre sens.
+    for i, j in fleches_raccord:
+        suivants[j].discard(i)
+    return suivants, fleches_raccord
 
 
 def regrouper(lignes: list[Texte]) -> list[list[Texte]]:
@@ -546,9 +605,9 @@ def lire_page(
         )
 
     segments, pointes = lire_segments(page)
-    fleches.extend(pointes)
-    segments.extend(prolonger_pointes(segments, pointes))
-    segments = decouper(segments, list(objets.values()))
+    ponts, bouts = prolonger_pointes(segments, pointes)
+    fleches.extend(pointes + bouts)
+    segments = decouper(segments + ponts, list(objets.values()))
     textes = lire_textes(page)
 
     # -- Textes : en-tête, intérieur des symboles, libellés des traits --
@@ -586,19 +645,6 @@ def lire_page(
     def dans_un_objet(x: float, y: float) -> bool:
         return any(o.rect.contient(x, y, 1.0) for o in objets.values())
 
-    # -- Raccords entre segments : une extrémité posée sur un autre trait,
-    # hors de tout symbole (dans un symbole, c'est une entrée ou une sortie,
-    # pas un embranchement) --
-    voisins: dict[int, set[int]] = defaultdict(set)
-    for s in segments:
-        for x, y in s.extremites():
-            if dans_un_objet(x, y):
-                continue
-            for autre in segments:
-                if autre.i != s.i and autre.porte(x, y):
-                    voisins[s.i].add(autre.i)
-                    voisins[autre.i].add(s.i)
-
     # -- Accroches : extrémité de segment → (objet, côté). Un trait aborde
     # toujours un symbole dans l'axe : à mi-hauteur par la gauche ou la
     # droite, au milieu par le haut ou le bas. Une extrémité qui tombe dans
@@ -615,8 +661,12 @@ def lire_page(
                 if ecart <= AXE:
                     accroches[s.i].append((o.id, cote, x, y))
 
-    def fleche_en(x: float, y: float) -> bool:
-        return any(abs(fx - x) <= 3.5 and abs(fy - y) <= 3.5 for _, fx, fy in fleches)
+    suivants, fleches_raccord = raccorder(
+        segments,
+        fleches,
+        {i: {(x, y) for _, _, x, y in a} for i, a in accroches.items()},
+        dans_un_objet,
+    )
 
     # -- Libellés : un paragraphe en italique posé sur un trait --
     paragraphes = regrouper(sorted(libres, key=lambda t: (t.y0, t.x0)))
@@ -664,28 +714,33 @@ def lire_page(
             )
             if not depart:
                 continue
-            branches, vus = suivre(o.id, depart, segments, voisins, accroches, objets, libelles, fleche_en)
-            places |= vus
+            branches, lus = suivre(o.id, depart, suivants, fleches_raccord, accroches, objets, libelles)
+            places |= lus
             sorties[(o.id, cote)] = branches
 
-    # Chaque libellé doit avoir servi à une branche, sinon il décrit un
-    # trait qu'aucune sortie n'atteint.
+    # Chaque libellé doit avoir servi à une branche : sinon il décrit un
+    # trait qu'aucune sortie n'atteint, ou un tronçon partagé par une partie
+    # seulement des branches d'une sortie, qu'on ne saurait attribuer.
     perdus = [t for i, ts in libelles.items() if i not in places for t in ts]
     if perdus:
-        raise ErreurExtraction(f"page {numero} : libellé(s) sur un trait isolé {perdus}")
+        raise ErreurExtraction(f"page {numero} : libellé(s) attribué(s) à aucune branche {perdus}")
 
     return PageLue(numero, objets, sorties, cmd, sous_titre)
 
 
-def suivre(origine, depart, segments, voisins, accroches, objets, libelles, fleche_en):
+def suivre(origine, depart, suivants, fleches_raccord, accroches, objets, libelles):
     """Parcourt le réseau de traits depuis une sortie et rend chaque entrée
-    de symbole atteinte, avec le libellé propre à son chemin.
+    de symbole atteinte, avec le libellé propre à son chemin, et les
+    segments dont le libellé a servi.
 
     Le parcours ne traverse jamais un symbole : les raccords situés dans un
-    symbole ont été écartés en amont, si bien qu'un trait qui y aboutit
-    n'y a plus de voisin.
+    symbole, ou sur une accroche, ont été écartés en amont. Il ne remonte
+    pas non plus un trait qui en rejoint un autre par une pointe de flèche
+    (raccord à sens unique), et ce qui suit une pointe appartient au trait
+    rejoint : ses libellés ne sont pas ceux de la branche.
     """
     parent: dict[int, int | None] = {i: None for i in depart}
+    rejoint: dict[int, bool] = {i: False for i in depart}
     file = deque(depart)
     cibles: dict[str, tuple[int, str, float, float]] = {}
     while file:
@@ -698,9 +753,10 @@ def suivre(origine, depart, segments, voisins, accroches, objets, libelles, flec
                 cibles.setdefault(oid, (i, cote, x, y))
             elif cote not in SORTIES[o.genre]:
                 raise ErreurExtraction(f"{oid} : trait accroché par le côté {cote}, ni entrée ni sortie")
-        for j in sorted(voisins[i]):
+        for j in sorted(suivants[i]):
             if j not in parent:
                 parent[j] = i
+                rejoint[j] = rejoint[i] or (i, j) in fleches_raccord
                 file.append(j)
 
     chemins: dict[str, list[int]] = {}
@@ -710,34 +766,37 @@ def suivre(origine, depart, segments, voisins, accroches, objets, libelles, flec
         while k is not None:
             chemin.append(k)
             k = parent[k]
-        chemins[oid] = chemin[::-1]
+        chemins[oid] = [k for k in chemin[::-1] if not rejoint[k]]
     usage: dict[int, int] = defaultdict(int)
     for chemin in chemins.values():
         for i in chemin:
             usage[i] += 1
 
     branches = []
+    lus: set[int] = set()
     for oid, (i, cote, x, y) in cibles.items():
         chemin = chemins[oid]
         # Libellé d'une branche : ceux des traits qui ne mènent qu'à elle,
         # précédés de ceux du tronc commun à toutes les branches.
-        propres = sorted(t for k in chemin if usage[k] == 1 for t in libelles.get(k, []))
-        tronc = sorted(
-            t for k in chemin if usage[k] == len(cibles) > 1 for t in libelles.get(k, [])
+        propres = [k for k in chemin if usage[k] == 1]
+        tronc = [k for k in chemin if usage[k] == len(cibles) > 1]
+        lus.update(k for k in propres + tronc if k in libelles)
+        textes = sorted(t for k in tronc for t in libelles.get(k, [])) + sorted(
+            t for k in propres for t in libelles.get(k, [])
         )
-        libelle = " ".join(t for _, _, t in tronc + propres)
-        fleche = any(fleche_en(px, py) for k in chemin for (px, py) in segments[k].extremites())
-        branches.append(Branche(libelle, oid, fleche, y, cote))
+        libelle = " ".join(t for _, _, t in textes)
+        branches.append(Branche(libelle, oid, rejoint[i], y, cote))
     branches.sort(key=lambda b: (b.y, b.vers))
-    return branches, set(parent)
+    return branches, lus
 
 
 # ==== Orientation (page 9) ====
 
 # La page 9 n'emploie aucun des symboles des autres pages (hexagone, cadres
-# de texte, triangles vectoriels) : six étapes, transcrites ici. Chaque
-# libellé est vérifié mot pour mot contre le texte de la page, si bien
-# qu'une page 9 remaniée dans un prochain manuel arrête le script.
+# de texte, triangles vectoriels) : six étapes, transcrites ici. Chacune est
+# vérifiée contre le texte de la page — son test, son libellé, la CM/CMD
+# écrite dans le triangle voisin de ce libellé, et l'ordre des étapes de
+# haut en bas —, si bien qu'une page 9 remaniée arrête le script.
 ORIENTATION = [
     # (forme dessinée, texte du test, libellé du trait « oui », CM/CMD visée)
     ("critere", "Type d’hospitalisation", "Séance", "28"),
@@ -760,14 +819,38 @@ ORIENTATION = [
 
 
 def lire_orientation(doc: pymupdf.Document) -> list[dict]:
-    texte = re.sub(r"\s+", " ", doc[PAGE_ORIENTATION - 1].get_text())
+    page = doc[PAGE_ORIENTATION - 1]
+    texte = re.sub(r"\s+", " ", page.get_text())
+    lignes = [
+        (l["bbox"][1], re.sub(r"\s+", " ", "".join(s["text"] for s in l["spans"])).strip())
+        for b in page.get_text("dict")["blocks"]
+        for l in b.get("lines", [])
+    ]
+
+    def absent(quoi: str) -> ErreurExtraction:
+        return ErreurExtraction(f"page {PAGE_ORIENTATION} : {quoi} — orientation remaniée ?")
+
     etapes = []
+    hauteur_precedente = -1.0
     for forme, test, libelle, cmd in ORIENTATION:
-        for morceau in (test, libelle):
-            if morceau not in texte:
-                raise ErreurExtraction(
-                    f"page {PAGE_ORIENTATION} : « {morceau} » introuvable — orientation remaniée ?"
-                )
+        # Un test d'une lettre ou deux (A, DP) doit occuper sa propre ligne :
+        # le chercher dans le texte de la page le trouverait partout.
+        if len(test) <= 3:
+            if not any(t == test for _, t in lignes):
+                raise absent(f"test « {test} » introuvable")
+        elif test not in texte:
+            raise absent(f"test « {test} » introuvable")
+        if libelle not in texte:
+            raise absent(f"libellé « {libelle} » introuvable")
+        hauteur = next((y for y, t in lignes if len(t) >= 4 and libelle.startswith(t)), None)
+        if hauteur is None or hauteur <= hauteur_precedente:
+            raise absent(f"« {libelle} » hors de l'ordre attendu des étapes")
+        hauteur_precedente = hauteur
+        # Le triangle de renvoi est écrit sur la même rangée que le libellé,
+        # un peu plus bas : « CMD 28 », « CM 27 »… « CMD 01 » (à 23).
+        numero = cmd or "01"
+        if not any(re.fullmatch(rf"CMD? {numero}", t) and hauteur <= y <= hauteur + 45 for y, t in lignes):
+            raise absent(f"renvoi vers la CM/CMD {numero} introuvable face à « {libelle} »")
         etapes.append({"forme": forme, "test": test, "libelle": libelle, "cmd": cmd})
     return etapes
 
@@ -797,33 +880,31 @@ def listes_de(libelle: str) -> list[str]:
     return list(dict.fromkeys(RE_LISTE.findall(libelle)))
 
 
+def listes_publiees() -> list[tuple[str, dict]]:
+    """Les deux jeux de listes de la fonction groupage publiés par
+    build_data.py. Leur absence arrête la conversion : sans eux, l'arbre
+    perdrait le nom de chaque liste, et le recollage des mots coupés son
+    vocabulaire."""
+    jeux = []
+    for chemin, nature in zip(LISTES_PUBLIEES, ("diagnostics", "actes")):
+        if not chemin.exists():
+            raise ErreurExtraction(
+                f"{chemin.relative_to(RACINE)} absent : lancer d'abord scripts/build_data.py"
+            )
+        jeux.append((nature, json.loads(chemin.read_text(encoding="utf-8"))))
+    return jeux
+
+
 def vocabulaire_de(doc: pymupdf.Document) -> Vocabulaire:
     manuel: set[str] = set()
     for page in doc:
         manuel.update(mots(page.get_text()))
     listes: set[str] = set()
-    for chemin in LISTES_PUBLIEES:
-        if chemin.exists():
-            jeu = json.loads(chemin.read_text(encoding="utf-8"))
-            i = jeu["colonnes"].index("Libellé liste")
-            for ligne in jeu["valeurs"]:
-                listes.update(mots(str(ligne[i])))
+    for _, jeu in listes_publiees():
+        i = jeu["colonnes"].index("Libellé liste")
+        for ligne in jeu["valeurs"]:
+            listes.update(mots(str(ligne[i])))
     return Vocabulaire(manuel | listes, listes)
-
-
-def millesime(chemin: Path) -> str:
-    """Date ISO du dernier commit touchant `chemin`, comme build_data.py."""
-    try:
-        sortie = subprocess.run(
-            ["git", "log", "-1", "--format=%aI", "--", str(chemin)],
-            cwd=RACINE,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        sortie = ""
-    return sortie[:10] if sortie else date.today().isoformat()
 
 
 def construire(doc: pymupdf.Document) -> dict:
@@ -859,9 +940,19 @@ def construire(doc: pymupdf.Document) -> dict:
     # le haut) reprend sur le sablier de même numéro de la page suivante de
     # la même CMD (sortie par le bas). --
     entrees_page: dict[tuple[str, int, str], str] = {}  # (cmd, page, numéro) → objet
+    sorties_page: dict[tuple[str, int, str], str] = {}
     for oid, o in objets.items():
-        if o.genre == "renvoi_page" and (oid, "bas") in sorties:
-            entrees_page[(cmd_de[oid], o.page, o.texte())] = oid
+        if o.genre != "renvoi_page":
+            continue
+        if not o.texte():
+            raise ErreurExtraction(f"{oid} : renvoi de page sans numéro")
+        cle = (cmd_de[oid], o.page, o.texte())
+        registre = entrees_page if (oid, "bas") in sorties else sorties_page
+        if cle in registre:
+            raise ErreurExtraction(
+                f"{oid} et {registre[cle]} : deux renvois « {o.texte()} » dans le même sens page {o.page}"
+            )
+        registre[cle] = oid
 
     def entree_de_page(oid: str) -> str:
         o = objets[oid]
@@ -887,8 +978,15 @@ def construire(doc: pymupdf.Document) -> dict:
     # raccorde ; les autres sont des sorties vers une autre CMD. --
     entrees_cmd: dict[tuple[str, str], str] = {}
     for oid, o in objets.items():
-        if o.genre == "renvoi_cmd" and any((oid, c) in sorties for c in SORTIES["renvoi_cmd"]):
-            entrees_cmd[(cmd_de[oid], o.texte())] = oid
+        if o.genre != "renvoi_cmd":
+            continue
+        if not o.texte():
+            raise ErreurExtraction(f"{oid} : renvoi de CMD sans texte")
+        if any((oid, c) in sorties for c in SORTIES["renvoi_cmd"]):
+            cle = (cmd_de[oid], o.texte())
+            if cle in entrees_cmd:
+                raise ErreurExtraction(f"{oid} et {entrees_cmd[cle]} : deux entrées « {o.texte()} » dans la CMD {cle[0]}")
+            entrees_cmd[cle] = oid
 
     def sortie_unique(oid: str) -> Branche:
         cibles = [b for c in sorted(SORTIES[objets[oid].genre]) for b in sorties.get((oid, c), [])]
@@ -919,6 +1017,11 @@ def construire(doc: pymupdf.Document) -> dict:
                 suite = sortie_unique(oid)
             else:
                 return Branche(b.libelle, oid, fleche, b.y, b.arrivee)
+            if suite.libelle:
+                # Un libellé après un renvoi appartiendrait à un cas que la
+                # suite de page aurait dû porter (colonne continuée) : ne
+                # jamais le perdre en silence.
+                raise ErreurExtraction(f"{oid} : libellé « {suite.libelle} » après un renvoi")
             fleche = fleche or suite.fleche
             b = Branche(b.libelle, suite.vers, fleche, suite.y, suite.arrivee)
 
@@ -932,10 +1035,15 @@ def construire(doc: pymupdf.Document) -> dict:
     noeuds: dict[str, dict] = {}
     aretes: list[Arete] = []
 
-    def lien(de: str, b: Branche, role: str) -> dict:
+    def lien(de: str, b: Branche, role: str, publie: dict | None = None) -> dict:
+        """Le lien publié vers la cible de `b`, écrit dans `publie` (créé au
+        besoin) : c'est ce dictionnaire-là, et non une copie, que l'arête
+        garde pour y poser « rejoint »."""
         arrivee = resoudre(b)
-        aretes.append(Arete(de, arrivee.vers, arrivee.fleche, role, arrivee.arrivee))
-        return {"vers": arrivee.vers}
+        publie = {} if publie is None else publie
+        publie["vers"] = arrivee.vers
+        aretes.append(Arete(de, arrivee.vers, arrivee.fleche, role, arrivee.arrivee, publie))
+        return publie
 
     for oid, o in objets.items():
         if o.genre in ("renvoi_page",) or oid in entrees_cmd.values():
@@ -971,6 +1079,8 @@ def construire(doc: pymupdf.Document) -> dict:
             if len(non) > 1 or (o.port_bas and not non):
                 raise ErreurExtraction(f"{oid} ({o.code}) : {len(non)} sortie(s) « non » en {o.rect.arrondi()}")
             sinon = non[0] if non else None
+            if sinon and sinon.libelle:
+                raise ErreurExtraction(f"{oid} : libellé « {sinon.libelle} » sur la sortie « non »")
             if not oui and o.code == "DRDP" and sinon:
                 # Inversion DP/DR sans sortie à droite (page 14) : l'inversion
                 # s'applique s'il y a lieu, et le parcours continue dessous.
@@ -987,11 +1097,13 @@ def construire(doc: pymupdf.Document) -> dict:
                 # La colonne peut se poursuivre sur la page suivante : le
                 # sablier d'arrivée dessert alors lui-même plusieurs cas
                 # (page 21 → 22 → 23 pour les DP de la CMD 01).
+                # On la reconnaît à ses cas : des traits à libellé, fût-ce
+                # un seul, et non un trait nu qui continuerait la colonne.
                 while (
                     sinon is not None
                     and objets[sinon.vers].genre == "renvoi_page"
                     and (sinon.vers, "bas") not in sorties
-                    and len(sorties[(entree_de_page(sinon.vers), "bas")]) > 1
+                    and any(b.libelle for b in sorties[(entree_de_page(sinon.vers), "bas")])
                 ):
                     suite, sinon = colonne(sorties[(entree_de_page(sinon.vers), "bas")])
                     oui = oui + suite
@@ -1009,8 +1121,7 @@ def construire(doc: pymupdf.Document) -> dict:
                     "Inversion DP/DR" if o.code == "Inversion" else VARIABLES.get(o.texte(), o.texte())
                 )
             noeud["branches"] = [
-                {"libelle": b.libelle, "listes": listes_de(b.libelle), **lien(oid, b, "oui")}
-                for b in oui
+                lien(oid, b, "oui", {"libelle": b.libelle, "listes": listes_de(b.libelle)}) for b in oui
             ]
             noeud["sinon"] = lien(oid, sinon, "non") if sinon else None
             noeuds[oid] = noeud
@@ -1055,10 +1166,12 @@ def construire(doc: pymupdf.Document) -> dict:
             continue
         porteur = min(liste, key=lambda a: (a.fleche, a.arrivee != "haut", ordre[a.de]))
         for a in liste:
-            if a is porteur:
-                continue
-            for lien_ in liens_de(noeuds[a.de], a.role, a.vers):
-                lien_["rejoint"] = True
+            if a is not porteur:
+                a.lien["rejoint"] = True
+    for nid, liste in entrants.items():
+        if noeuds[nid]["genre"] not in ("ghm", "erreur", "renvoi"):
+            if sum(1 for a in liste if not a.lien.get("rejoint")) != 1:
+                raise ErreurExtraction(f"{nid} : aucun trait, ou plusieurs, pour porter cette étape")
 
     return {
         "millesime": millesime(SOURCE),
@@ -1074,14 +1187,11 @@ def decrire_listes(noeuds: dict[str, dict]) -> dict[str, dict]:
     """Nom et taille de chaque liste citée par l'arbre, lus dans les listes
     déjà publiées : le site affiche ainsi le nom d'une liste sans charger
     les milliers de codes qu'elle regroupe. Une liste citée mais absente
-    des listes publiées (A-001, « Acte opératoire » : tous les actes
-    classants opératoires) garde un libellé nul."""
+    des listes publiées arrête la conversion, sauf celles de
+    LISTES_NON_PUBLIEES, qui gardent un libellé nul."""
     citees = sorted({l for n in noeuds.values() for b in n.get("branches", []) for l in b["listes"]})
     connues: dict[str, dict] = {}
-    for chemin, nature in zip(LISTES_PUBLIEES, ("diagnostics", "actes")):
-        if not chemin.exists():
-            continue
-        jeu = json.loads(chemin.read_text(encoding="utf-8"))
+    for nature, jeu in listes_publiees():
         i_liste = jeu["colonnes"].index("Liste")
         i_libelle = jeu["colonnes"].index("Libellé liste")
         i_code = jeu["colonnes"].index("Code")
@@ -1090,6 +1200,12 @@ def decrire_listes(noeuds: dict[str, dict]) -> dict[str, dict]:
                 ligne[i_liste], {"libelle": ligne[i_libelle], "nature": nature, "codes": set()}
             )
             fiche["codes"].add(ligne[i_code])
+    inconnues = [c for c in citees if c not in connues and c not in LISTES_NON_PUBLIEES]
+    if inconnues:
+        raise ErreurExtraction(
+            f"liste(s) citée(s) par l'arbre mais absente(s) des listes publiées {inconnues} — "
+            "listes de la fonction groupage à mettre à jour (build_data.py), ou à ajouter à LISTES_NON_PUBLIEES"
+        )
     return {
         code: (
             {"libelle": connues[code]["libelle"], "nature": connues[code]["nature"], "codes": len(connues[code]["codes"])}
@@ -1107,6 +1223,7 @@ class Arete:
     fleche: bool
     role: str  # oui, non, suite
     arrivee: str
+    lien: dict  # le lien publié dans le nœud `de`, que marque « rejoint »
 
 
 def suites(noeud: dict) -> list[str]:
@@ -1154,14 +1271,6 @@ def ordre_de_parcours(noeuds: dict[str, dict], racines: list[str]) -> dict[str, 
             ordre[nid] = len(ordre)
             pile.extend(reversed(suites(noeuds[nid])))
     return ordre
-
-
-def liens_de(noeud: dict, role: str, vers: str) -> list[dict]:
-    if role == "suite":
-        return [noeud["suite"]]
-    if role == "non":
-        return [noeud["sinon"]]
-    return [b for b in noeud["branches"] if b["vers"] == vers]
 
 
 def main() -> None:

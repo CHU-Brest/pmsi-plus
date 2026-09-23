@@ -125,9 +125,11 @@ document.addEventListener("keydown", (e) => {
 });
 
 /** Champ de recherche : loupe, bouton d'effacement, raccourci clavier « / »
- *  pour y revenir sans la souris. */
-export function champMotsClefs({ id, exemple, onInput }) {
-  const label = el("label", {}, "Mot(s) clef(s) :");
+ *  pour y revenir sans la souris. Un champ secondaire de la page (filtre
+ *  d'un panneau) prend son propre `libelle` et `raccourci: false` : « / »
+ *  ne mène qu'au premier champ de la page. */
+export function champMotsClefs({ id, exemple, onInput, libelle = "Mot(s) clef(s) :", raccourci: avecRaccourci = true }) {
+  const label = el("label", {}, libelle);
   label.htmlFor = id;
 
   let minuteur = null;
@@ -140,7 +142,7 @@ export function champMotsClefs({ id, exemple, onInput }) {
     oninput: (e) => {
       const valeur = e.target.value;
       effacer.hidden = valeur === "";
-      raccourci.hidden = valeur !== "";
+      if (raccourci) raccourci.hidden = valeur !== "";
       clearTimeout(minuteur);
       minuteur = setTimeout(() => onInput(valeur), DELAI_FRAPPE);
     },
@@ -154,7 +156,7 @@ export function champMotsClefs({ id, exemple, onInput }) {
   function viderChamp() {
     input.value = "";
     effacer.hidden = true;
-    raccourci.hidden = false;
+    if (raccourci) raccourci.hidden = false;
     clearTimeout(minuteur);
     onInput("");
     input.focus();
@@ -171,7 +173,9 @@ export function champMotsClefs({ id, exemple, onInput }) {
     },
     el("span", { class: "icone", "aria-hidden": "true" })
   );
-  const raccourci = el("span", { class: "raccourci", "aria-hidden": "true" }, "/");
+  const raccourci = avecRaccourci
+    ? el("span", { class: "raccourci", "aria-hidden": "true" }, "/")
+    : null;
 
   return el(
     "div",
