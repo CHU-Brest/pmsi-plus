@@ -49,6 +49,7 @@ JEUX: tuple[Jeu, ...] = (
     Jeu("groupage", "diagnostics.xlsx"),
     Jeu("groupage", "actes.xlsx"),
     Jeu("groupage", "cma.csv"),
+    Jeu("groupage", "racines.xlsx"),
 )
 
 # Liste des CMA livrée par l'ATIH en csv (point-virgule, Windows-1252),

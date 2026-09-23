@@ -48,6 +48,7 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   acronymes/acronymes.xlsx
   groupage/diagnostics.xlsx
   groupage/actes.xlsx
+  groupage/racines.xlsx       libellés des racines de GHM (ATIH), affichés dans la fiche code et l'algorithme
   groupage/cma.csv            liste des CMA de l'ATIH, telle que livrée (csv ; Windows-1252)
   groupage/manuel_ghm_volume_1_annexe_{4,5}.pdf   CMA × listes d'exclusion (ATIH)
   groupage/manuel_ghm_volume_3.pdf   Manuel des GHM, volume 3, tel que livré par l'ATIH

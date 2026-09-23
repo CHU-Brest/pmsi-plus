@@ -215,7 +215,14 @@ function pictogramme(n) {
 // ==== Vue ====
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
-  const arbre = preparer(await chargerJson("groupage", "arbre"));
+  const [brut, racines] = await Promise.all([
+    chargerJson("groupage", "arbre"),
+    chargerJeu("groupage", "racines", "libellés des racines de GHM").catch(() => null),
+  ]);
+  const arbre = preparer(brut);
+  // Libellé de chaque racine, pour l'infobulle des cases de GHM et le titre
+  // du chemin qui y mène.
+  const libelles = new Map((racines?.lignes ?? []).map((l) => [l.ListeRacineGHM, l["Libellé liste"]]));
 
   conteneur.innerHTML = "";
   const etat = { cmd: null, requete: "" };
@@ -580,7 +587,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     const titre =
       n.genre === "erreur"
         ? `${n.racine} : groupe comportant au moins une erreur ou inclassable`
-        : `${codes.join(", ")}${n.couleur ? ` — ${COULEURS[n.couleur]}` : ""}`;
+        : `${libelles.get(n.racine) ? `${n.racine} ${libelles.get(n.racine)}\n` : ""}${codes.join(", ")}${n.couleur ? ` — ${COULEURS[n.couleur]}` : ""}`;
     const bouton = el(
       "button",
       {
@@ -826,6 +833,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       const etapes = cheminVers(depuis);
       const codes = n.genre === "ghm" ? codesGhm(n) : [n.racine];
       const titre = [el("strong", {}, n.racine)];
+      if (libelles.get(n.racine)) titre.push(` ${libelles.get(n.racine)}`);
       if (n.genre === "ghm") {
         titre.push(` — GHM ${codes.join(", ")}`);
         if (n.couleur) titre.push(` ; ${COULEURS[n.couleur]}`);
