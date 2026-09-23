@@ -30,7 +30,14 @@ function construireNav() {
       el(
         "li",
         {},
-        el("a", { href: `#/${t.slug}`, "data-slug": t.slug }, t.titre)
+        el(
+          "a",
+          { href: `#/${t.slug}`, "data-slug": t.slug },
+          t.titre,
+          t.travaux
+            ? el("span", { class: "travaux", role: "img", "aria-label": "en travaux", title: "En travaux" }, " 🚧")
+            : null
+        )
       )
     );
     nav.append(el("h2", {}, section), el("ul", {}, ...liens));

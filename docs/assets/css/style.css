@@ -174,7 +174,8 @@
 
   /* ==== Icônes (Lucide, trait 1,75, bouts carrés) ====
      Servies en masque CSS : une seule couleur, celle du texte courant, donc
-     aucune variante d'icône à maintenir par état. Aucun emoji sur le site. */
+     aucune variante d'icône à maintenir par état. Aucun emoji sur le site, sauf le
+     🚧 d'un thème en travaux dans la barre latérale (`travaux` de registry.js). */
   --i-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='square' stroke-linejoin='miter'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
   --i-x: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E");
   --i-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");

@@ -106,7 +106,8 @@ contournés au cas par cas :
 Les polices ne sont pas embarquées dans le dépôt : `--font-sans` demande IBM Plex Sans
 puis retombe sur la pile système déclarée par la charte. Les icônes sont des tracés
 Lucide posés en masque CSS (`--i-*`), donc toujours de la couleur du texte courant —
-aucun emoji sur le site.
+aucun emoji sur le site, sauf le 🚧 qui signale dans la barre latérale un thème en
+travaux (`travaux: true` dans `registry.js`).
 
 Côté clavier : `/` ramène au champ de recherche, `Échap` l'efface (et referme le tiroir
 sur petit écran), les en-têtes de colonnes se trient à `Entrée` ou `Espace`.
