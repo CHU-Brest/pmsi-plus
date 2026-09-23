@@ -69,6 +69,14 @@ export const REGISTRY = [
   },
   {
     section: "Référentiels",
+    slug: "frontieres",
+    titre: "Codes frontières en DP",
+    module: "frontieres",
+    travaux: true,
+    resume: "Catégories CIM-10 dont un caractère change la racine de GHM quand le code est en DP.",
+  },
+  {
+    section: "Référentiels",
     slug: "acronymes",
     titre: "Acronymes & abréviations médicales",
     module: "acronymes",

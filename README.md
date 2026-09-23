@@ -17,6 +17,7 @@ individuelle — sont repris ici :
 | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
 | Référentiels | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
 | Référentiels | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes |
+| Référentiels | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
 | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
 Ce dépôt est public : rien de ce qui touche à l'activité de l'établissement ou à un
