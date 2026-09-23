@@ -29,7 +29,7 @@ export function racinesAtteintes(arbre, depart, memo) {
   return resultat;
 }
 
-function calculer(arbre, diagnostics) {
+export function calculer(arbre, diagnostics) {
   const codesDeListe = new Map();
   const libelleCode = new Map();
   for (const l of diagnostics) {

@@ -4,7 +4,9 @@
 // thème. `module` nomme le fichier dans assets/js/themes/ qui exporte une
 // fonction `rendre(conteneur)`, cf. main.js pour le contrat exact ; `resume`
 // est la phrase affichée sur la carte du thème en page d'accueil ; `travaux`
-// signale dans la barre latérale un thème encore en chantier.
+// signale dans la barre latérale un thème encore en chantier ; `cache` garde
+// un thème joignable par son adresse (liens depuis la fiche code) sans
+// l'afficher dans la barre latérale ni en page d'accueil.
 //
 // Un thème ne porte qu'un référentiel de codage : jamais de donnée patient,
 // jamais de donnée d'activité de l'établissement.
@@ -53,14 +55,22 @@ export const REGISTRY = [
     resume: "Codes CIM-10 de contexte patient et leur justification.",
   },
   {
-    section: "Référentiels",
+    section: "Groupage",
+    slug: "fiche",
+    titre: "Fiche code",
+    module: "fiche",
+    travaux: true,
+    resume: "Un code CIM-10 ou CCAM : ses tests dans l'arbre, ses racines de GHM, son niveau de CMA et ses exclusions.",
+  },
+  {
+    section: "Groupage",
     slug: "groupage",
     titre: "Listes de la fonction groupage",
     module: "groupage",
     resume: "Listes de diagnostics et d'actes de la fonction groupage, par CMD.",
   },
   {
-    section: "Référentiels",
+    section: "Groupage",
     slug: "arbre",
     titre: "Algorithme de la fonction groupage",
     module: "arbre",
@@ -68,24 +78,27 @@ export const REGISTRY = [
     resume: "Arbres de décision du Manuel des GHM, CMD par CMD : tests, listes et racines de GHM.",
   },
   {
-    section: "Référentiels",
+    section: "Groupage",
     slug: "frontieres",
+    cache: true,
     titre: "Codes frontières en DP",
     module: "frontieres",
     travaux: true,
     resume: "Catégories CIM-10 dont un caractère change la racine de GHM quand le code est en DP.",
   },
   {
-    section: "Référentiels",
+    section: "Groupage",
     slug: "actes-frontieres",
+    cache: true,
     titre: "Actes frontières",
     module: "actes_frontieres",
     travaux: true,
     resume: "Actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes.",
   },
   {
-    section: "Référentiels",
+    section: "Groupage",
     slug: "cma",
+    cache: true,
     titre: "Niveaux de sévérité (CMA)",
     module: "cma",
     travaux: true,
