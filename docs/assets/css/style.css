@@ -1730,6 +1730,15 @@ li.fin::before {
   border-bottom: none;
 }
 
+.codes-liste td.cma-exclue {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.codes-liste td.cma-partielle {
+  color: var(--amber-700);
+}
+
 .codes-liste td.code {
   width: 1%;
   white-space: nowrap;

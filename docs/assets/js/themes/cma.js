@@ -22,7 +22,7 @@ const cle = (code) => code.replace(/\./g, "");
  *  vaut A00 et toutes ses extensions ; « R05-R07 », tous les codes compris
  *  entre les deux dans l'ordre alphabétique, extensions de R07 comprises ;
  *  l'étoile (« M62.89* ») écarte l'extension 0 que le manuel en exclut. */
-function couvre(element, code) {
+export function couvre(element, code) {
   const c = cle(code);
   const dedans = (borne) => {
     const etoile = borne.endsWith("*");
@@ -35,7 +35,7 @@ function couvre(element, code) {
 }
 
 /** Un élément de liste de racines couvre-t-il la racine `r` (« 01C03 ») ? */
-function couvreRacine(element, r) {
+export function couvreRacine(element, r) {
   let m;
   if ((m = element.match(/^CMD(\d{2})$/))) return r.slice(0, 2) === m[1];
   if ((m = element.match(/^Racines_en_([CKMZ])$/))) return r[2] === m[1];
