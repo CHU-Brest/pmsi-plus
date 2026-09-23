@@ -18,7 +18,7 @@ individuelle — sont repris ici :
 | Référentiels | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
 | Référentiels | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes |
 | Référentiels | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
-| Référentiels | Niveaux de sévérité (CMA) | liste des CMA de la fonction groupage et leur niveau nominal (2 à 4) ; aussi affiché dans les listes de diagnostics de l'algorithme |
+| Référentiels | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
 | Référentiels | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
 | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
@@ -48,12 +48,14 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   groupage/diagnostics.xlsx
   groupage/actes.xlsx
   groupage/cma.csv            liste des CMA de l'ATIH, telle que livrée (csv ; Windows-1252)
+  groupage/manuel_ghm_volume_1_annexe_{4,5}.pdf   CMA × listes d'exclusion (ATIH)
   groupage/manuel_ghm_volume_3.pdf   Manuel des GHM, volume 3, tel que livré par l'ATIH
   medicaments/{rh,les}.png    captures VIDAL Hoptimal, sans donnée tabulée
 
 scripts/
   build_data.py               xlsx (et cma.csv) → JSON, seule dépendance : openpyxl
   build_arbre.py              PDF du manuel → arbre.json, seule dépendance : pymupdf
+  build_cma.py                annexes 4 et 5 du volume 1 → cma_exclusions.json (pymupdf)
   millesime.py                date du drapeau de fraîcheur, commune aux deux scripts
   requirements.txt
 
@@ -162,6 +164,12 @@ texte rattaché au trait qu'il surmonte.
 4. Vérifier en local quelques CMD contre le PDF, en particulier les pages remaniées par
    la nouvelle version.
 5. Committer **le PDF et le JSON généré ensemble**, pousser.
+
+Les exclusions de CMA suivent le même chemin : remplacer
+`data/groupage/manuel_ghm_volume_1_annexe_4.pdf` et `…_annexe_5.pdf`, puis
+`python scripts/build_cma.py`. Le script vérifie que chaque liste citée par l'annexe 4
+existe dans l'annexe 5, que la numérotation ne saute pas, que chaque élément de liste
+est lisible, et que les niveaux sont ceux de `cma.csv`.
 
 La page d'orientation (page 9) n'emploie aucun des symboles des autres pages : ses six
 étapes sont transcrites dans `ORIENTATION` du script, qui vérifie contre le texte de la
