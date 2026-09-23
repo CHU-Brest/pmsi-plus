@@ -1082,6 +1082,695 @@ kbd {
   display: none;
 }
 
+/* ==== Algorithme de la fonction groupage ==== */
+
+/* Texte lu par les lecteurs d'écran seulement. */
+.visuellement-cache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.legende-arbre {
+  max-width: 1040px;
+  margin: var(--sp-4) 0;
+  background: var(--surface-card);
+  border: var(--bw-hair) solid var(--border-default);
+}
+
+.legende-arbre summary {
+  padding: var(--sp-3) var(--sp-4);
+  font: var(--text-label);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.legende-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--sp-2) var(--sp-7);
+  padding: 0 var(--sp-4) var(--sp-4);
+}
+
+.legende-grille h3 {
+  font: var(--text-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-eyebrow-color);
+  margin: var(--sp-4) 0 var(--sp-2);
+}
+
+.legende-grille ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.legende-grille li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+}
+
+.legende-grille li > .picto,
+.legende-grille li > .ghm {
+  flex: 0 0 auto;
+}
+
+/* -- Pictogrammes --
+   Seule exception aux angles droits de la charte : ces symboles reprennent
+   la notation du Manuel des GHM (cercle : test sur les données médicales,
+   losange : test sur les autres données). Les dessiner carrés leur ferait
+   perdre leur sens pour qui a le manuel en tête. */
+.picto {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  font: var(--fw-bold) var(--fs-3xs) / 1 var(--font-sans);
+  color: var(--text-primary);
+  background: var(--surface-card);
+}
+
+.picto.cercle {
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+}
+
+.picto.cercle.double {
+  border: 4px double var(--ink);
+}
+
+.picto.cercle.epais {
+  border-width: 4px;
+}
+
+.picto.cercle.inversion {
+  font-size: 8px;
+  letter-spacing: -0.02em;
+}
+
+.picto.cercle.barre::after {
+  content: "";
+  position: absolute;
+  width: 26px;
+  height: 1.5px;
+  background: var(--ink);
+  transform: rotate(-45deg);
+}
+
+.picto.losange,
+.picto.trapeze {
+  background: var(--ink);
+}
+
+.picto.losange {
+  width: 36px;
+  height: 26px;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.picto.trapeze {
+  height: 26px;
+  clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%);
+}
+
+/* Le fond clair est une seconde forme, un trait plus petite : un
+   `clip-path` ne sait pas tracer de bordure. */
+.picto.losange::before,
+.picto.trapeze::before {
+  content: "";
+  position: absolute;
+  inset: 1.5px;
+  background: var(--surface-card);
+  clip-path: inherit;
+}
+
+.picto.losange.epais::before {
+  inset: 3.5px;
+}
+
+.picto.trapeze > span {
+  position: relative;
+  font-size: var(--fs-xs);
+  padding-top: 3px;
+}
+
+.picto.boite {
+  width: auto;
+  height: 26px;
+  padding: 0 var(--sp-2);
+  border: 1.5px solid var(--ink);
+  border-bottom-width: 3.5px;
+}
+
+/* Cadre de texte de la page d'orientation. */
+.picto.cadre {
+  width: 28px;
+  height: 20px;
+  border: 1.5px solid var(--ink);
+}
+
+.grille-cmd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+/* -- Cases de GHM -- */
+.ghm {
+  display: inline-flex;
+  align-items: stretch;
+  vertical-align: middle;
+  padding: 0;
+  border: var(--bw-hair) solid var(--blue-500);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  box-shadow: var(--shadow-xs);
+}
+
+button.ghm {
+  cursor: pointer;
+  transition: box-shadow var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+
+button.ghm:hover,
+button.ghm[aria-expanded="true"] {
+  border-color: var(--brand);
+  box-shadow: var(--shadow-sm);
+}
+
+.ghm-racine {
+  display: grid;
+  place-items: center;
+  padding: var(--sp-1) var(--sp-3);
+  font-weight: var(--fw-bold);
+}
+
+.ghm-cases {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  min-width: 18px;
+  border-left: var(--bw-hair) solid var(--blue-500);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.ghm-cases > span {
+  display: grid;
+  place-items: center;
+  padding: 1px 3px;
+}
+
+.ghm-cases > span + span {
+  border-top: var(--bw-hair) solid var(--blue-500);
+}
+
+.ghm.age {
+  background: var(--cyan-100);
+}
+
+.ghm.age_gestationnel {
+  background: var(--green-100);
+}
+
+.ghm.erreur {
+  background: var(--surface-muted);
+  border-style: dashed;
+  border-color: var(--slate-500);
+}
+
+.renvoi,
+.renvoi-cmd {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sp-1) var(--sp-3);
+  border: var(--bw-hair) solid var(--cyan-500);
+  background: var(--cyan-100);
+  color: var(--text-primary);
+  font: var(--text-label);
+  font-size: var(--fs-xs);
+}
+
+.renvoi-cmd {
+  cursor: pointer;
+  text-align: left;
+}
+
+.renvoi-cmd:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+/* -- Codes de liste dans un libellé -- */
+.puce-liste {
+  display: inline;
+  padding: 0 var(--sp-1);
+  margin: 0 1px;
+  border: var(--bw-hair) solid var(--border-default);
+  background: var(--blue-050);
+  color: var(--brand);
+  font: var(--text-data);
+  font-size: var(--fs-xs);
+  font-feature-settings: var(--num-tabular);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+
+.puce-liste:hover,
+.puce-liste[aria-expanded="true"] {
+  border-color: var(--brand);
+}
+
+.puce-liste[aria-expanded="true"] {
+  background: var(--brand);
+  color: var(--text-inverse);
+}
+
+/* -- Arbre --
+   Une colonne est une liste ordonnée : chaque étape s'y enchaîne sous la
+   précédente quand la condition n'est pas satisfaite. Le filet vertical
+   relie les pictogrammes d'une étape à la suivante, comme la colonne du
+   manuel ; ce qui part « à droite » dans le PDF est ici en retrait. */
+.zone-arbre {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.arbre {
+  --colonne-x: 16px;
+  --filet: var(--blue-300);
+  max-width: 1100px;
+  min-width: 560px;
+}
+
+.arbre > h2 {
+  margin-top: var(--sp-6);
+}
+
+.arbre-outils {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-5);
+}
+
+.arbre-outils .bouton-icone {
+  min-height: 36px;
+}
+
+ol.colonne {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+ol.colonne > li {
+  position: relative;
+  padding: 0 0 var(--sp-4);
+}
+
+/* Filet de la colonne : du centre du pictogramme jusqu'à l'étape suivante. */
+ol.colonne > li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--colonne-x) - 1px);
+  top: 16px;
+  bottom: -2px;
+  border-left: var(--bw-thick) solid var(--filet);
+}
+
+/* « non », « oui » ou « puis » posé sur le filet, au-dessus de l'étape. */
+ol.colonne > li[data-entree]::after {
+  content: attr(data-entree);
+  position: absolute;
+  left: calc(var(--colonne-x) + var(--sp-2));
+  top: calc(-1 * var(--sp-4) + 2px);
+  font: var(--text-eyebrow);
+  font-size: var(--fs-3xs);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+ol.colonne > li + li {
+  margin-top: var(--sp-3);
+}
+
+.etape-tete {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 32px;
+  outline: none;
+  scroll-margin: var(--sp-10);
+}
+
+.etape-tete > .picto {
+  z-index: 1;
+}
+
+.etape-intitule {
+  flex: 1;
+  min-width: 0;
+  font: var(--text-body-sm);
+  color: var(--text-primary);
+}
+
+.etape-precision {
+  color: var(--text-muted);
+}
+
+.etape-page {
+  flex-shrink: 0;
+  font: var(--text-data);
+  font-size: var(--fs-3xs);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-muted);
+}
+
+.etape-note {
+  margin: var(--sp-1) 0 0 calc(var(--colonne-x) * 2 + var(--sp-3));
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.branche-condition[id] {
+  outline: none;
+  scroll-margin: var(--sp-10);
+}
+
+.etape-tete.surbrillance,
+.branche-condition.surbrillance,
+[data-feuille].surbrillance {
+  animation: surbrillance 2.4s var(--ease-standard);
+}
+
+@keyframes surbrillance {
+  0%,
+  60% {
+    background: var(--amber-100);
+    box-shadow: 0 0 0 var(--sp-1) var(--amber-100);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 var(--sp-1) transparent;
+  }
+}
+
+/* Une branche « oui » : en retrait sous son étape, avec son propre filet. */
+.branche {
+  position: relative;
+  margin: var(--sp-2) 0 0 calc(var(--colonne-x) * 2 + var(--sp-3));
+}
+
+.branche > ol.colonne {
+  margin-top: var(--sp-3);
+  padding-left: var(--sp-5);
+  border-left: var(--bw-hair) solid var(--border-default);
+}
+
+.branche.repliee > ol.colonne {
+  display: none;
+}
+
+.branche-condition {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  font: var(--text-body-sm);
+  color: var(--text-primary);
+}
+
+.branche-libelle {
+  min-width: 0;
+}
+
+.fleche {
+  color: var(--text-muted);
+}
+
+.issue {
+  display: inline-block;
+  padding: 1px var(--sp-2);
+  font: var(--text-eyebrow);
+  font-size: var(--fs-3xs);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  border: var(--bw-hair) solid currentColor;
+}
+
+.issue.oui {
+  color: var(--green-700);
+  background: var(--green-100);
+}
+
+.issue.non {
+  color: var(--slate-600);
+  background: var(--surface-muted);
+}
+
+.replier {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: calc(-1 * (24px + var(--sp-2)));
+  padding: 0;
+  border: var(--bw-hair) solid var(--border-default);
+  background: var(--surface-page);
+  color: var(--slate-600);
+  cursor: pointer;
+}
+
+.replier:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.replier .icone {
+  width: 14px;
+  height: 14px;
+  -webkit-mask-image: var(--i-chevron-right);
+  mask-image: var(--i-chevron-right);
+  transform: rotate(90deg);
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+
+.replier[aria-expanded="false"] .icone {
+  transform: none;
+}
+
+li.fin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-left: calc(var(--colonne-x) * 2 + var(--sp-3));
+}
+
+li.fin::before {
+  content: none;
+}
+
+.rejoint {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border: var(--bw-hair) dashed var(--border-strong);
+  background: var(--surface-page);
+  color: var(--text-link);
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rejoint:hover {
+  border-color: var(--brand);
+  border-style: solid;
+}
+
+.rejoint-mot {
+  font-weight: var(--fw-semibold);
+}
+
+/* -- Panneaux : codes d'une liste, chemin vers un GHM -- */
+.panneau {
+  flex-basis: 100%;
+  margin: var(--sp-3) 0 var(--sp-2);
+  padding: var(--sp-4);
+  background: var(--surface-card);
+  border: var(--bw-hair) solid var(--border-default);
+  border-top: var(--border-accent-w) solid var(--brand);
+  box-shadow: var(--shadow-sm);
+  max-width: 980px;
+}
+
+.panneau-entete {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+
+.panneau-titre {
+  flex: 1;
+  margin: 0;
+  font: var(--text-body-sm);
+  color: var(--text-primary);
+}
+
+.panneau .fermer {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: var(--bw-hair) solid var(--border-default);
+  background: var(--surface-page);
+  color: var(--slate-600);
+  cursor: pointer;
+}
+
+.panneau .fermer:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.panneau .fermer .icone {
+  width: 14px;
+  height: 14px;
+  -webkit-mask-image: var(--i-x);
+  mask-image: var(--i-x);
+}
+
+.barre-outils-compacte {
+  margin: var(--sp-3) 0 0;
+  padding: var(--sp-3);
+  border-top-width: var(--bw-hair);
+}
+
+ol.chemin {
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: chemin;
+}
+
+ol.chemin > li {
+  counter-increment: chemin;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: var(--bw-hair) solid var(--slate-200);
+  font: var(--text-body-sm);
+}
+
+ol.chemin > li:last-child {
+  border-bottom: none;
+}
+
+ol.chemin > li::before {
+  content: counter(chemin);
+  min-width: 2ch;
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.chemin-libelle {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+/* -- Résultats de recherche -- */
+.resultats-arbre:empty {
+  display: none;
+}
+
+.liste-resultats {
+  list-style: none;
+  margin: 0 0 var(--sp-6);
+  padding: 0;
+  max-width: 1100px;
+  background: var(--surface-card);
+  border: var(--bw-hair) solid var(--border-default);
+}
+
+.liste-resultats li + li {
+  border-top: var(--bw-hair) solid var(--slate-200);
+}
+
+.liste-resultats button {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-4);
+  border: none;
+  background: none;
+  font: var(--text-body-sm);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.liste-resultats button:hover {
+  background: var(--slate-050);
+}
+
+.resultat-cmd {
+  flex-shrink: 0;
+  min-width: 7ch;
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  font-weight: var(--fw-semibold);
+  color: var(--brand);
+}
+
+.resultat-libelle {
+  flex: 1;
+  min-width: 0;
+}
+
+.panneau-codes {
+  max-width: 1100px;
+  margin-top: 0;
+}
+
+.codes-trouves {
+  margin: var(--sp-2) 0 0;
+  padding-left: var(--sp-5);
+  font: var(--text-body-sm);
+}
+
+.codes-trouves .code {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
+}
+
 /* ==== Petit écran ==== */
 @media (max-width: 860px) {
   .barre-haute {
@@ -1150,6 +1839,26 @@ kbd {
   .pagination-taille {
     margin-left: 0;
   }
+
+  /* L'arbre garde sa lecture en colonnes sur téléphone : retraits réduits,
+     et défilement horizontal au-delà de quelques niveaux d'imbrication. */
+  .arbre {
+    min-width: 0;
+  }
+
+  .branche {
+    margin-left: var(--sp-6);
+  }
+
+  .branche > ol.colonne {
+    padding-left: var(--sp-3);
+  }
+
+  li.fin,
+  .etape-note {
+    padding-left: var(--sp-6);
+    margin-left: 0;
+  }
 }
 
 /* Le rappel du raccourci « / » ne sert qu'au clavier : sur écran tactile,
@@ -1187,5 +1896,15 @@ kbd {
     overflow: visible;
     border: none;
     box-shadow: none;
+  }
+
+  .branche.repliee > ol.colonne {
+    display: block;
+  }
+
+  .replier,
+  .arbre-outils,
+  .legende-arbre {
+    display: none !important;
   }
 }

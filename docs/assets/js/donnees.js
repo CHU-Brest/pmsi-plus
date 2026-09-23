@@ -11,11 +11,7 @@ function reconstituerLignes({ colonnes, valeurs }) {
   return valeurs.map((v) => Object.fromEntries(colonnes.map((c, i) => [c, v[i]])));
 }
 
-/** Charge `assets/data/<theme>/<fichier>.json` et rend `{ libelle,
- *  millesime, lignes }`. Lève si la requête échoue : chaque thème l'attrape
- *  pour afficher un message plutôt qu'une page blanche. */
-export function chargerJeu(theme, fichier, libelle) {
-  const url = `assets/data/${theme}/${fichier}.json`;
+function chargerUrl(url) {
   if (!cache.has(url)) {
     cache.set(
       url,
@@ -24,12 +20,34 @@ export function chargerJeu(theme, fichier, libelle) {
           throw new Error(`${url} : HTTP ${reponse.status}`);
         }
         return reponse.json();
-      }).then((payload) => ({
+      })
+    );
+  }
+  return cache.get(url);
+}
+
+/** Charge un JSON qui n'est pas un tableau colonnaire (l'arbre de la
+ *  fonction groupage, produit par scripts/build_arbre.py) et le rend tel
+ *  quel. Même cache que `chargerJeu`. */
+export function chargerJson(theme, fichier) {
+  return chargerUrl(`assets/data/${theme}/${fichier}.json`);
+}
+
+/** Charge `assets/data/<theme>/<fichier>.json` et rend `{ libelle,
+ *  millesime, lignes }`. Lève si la requête échoue : chaque thème l'attrape
+ *  pour afficher un message plutôt qu'une page blanche. */
+export function chargerJeu(theme, fichier, libelle) {
+  const url = `assets/data/${theme}/${fichier}.json`;
+  const cle = `${url}#lignes`;
+  if (!cache.has(cle)) {
+    cache.set(
+      cle,
+      chargerUrl(url).then((payload) => ({
         libelle,
         millesime: payload.millesime,
         lignes: reconstituerLignes(payload),
       }))
     );
   }
-  return cache.get(url);
+  return cache.get(cle);
 }

@@ -2,7 +2,9 @@
 // thème et routage par hash (`#/<slug>`).
 //
 // Chaque thème vit dans assets/js/themes/<module>.js et exporte une fonction
-// async `rendre(conteneur)` qui vide puis remplit `conteneur`.
+// async `rendre(conteneur, { chemin })` qui vide puis remplit `conteneur`.
+// `chemin` porte ce qui suit le slug dans le hash (`#/arbre/01` → ["01"]) :
+// un thème qui n'en a pas l'usage l'ignore.
 
 import { REGISTRY, themeParDefaut, themeParSlug } from "./registry.js";
 import { el, squelette } from "./interface.js";
@@ -64,7 +66,7 @@ document.addEventListener("keydown", (e) => {
 
 // ==== Routage ====
 
-async function rendreTheme(slug, premierRendu) {
+async function rendreTheme(slug, premierRendu, chemin = []) {
   const theme = themeParSlug(slug) ?? themeParDefaut();
   marquerLienActif(theme.slug);
   ouvrirBarre(false);
@@ -77,7 +79,7 @@ async function rendreTheme(slug, premierRendu) {
   contenu.append(squelette());
   try {
     const module = await import(`./themes/${theme.module}.js`);
-    await module.rendre(contenu);
+    await module.rendre(contenu, { chemin });
   } catch (erreur) {
     console.error(erreur);
     contenu.innerHTML = "";
@@ -101,8 +103,8 @@ async function rendreTheme(slug, premierRendu) {
 }
 
 function auChangementHash(premierRendu = false) {
-  const slug = location.hash.replace(/^#\/?/, "") || themeParDefaut().slug;
-  rendreTheme(slug, premierRendu);
+  const [slug, ...chemin] = location.hash.replace(/^#\/?/, "").split("/");
+  rendreTheme(slug || themeParDefaut().slug, premierRendu, chemin.map(decodeURIComponent));
 }
 
 construireNav();

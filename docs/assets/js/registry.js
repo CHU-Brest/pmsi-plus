@@ -60,6 +60,13 @@ export const REGISTRY = [
   },
   {
     section: "Référentiels",
+    slug: "arbre",
+    titre: "Algorithme de la fonction groupage",
+    module: "arbre",
+    resume: "Arbres de décision du Manuel des GHM, CMD par CMD : tests, listes et racines de GHM.",
+  },
+  {
+    section: "Référentiels",
     slug: "acronymes",
     titre: "Acronymes & abréviations médicales",
     module: "acronymes",
