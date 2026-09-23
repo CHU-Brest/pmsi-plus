@@ -56,7 +56,10 @@ export async function rendre(conteneur) {
         "un séjour : un code appartient à une liste, une liste appartient à une CMD. " +
         "Chercher un code y répond donc à la question « dans quelle liste ce code " +
         "entre-t-il ? », et chercher un libellé de liste donne tous les codes qu'elle " +
-        "contient."
+        "contient. Les tests qui emploient chaque liste, et les GHM auxquels ils mènent, " +
+        "sont dans ",
+      el("a", { class: "lien-texte", href: "#/arbre" }, "l'algorithme de la fonction groupage"),
+      "."
     ),
     el("hr", { class: "separateur" })
   );

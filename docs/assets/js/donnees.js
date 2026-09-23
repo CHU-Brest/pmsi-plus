@@ -11,25 +11,42 @@ function reconstituerLignes({ colonnes, valeurs }) {
   return valeurs.map((v) => Object.fromEntries(colonnes.map((c, i) => [c, v[i]])));
 }
 
+function recuperer(url) {
+  return fetch(url).then((reponse) => {
+    if (!reponse.ok) {
+      throw new Error(`${url} : HTTP ${reponse.status}`);
+    }
+    return reponse.json();
+  });
+}
+
+/** Charge un JSON qui n'est pas un tableau colonnaire (l'arbre de la
+ *  fonction groupage, produit par scripts/build_arbre.py) et le rend tel
+ *  quel, gardé en cache comme les jeux. */
+export function chargerJson(theme, fichier) {
+  const url = `assets/data/${theme}/${fichier}.json`;
+  const cle = `brut:${url}`;
+  if (!cache.has(cle)) cache.set(cle, recuperer(url));
+  return cache.get(cle);
+}
+
 /** Charge `assets/data/<theme>/<fichier>.json` et rend `{ libelle,
  *  millesime, lignes }`. Lève si la requête échoue : chaque thème l'attrape
  *  pour afficher un message plutôt qu'une page blanche. */
 export function chargerJeu(theme, fichier, libelle) {
   const url = `assets/data/${theme}/${fichier}.json`;
-  if (!cache.has(url)) {
+  // Seules les lignes reconstituées restent en cache, pas le format
+  // colonnaire téléchargé : il serait gardé en double pour rien.
+  const cle = url;
+  if (!cache.has(cle)) {
     cache.set(
-      url,
-      fetch(url).then((reponse) => {
-        if (!reponse.ok) {
-          throw new Error(`${url} : HTTP ${reponse.status}`);
-        }
-        return reponse.json();
-      }).then((payload) => ({
+      cle,
+      recuperer(url).then((payload) => ({
         libelle,
         millesime: payload.millesime,
         lignes: reconstituerLignes(payload),
       }))
     );
   }
-  return cache.get(url);
+  return cache.get(cle);
 }

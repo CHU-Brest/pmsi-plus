@@ -3,7 +3,8 @@
 // C'est la seule liste à tenir à jour pour ajouter, renommer ou réordonner un
 // thème. `module` nomme le fichier dans assets/js/themes/ qui exporte une
 // fonction `rendre(conteneur)`, cf. main.js pour le contrat exact ; `resume`
-// est la phrase affichée sur la carte du thème en page d'accueil.
+// est la phrase affichée sur la carte du thème en page d'accueil ; `travaux`
+// signale dans la barre latérale un thème encore en chantier.
 //
 // Un thème ne porte qu'un référentiel de codage : jamais de donnée patient,
 // jamais de donnée d'activité de l'établissement.
@@ -57,6 +58,14 @@ export const REGISTRY = [
     titre: "Listes de la fonction groupage",
     module: "groupage",
     resume: "Listes de diagnostics et d'actes de la fonction groupage, par CMD.",
+  },
+  {
+    section: "Référentiels",
+    slug: "arbre",
+    titre: "Algorithme de la fonction groupage",
+    module: "arbre",
+    travaux: true,
+    resume: "Arbres de décision du Manuel des GHM, CMD par CMD : tests, listes et racines de GHM.",
   },
   {
     section: "Référentiels",
