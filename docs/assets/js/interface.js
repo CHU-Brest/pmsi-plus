@@ -128,14 +128,17 @@ document.addEventListener("keydown", (e) => {
  *  pour y revenir sans la souris. Un champ secondaire de la page (filtre
  *  d'un panneau) prend son propre `libelle` et `raccourci: false` : « / »
  *  ne mène qu'au premier champ de la page. */
-export function champMotsClefs({ id, exemple, onInput, libelle = "Mot(s) clef(s) :", raccourci: avecRaccourci = true }) {
+export function champMotsClefs({ id, exemple, onInput, valeur = "", libelle = "Mot(s) clef(s) :", raccourci: avecRaccourci = true }) {
   const label = el("label", {}, libelle);
   label.htmlFor = id;
 
   let minuteur = null;
+  // `valeur` pré-remplit le champ (lien profond) sans passer par onInput :
+  // le thème affiche lui-même le résultat, une seule fois.
   const input = el("input", {
     type: "search",
     id,
+    value: valeur || undefined,
     placeholder: exemple,
     autocomplete: "off",
     spellcheck: "false",
@@ -167,14 +170,14 @@ export function champMotsClefs({ id, exemple, onInput, libelle = "Mot(s) clef(s)
     {
       type: "button",
       class: "effacer",
-      hidden: "",
+      hidden: valeur ? undefined : "",
       "aria-label": "Effacer la recherche",
       onclick: viderChamp,
     },
     el("span", { class: "icone", "aria-hidden": "true" })
   );
   const raccourci = avecRaccourci
-    ? el("span", { class: "raccourci", "aria-hidden": "true" }, "/")
+    ? el("span", { class: "raccourci", "aria-hidden": "true", hidden: valeur ? "" : undefined }, "/")
     : null;
 
   return el(
@@ -274,10 +277,10 @@ const PADDING_CELLULE = 32;
 // plus rien dire, là où un libellé coupé reste lisible à l'infobulle — une
 // colonne d'identifiants se dimensionne donc sur sa valeur la *plus
 // longue*, pas sur la longueur moyenne de la colonne. On les reconnaît à
-// ça : aucune valeur ne dépasse quelques caractères. 9,5 px et non moins :
+// ça : aucune valeur ne dépasse quelques caractères. 10 px et non moins :
 // dans les polices de repli les plus larges (DejaVu Sans, sous Linux), un
-// GHM de 6 caractères débordait déjà d'une fraction de pixel à 9,2.
-const CARACTERE_CODE_PX = 9.5;
+// GHM à « M » tient 59 px pour 6 caractères (14M03D) et débordait à 9,2.
+const CARACTERE_CODE_PX = 10;
 const LONGUEUR_MAX_IDENTIFIANT = 20;
 
 // Colonne « vedette » : le libellé ou le nom est le texte qui identifie la

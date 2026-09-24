@@ -14,7 +14,7 @@ import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, nombre } from "../interface.js";
 import { couvre, couvreRacine } from "./cma.js";
 import { racinesAtteintes } from "./frontieres.js";
-import { chargerTarifs, noteTarifs, tableTarifs } from "../tarifs.js";
+import { chargerTarifs, noteTarifs, parGhm, tableTarifs } from "../tarifs.js";
 
 const ORIENTATION = "orientation";
 // Un code de liste dans un libellé, avec ses parenthèses s'il en a : la
@@ -110,7 +110,7 @@ function texteDeRecherche(arbre, n) {
 
 /** Codes GHM couverts par une case : « 1 » en bas vaut les niveaux 1 à 4,
  *  une lettre vaut elle-même ; la case du haut ajoute J ou T. */
-function codesGhm(f) {
+export function codesGhm(f) {
   const codes = [];
   if (f.bas === "1") codes.push(...["1", "2", "3", "4"].map((n) => f.racine + n));
   else if (f.bas) codes.push(f.racine + f.bas);
@@ -216,12 +216,13 @@ function pictogramme(n) {
 // ==== Vue ====
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
-  // Libellés et tarifs sont des compléments : leur absence n'empêche pas
-  // de lire l'arbre.
-  const [brut, racines, tarifs] = await Promise.all([
+  // Les tarifs ne servent qu'à l'ouverture d'une case de GHM : l'arbre
+  // s'affiche sans les attendre. Libellés et tarifs sont des compléments,
+  // leur absence n'empêche pas de lire l'arbre.
+  const promesseTarifs = chargerTarifs().catch(() => null);
+  const [brut, racines] = await Promise.all([
     chargerJson("groupage", "arbre"),
     chargerJeu("groupage", "racines", "libellés des racines de GHM").catch(() => null),
-    chargerTarifs().catch(() => null),
   ]);
   const arbre = preparer(brut);
   // Libellé de chaque racine, pour l'infobulle des cases de GHM et le titre
@@ -257,12 +258,19 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   const zoneRecherche = el("div", { class: "resultats-arbre" });
   const zoneArbre = el("div", { class: "zone-arbre" });
 
+  // Le drapeau prend la date des tarifs quand ils arrivent.
+  const jeuArbre = { libelle: "arbre de décision de la fonction groupage", millesime: arbre.millesime };
+  let drapeau = fraicheur([jeuArbre]);
+  promesseTarifs.then((tarifs) => {
+    if (!tarifs || !drapeau.isConnected) return;
+    const complet = fraicheur([jeuArbre, { libelle: tarifs.libelle, millesime: tarifs.millesime }]);
+    drapeau.replaceWith(complet);
+    drapeau = complet;
+  });
+
   conteneur.append(
     el("h1", {}, "Algorithme de la fonction groupage"),
-    fraicheur([
-      { libelle: "arbre de décision de la fonction groupage", millesime: arbre.millesime },
-      ...(tarifs ? [{ libelle: tarifs.libelle, millesime: tarifs.millesime }] : []),
-    ]),
+    drapeau,
     el(
       "p",
       {},
@@ -872,14 +880,26 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   }
 
   /** Les GHS des GHM de la case — de la case seulement : une racine coupée
-   *  en plusieurs cases (25M02 en A, B, C…) n'y montre que les siens. */
+   *  en plusieurs cases (25M02 en A, B, C…) n'y montre que les siens.
+   *  Rempli dès que les tarifs sont là. */
   function blocTarifs(n, codes) {
-    if (!tarifs) return [el("p", { class: "message-avertissement" }, "Tarifs des GHS indisponibles pour le moment.")];
-    return [
-      el("p", { class: "compteur" }, "Tarifs des GHS :"),
-      tableTarifs(tarifs, codes),
-      noteTarifs(`#/tarifs/${n.racine}`),
-    ];
+    const zone = el("div", {}, el("p", { class: "compteur" }, "Chargement des tarifs…"));
+    promesseTarifs.then((tarifs) => {
+      zone.innerHTML = "";
+      if (!tarifs) {
+        zone.append(el("p", { class: "message-avertissement" }, "Tarifs des GHS indisponibles pour le moment."));
+        return;
+      }
+      // Le lien vers le thème ne mènerait nulle part pour une racine que
+      // l'arrêté ne tarife pas (14Z08, 15Z10, 23Z03).
+      const tarifee = codes.some((g) => parGhm(tarifs).has(g));
+      zone.append(
+        el("p", { class: "compteur" }, "Tarifs des GHS :"),
+        tableTarifs(tarifs, codes),
+        noteTarifs(tarifee ? `#/tarifs/${n.racine}` : null)
+      );
+    });
+    return [zone];
   }
 
   /** Les étapes qui mènent au trait `depuis`, de la racine de la CMD vers

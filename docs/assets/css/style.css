@@ -895,6 +895,16 @@ table.tableau-donnees td.nombre {
   text-align: right;
 }
 
+/* La flèche de tri d'une colonne de nombres passe dans la marge de gauche
+   de l'en-tête : laissée à droite, elle décalerait l'intitulé par rapport
+   aux montants qu'il surmonte. L'en-tête, collant, lui sert de repère. */
+table.tableau-donnees thead th.nombre::after {
+  position: absolute;
+  left: var(--sp-1);
+  top: 50%;
+  margin: -6px 0 0;
+}
+
 table.tableau-donnees td.nombre {
   font: var(--text-data);
   font-feature-settings: var(--num-tabular);
@@ -1796,7 +1806,7 @@ li.fin::before {
   color: var(--text-secondary);
 }
 
-.codes-liste tr:last-child td {
+.codes-liste tbody:last-child tr:last-child td {
   border-bottom: none;
 }
 
@@ -1821,18 +1831,44 @@ li.fin::before {
 .codes-liste th.nombre,
 .codes-liste td.nombre {
   text-align: right;
-  white-space: nowrap;
 }
 
+/* Un montant ne se coupe pas ; les intitulés, eux, peuvent passer à la
+   ligne pour que le tableau tienne dans le panneau de l'algorithme. */
 .codes-liste td.nombre {
+  white-space: nowrap;
   font: var(--text-data);
   font-feature-settings: var(--num-tabular);
   color: var(--text-primary);
 }
 
-/* Ligne d'un GHS commun à tous les GHM du tableau, et GHM sans tarif. */
-.codes-liste td.tous {
+/* En-tête de groupe (un GHM et ses GHS) : une cellule de données pour
+   l'œil, un en-tête pour les lecteurs d'écran, qui annoncent le GHM sur
+   chacune de ses lignes. */
+.codes-liste tbody th {
+  position: static;
+  width: 1%;
+  padding: var(--sp-2) var(--sp-3);
+  background: none;
+  border-bottom: var(--bw-hair) solid var(--slate-200);
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+  vertical-align: top;
   white-space: nowrap;
+}
+
+/* L'en-tête du dernier groupe descend, par son rowspan, jusqu'au bas du
+   tableau : pas de filet en double avec le cadre. */
+.codes-liste tbody:last-child th {
+  border-bottom: none;
+}
+
+/* Groupe des GHS communs à tous les GHM du tableau, et GHM sans tarif. */
+.codes-liste th.tous {
+  font: var(--text-body-sm);
   color: var(--text-muted);
 }
 

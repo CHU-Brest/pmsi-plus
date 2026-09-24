@@ -15,6 +15,7 @@ import { el, fraicheur, nombre } from "../interface.js";
 import { racinesAtteintes, calculer as frontieresDp } from "./frontieres.js";
 import { calculer as frontieresActes } from "./actes_frontieres.js";
 import { couvre } from "./cma.js";
+import { codesGhm } from "./arbre.js";
 import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
 
 const SUGGESTIONS_MAX = 12;
@@ -90,6 +91,22 @@ function racinesDe(arbre, vers) {
 /** Les racines que peuvent atteindre les étapes, sans doublon. */
 function racinesDesEtapes(arbre, etapes) {
   return [...new Set(etapes.flatMap((e) => racinesDe(arbre, e.n.branches[e.i].vers)))].sort();
+}
+
+/** Les GHM d'une racine d'après les cases de l'arbre, y compris ceux que
+ *  l'arrêté ne tarife pas (09Z02A) : ils doivent figurer, sans tarif, dans
+ *  le tableau de leur racine plutôt que d'en disparaître. */
+function ghmDeRacineDansArbre(arbre, racine) {
+  if (!arbre._ghmParRacine) {
+    const index = new Map();
+    for (const n of Object.values(arbre.noeuds)) {
+      if (n.genre !== "ghm") continue;
+      if (!index.has(n.racine)) index.set(n.racine, new Set());
+      for (const g of codesGhm(n)) index.get(n.racine).add(g);
+    }
+    arbre._ghmParRacine = index;
+  }
+  return [...(arbre._ghmParRacine.get(racine) ?? [])].sort();
 }
 
 // ==== Vue ====
@@ -248,7 +265,7 @@ async function ficheDiagnostic(arbre, code) {
       ? tableEtapes(arbre, enDp)
       : el("p", { class: "message-info" }, "Aucune étape de l'arbre ne teste ce code en DP : la CMD que détermine ce DP le classe par ses autres tests."),
     frontiere.length ? blocFrontiere(code, frontiere, voisins) : null,
-    ...blocTarifs(tarifs, racinesDesEtapes(arbre, enDp)),
+    ...blocTarifs(arbre, tarifs, racinesDesEtapes(arbre, enDp)),
     el("h3", {}, "En diagnostic associé : CMA"),
     blocCma(exclusions, code),
     autres.length ? el("h3", {}, "Autres tests de l'arbre sur ce diagnostic") : null,
@@ -323,7 +340,7 @@ function tableEtapes(arbre, etapes) {
 const RACINES_DEPLIEES_MAX = 3;
 
 /** Les GHS de chaque racine possible, une racine par encadré à déplier. */
-function blocTarifs(tarifs, racines) {
+function blocTarifs(arbre, tarifs, racines) {
   if (!racines.length) return [];
   const titre = el("h3", {}, "Tarifs des racines possibles");
   if (!tarifs) return [titre, el("p", { class: "message-avertissement" }, "Tarifs des GHS indisponibles pour le moment.")];
@@ -333,7 +350,8 @@ function blocTarifs(tarifs, racines) {
     fraicheur([{ libelle: tarifs.libelle, millesime: tarifs.millesime }]),
     noteTarifs("#/tarifs"),
     ...racines.map((r) => {
-      const ghms = ghmDeRacine(tarifs, r);
+      const dansArbre = ghmDeRacineDansArbre(arbre, r);
+      const ghms = dansArbre.length ? dansArbre : ghmDeRacine(tarifs, r);
       const n = nombreGhs(tarifs, ghms);
       return el(
         "details",
@@ -343,9 +361,9 @@ function blocTarifs(tarifs, racines) {
           {},
           el("strong", { class: "code" }, r),
           libelleRacine(r) ? ` ${libelleRacine(r)}` : "",
-          el("span", { class: "compte" }, ghms.length ? ` · ${n} GHS` : " · pas de tarif")
+          el("span", { class: "compte" }, n ? ` · ${n} GHS` : " · pas de tarif")
         ),
-        ghms.length
+        n
           ? tableTarifs(tarifs, ghms)
           : el("p", { class: "message-info" }, "L'arrêté tarifaire ne donne aucun GHS pour cette racine.")
       );
@@ -477,7 +495,7 @@ async function ficheActe(arbre, code) {
           )
         )
       : null,
-    ...blocTarifs(tarifs, racinesDesEtapes(arbre, etapes)),
+    ...blocTarifs(arbre, tarifs, racinesDesEtapes(arbre, etapes)),
     el("h3", {}, "Listes de la fonction groupage"),
     el(
       "ul",

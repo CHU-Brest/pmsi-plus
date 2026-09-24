@@ -6,9 +6,10 @@
 //
 // Un GHM a le plus souvent plusieurs GHS : le GHS facturé dépend de
 // conditions de l'arrêté « prestations » (GHS intermédiaire d'un séjour de
-// moins d'une journée, GHS UHCD, prise en charge particulière : soins
-// palliatifs, infection ostéo-articulaire complexe, acte…) que le tableau de
-// l'ATIH ne porte pas. On les montre donc tous, sans en désigner un d'office.
+// moins d'une journée, GHS UHCD d'une prise en charge en UHCD qui ne produit
+// qu'un RUM, prise en charge particulière : soins palliatifs, infection
+// ostéo-articulaire complexe, acte…) que le tableau de l'arrêté ne porte
+// pas. On les montre donc tous, sans en désigner un d'office.
 
 import { chargerJeu } from "./donnees.js";
 import { el, nombre } from "./interface.js";
@@ -50,24 +51,16 @@ export function nombreGhs(jeu, ghms) {
   return new Set(ghms.flatMap((g) => (index.get(g) ?? []).map((l) => l.GHS))).size;
 }
 
-/** Ce qu'il faut savoir pour lire un tarif, en une phrase ; `lien` mène aux
- *  tarifs de la racine dans le thème Tarifs. */
+/** Ce qu'il faut savoir pour lire un tarif, en une phrase ; `lien`, s'il
+ *  est donné, mène aux tarifs de la racine dans le thème Tarifs. */
 export function noteTarifs(lien) {
   return el(
     "p",
     { class: "note-tarifs" },
-    "Tarifs nationaux du secteur public, avant coefficients (géographique, Ségur…) et hors suppléments. Un GHM peut relever de plusieurs GHS : le GHS facturé dépend des conditions de l'arrêté « prestations » (GHS intermédiaire d'un séjour de moins d'une journée, GHS UHCD, prise en charge particulière : soins palliatifs, infection ostéo-articulaire complexe, acte particulier…).",
+    "Tarifs nationaux du secteur public, avant coefficients (géographique, Ségur…) et hors suppléments. Un GHM peut relever de plusieurs GHS : le GHS facturé dépend des conditions de l'arrêté « prestations » (GHS intermédiaire d'un séjour de moins d'une journée, GHS UHCD d'une prise en charge en UHCD qui ne produit qu'un RUM, prise en charge particulière : soins palliatifs, infection ostéo-articulaire complexe, acte particulier…).",
     lien ? " " : null,
     lien ? el("a", { class: "lien-texte", href: lien }, "Voir dans les tarifs des GHS") : null
   );
-}
-
-function celluleMontant(n) {
-  return el("td", { class: "nombre" }, euros(n));
-}
-
-function celluleJours(n) {
-  return el("td", { class: "nombre" }, jours(n));
 }
 
 /** GHS communs à tous les GHM tarifés du groupe, s'il y en a au moins deux
@@ -84,26 +77,38 @@ function ghsCommuns(index, tarifes) {
   return chacunLesSiens ? communs : new Set();
 }
 
-/** Les GHS d'un groupe de GHM : une ligne par GHS de chaque GHM. Un GHS
- *  commun à tous les GHM du groupe (celui des séjours en UHCD, en règle
- *  générale) n'est donné qu'une fois, en dernière ligne, au lieu d'être
- *  répété sous chaque niveau. */
+/** Les GHS communs à toute la racine (le GHS UHCD, en règle générale). Ils
+ *  passent après les GHS propres à un GHM, même quand celui-ci est seul
+ *  dans son tableau : la première ligne n'est jamais le GHS d'un cas
+ *  particulier commun à toute la racine. */
+function ghsCommunsRacine(jeu, racine) {
+  if (!jeu._communsRacine) jeu._communsRacine = new Map();
+  if (!jeu._communsRacine.has(racine)) {
+    jeu._communsRacine.set(racine, ghsCommuns(parGhm(jeu), ghmDeRacine(jeu, racine)));
+  }
+  return jeu._communsRacine.get(racine);
+}
+
+const celluleMontant = (n) => el("td", { class: "nombre" }, euros(n));
+const celluleJours = (n) => el("td", { class: "nombre" }, jours(n));
+
+/** Les GHS d'un groupe de GHM : un groupe de lignes par GHM, une ligne par
+ *  GHS. Un GHS commun à tous les GHM du groupe n'est donné qu'une fois, en
+ *  dernier groupe, au lieu d'être répété sous chaque niveau. */
 export function tableTarifs(jeu, ghms) {
   const index = parGhm(jeu);
   const tarifes = ghms.filter((g) => index.has(g));
   const communs = ghsCommuns(index, tarifes);
-  const lignesDe = (g) => index.get(g).filter((l) => !communs.has(l.GHS));
-  const communes = communs.size ? index.get(tarifes[0]).filter((l) => communs.has(l.GHS)) : [];
   // Le forfait EXB est le plus souvent nul (il l'est sur toutes les lignes
   // de l'arrêté 2026) : sa colonne n'apparaît que si une ligne en porte un.
   const avecForfait = tarifes.some((g) => index.get(g).some((l) => l["Forfait EXB"]));
   const nbColonnes = avecForfait ? 8 : 7;
 
-  const ligne = (premiere, l) =>
+  const ligne = (entete, l) =>
     el(
       "tr",
       {},
-      premiere,
+      entete,
       el("td", { class: "code" }, String(l.GHS)),
       celluleMontant(l.Tarif),
       celluleJours(l["Borne basse"]),
@@ -113,32 +118,49 @@ export function tableTarifs(jeu, ghms) {
       celluleMontant(l["Tarif EXH"])
     );
 
+  // Un <tbody> par GHM, dont la première cellule est l'en-tête du groupe :
+  // un lecteur d'écran annonce le GHM sur chacune de ses lignes.
+  const groupe = (texte, lignes, attributs = {}) =>
+    el(
+      "tbody",
+      {},
+      ...lignes.map((l, i) =>
+        ligne(
+          i === 0 ? el("th", { scope: "rowgroup", rowspan: String(lignes.length), ...attributs }, texte) : null,
+          l
+        )
+      )
+    );
+
   const corps = [];
   for (const g of ghms) {
     if (!index.has(g)) {
       corps.push(
         el(
-          "tr",
+          "tbody",
           {},
-          el("td", { class: "code" }, g),
-          el("td", { class: "sans-tarif", colspan: String(nbColonnes - 1) }, "Pas de tarif dans l'arrêté")
+          el(
+            "tr",
+            {},
+            el("th", { scope: "rowgroup" }, g),
+            el("td", { class: "sans-tarif", colspan: String(nbColonnes - 1) }, "Pas de tarif dans l'arrêté")
+          )
         )
       );
       continue;
     }
-    const lignes = lignesDe(g);
-    lignes.forEach((l, i) => {
-      const premiere = i === 0 ? el("td", { class: "code", rowspan: String(lignes.length) }, g) : null;
-      corps.push(ligne(premiere, l));
-    });
+    const derniers = ghsCommunsRacine(jeu, g.slice(0, 5));
+    const lignes = index
+      .get(g)
+      .filter((l) => !communs.has(l.GHS))
+      .sort((a, b) => derniers.has(a.GHS) - derniers.has(b.GHS) || a.GHS - b.GHS);
+    corps.push(groupe(g, lignes));
   }
-  communes.forEach((l, i) => {
-    const premiere =
-      i === 0
-        ? el("td", { class: "tous", rowspan: String(communes.length), title: tarifes.join(", ") }, "Tous les GHM")
-        : null;
-    corps.push(ligne(premiere, l));
-  });
+  if (communs.size) {
+    const libelle = tarifes.length < ghms.length ? "Tous les GHM tarifés" : "Tous les GHM";
+    const lignes = index.get(tarifes[0]).filter((l) => communs.has(l.GHS));
+    corps.push(groupe(libelle, lignes, { class: "tous", title: tarifes.join(", ") }));
+  }
 
   const entete = (texte, titre, numerique = false) =>
     el("th", { scope: "col", class: numerique ? "nombre" : undefined, title: titre }, texte);
@@ -160,11 +182,11 @@ export function tableTarifs(jeu, ghms) {
           entete("Borne basse", "En jours ; en deçà, le tarif est minoré de l'extrême bas", true),
           entete("Borne haute", "En jours ; au-delà, chaque journée ajoute l'extrême haut", true),
           avecForfait ? entete("Forfait EXB", "Minoration forfaitaire sous la borne basse", true) : null,
-          entete("EXB / jour", "Minoration par journée manquante sous la borne basse", true),
-          entete("EXH / jour", "Supplément par journée au-delà de la borne haute", true)
+          entete("Tarif EXB", "Minoration par journée manquante sous la borne basse", true),
+          entete("Tarif EXH", "Supplément par journée au-delà de la borne haute", true)
         )
       ),
-      el("tbody", {}, ...corps)
+      ...corps
     )
   );
 }

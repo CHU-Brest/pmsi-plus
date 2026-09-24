@@ -19,8 +19,9 @@ const FORMATS = {
 };
 
 /** Lignes du tableau, une fois par jeu : GHS d'un même GHM à la suite,
- *  plutôt que dans l'ordre du classeur, qui range à part les GHS des
- *  séjours courts de chaque racine. */
+ *  plutôt que dans l'ordre du classeur, qui range à part les GHS UHCD de
+ *  chaque racine. Le libellé vient en dernier : colonne la plus large, il
+ *  repousserait sinon les montants hors de l'écran. */
 function lignesAffichees(jeu) {
   if (!jeu._affichage) {
     // Le forfait EXB est le plus souvent nul partout : pas de colonne vide.
@@ -29,13 +30,13 @@ function lignesAffichees(jeu) {
       .map((l) => ({
         GHM: l.GHM,
         GHS: l.GHS,
-        "Libellé": l["Libellé"],
         Tarif: l.Tarif,
         "Borne basse": l["Borne basse"],
         "Borne haute": l["Borne haute"],
         ...(avecForfait ? { "Forfait EXB": l["Forfait EXB"] } : {}),
         "Tarif EXB": l["Tarif EXB"],
         "Tarif EXH": l["Tarif EXH"],
+        "Libellé": l["Libellé"],
       }))
       .sort((a, b) => (a.GHM === b.GHM ? a.GHS - b.GHS : a.GHM < b.GHM ? -1 : 1));
     recherche.indexer(jeu._affichage, COLONNES_CHERCHABLES);
@@ -48,21 +49,24 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   const lignes = lignesAffichees(jeu);
   conteneur.innerHTML = "";
 
+  // Lien profond (#/tarifs/01C03) : le champ arrive rempli.
+  const [demande = ""] = chemin;
   const zoneResultats = el("div", {});
   const champ = champMotsClefs({
     id: "tarifs_recherche",
     exemple: "ex. : 01C03, 23Z02Z, craniotomie",
+    valeur: demande,
     onInput: (valeur) => afficher(valeur),
   });
 
   conteneur.append(
     el("h1", {}, "Tarifs des GHS"),
-    el("p", { class: "sous-titre" }, "Arrêté tarifaire MCO de l'ATIH — secteur public"),
+    el("p", { class: "sous-titre" }, "Arrêté tarifaire MCO, diffusé par l'ATIH — secteur public"),
     fraicheur([{ libelle: jeu.libelle, millesime: jeu.millesime }]),
     el(
       "p",
       {},
-      "Le tarif de chaque GHS, avec le GHM qu'il couvre, ses bornes basse et haute et ses extrêmes. Ce sont les tarifs nationaux : avant coefficients (géographique, Ségur…) et hors suppléments (réanimation, soins intensifs…)."
+      "Le tarif de chaque GHS, avec le ou les GHM qu'il couvre, ses bornes basse et haute et ses extrêmes. Ce sont les tarifs nationaux : avant coefficients (géographique, Ségur…) et hors suppléments (réanimation, soins intensifs…)."
     ),
     el(
       "ul",
@@ -75,7 +79,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       el(
         "li",
         {},
-        "Un GHM peut relever de plusieurs GHS : le GHS facturé dépend de conditions fixées par l'arrêté « prestations » (arrêté du 19 février 2015, articles 6 à 6 quater) — GHS intermédiaire d'un séjour de moins d'une journée (gradation des prises en charge ambulatoires), GHS des séjours en UHCD, GHS d'une prise en charge particulière (unité ou lit identifié de soins palliatifs, infection ostéo-articulaire complexe en centre de référence, acte particulier…). Le tableau de l'ATIH donne les tarifs, pas ces conditions."
+        "Un GHM peut relever de plusieurs GHS : le GHS facturé dépend de conditions fixées par l'arrêté « prestations » (arrêté du 19 février 2015, articles 6 à 6 quater) — GHS intermédiaire d'un séjour de moins d'une journée (gradation des prises en charge ambulatoires), GHS UHCD d'une prise en charge en unité d'hospitalisation de courte durée qui ne produit qu'un RUM, GHS d'une prise en charge particulière (unité ou lit identifié de soins palliatifs, infection ostéo-articulaire complexe en centre de référence, acte particulier…). Le tableau tarifaire donne les tarifs, pas ces conditions."
       )
     ),
     el("div", { class: "barre-outils" }, champ),
@@ -87,13 +91,5 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     resultats(zoneResultats, lignes.filter(filtre), { total: lignes.length, formats: FORMATS });
   }
 
-  // Lien profond : le champ est rempli comme par une saisie, pour que son
-  // bouton d'effacement et son rappel du raccourci suivent.
-  const [demande] = chemin;
-  const saisie = champ.querySelector("input");
-  if (demande) {
-    saisie.value = demande;
-    saisie.dispatchEvent(new Event("input"));
-  }
-  afficher(demande ?? "");
+  afficher(demande);
 }
