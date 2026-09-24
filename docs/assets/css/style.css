@@ -524,6 +524,12 @@ a:hover {
   margin: 0 0 var(--sp-4);
 }
 
+/* Année de campagne des tarifs : ce qu'on vérifie d'abord sur la page. */
+.sous-titre .campagne {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
 /* Les tableaux de données profitent de toute la largeur disponible ; le
    texte courant garde une largeur de lecture confortable plutôt que de
    s'étirer sur tout l'écran. */

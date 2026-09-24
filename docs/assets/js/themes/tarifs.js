@@ -61,7 +61,13 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 
   conteneur.append(
     el("h1", {}, "Tarifs des GHS"),
-    el("p", { class: "sous-titre" }, "Arrêté tarifaire MCO, diffusé par l'ATIH — secteur public"),
+    el(
+      "p",
+      { class: "sous-titre" },
+      ...(jeu.campagne
+        ? [el("strong", { class: "campagne" }, `Campagne ${jeu.campagne}`), " — arrêté tarifaire MCO diffusé par l'ATIH, secteur public"]
+        : ["Arrêté tarifaire MCO diffusé par l'ATIH, secteur public"])
+    ),
     fraicheur([{ libelle: jeu.libelle, millesime: jeu.millesime }]),
     el(
       "p",

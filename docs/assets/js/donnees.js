@@ -31,8 +31,9 @@ export function chargerJson(theme, fichier) {
 }
 
 /** Charge `assets/data/<theme>/<fichier>.json` et rend `{ libelle,
- *  millesime, lignes }`. Lève si la requête échoue : chaque thème l'attrape
- *  pour afficher un message plutôt qu'une page blanche. */
+ *  millesime, campagne, lignes }` — `campagne` pour l'arrêté tarifaire
+ *  seulement, `undefined` ailleurs. Lève si la requête échoue : chaque
+ *  thème l'attrape pour afficher un message plutôt qu'une page blanche. */
 export function chargerJeu(theme, fichier, libelle) {
   const url = `assets/data/${theme}/${fichier}.json`;
   // Seules les lignes reconstituées restent en cache, pas le format
@@ -44,6 +45,7 @@ export function chargerJeu(theme, fichier, libelle) {
       recuperer(url).then((payload) => ({
         libelle,
         millesime: payload.millesime,
+        campagne: payload.campagne,
         lignes: reconstituerLignes(payload),
       }))
     );
