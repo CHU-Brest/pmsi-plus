@@ -1,5 +1,5 @@
-// Point d'entrée : barre de navigation, tiroir sur petit écran, bascule de
-// thème et routage par hash (`#/<slug>`).
+// Point d'entrée : barre de navigation, tiroir sur petit écran, liens
+// « Signaler un problème », bascule de thème et routage par hash (`#/<slug>`).
 //
 // Chaque thème vit dans assets/js/themes/<module>.js et exporte une fonction
 // async `rendre(conteneur, { chemin })` qui vide puis remplit `conteneur`.
@@ -72,6 +72,30 @@ document.addEventListener("keydown", (e) => {
     ouvrirBarre(false);
     bascule.focus();
   }
+});
+
+// ==== Signaler un problème ====
+
+// Les liens vers le formulaire d'issue (icône GitHub, pied de la barre
+// latérale) y emportent l'adresse de la page : le signalement arrive situé,
+// même quand on ne pense pas à dire où. Elle est lue au dernier moment, la
+// fiche code et l'algorithme réécrivant le hash sans passer par le routeur
+// (replaceState). Le dépôt est public : le formulaire le rappelle, dans un
+// commentaire que l'issue publiée n'affiche pas.
+function corpsIssue() {
+  return (
+    "<!-- Ce dépôt est public : n'y mettez aucune donnée patient, ni aucune donnée d'activité de l'établissement. -->\n\n" +
+    `Page : ${location.href}\n\n` +
+    "Problème constaté :\n"
+  );
+}
+
+document.querySelectorAll("a.signaler").forEach((lien) => {
+  const formulaire = lien.href;
+  const actualiser = () => {
+    lien.href = `${formulaire}?body=${encodeURIComponent(corpsIssue())}`;
+  };
+  for (const type of ["pointerenter", "focus", "click"]) lien.addEventListener(type, actualiser);
 });
 
 // ==== Routage ====
