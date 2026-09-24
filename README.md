@@ -153,6 +153,9 @@ L'arrêté tarifaire suit le même chemin, à chaque campagne : remplacer
 `build_data.py`. Le script n'en lit que la feuille « Tarifs public » et s'arrête plutôt
 que de deviner :
 
+- classeur remplacé sans que sa campagne soit déclarée : le classeur de l'ATIH ne nomme
+  pas l'année qu'il tarife, que le thème Tarifs affiche. La reporter dans `CAMPAGNES`
+  (`build_data.py`), avec l'empreinte SHA-256 que donne le message d'arrêt ;
 - en-tête inattendu (colonne ajoutée, ôtée ou renommée par l'ATIH) : reporter le
   changement dans `COLONNES_XLSX`, ou `LIGNE_ENTETE` si l'en-tête a changé de ligne ;
 - ligne illisible ou incohérente (couple GHS-GHM en double, borne ou montant illisible,

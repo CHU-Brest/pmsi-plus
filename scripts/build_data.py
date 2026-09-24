@@ -23,6 +23,7 @@ inconnue de data/groupage/racines.xlsx arrêtent la conversion.
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import re
 import sys
@@ -259,6 +260,25 @@ def verifier_tarifs(lignes: list[dict]) -> None:
 # Contrôles propres à un jeu, après lecture et avant écriture du JSON.
 VERIFICATIONS = {"tarifs.xlsx": verifier_tarifs}
 
+# Campagne de l'arrêté tarifaire, que le classeur de l'ATIH ne nomme nulle
+# part (ni titre, ni propriétés, ni feuille) : elle est déclarée ici, avec
+# l'empreinte SHA-256 du classeur auquel elle se rapporte. Remplacer
+# tarifs.xlsx sans mettre cette ligne à jour arrête la conversion, plutôt
+# que de publier les tarifs d'une campagne sous l'année d'une autre.
+CAMPAGNES = {
+    "tarifs.xlsx": (2026, "f47995e2fb8ae9a846ca6119a10317f4c1fe2ff4152742a34185ef28521dda09"),
+}
+
+
+def campagne(source: Path) -> int:
+    annee, empreinte = CAMPAGNES[source.name]
+    lue = hashlib.sha256(source.read_bytes()).hexdigest()
+    if lue != empreinte:
+        raise ErreurDonnees(
+            f"{source.name} a changé : déclarer sa campagne dans CAMPAGNES, avec son empreinte {lue}"
+        )
+    return annee
+
 
 def convertir(jeu: Jeu) -> None:
     source = DOSSIER_DONNEES / jeu.theme / jeu.fichier
@@ -277,7 +297,10 @@ def convertir(jeu: Jeu) -> None:
     # objets à la volée au chargement, donc rien d'autre ne change côté site.
     colonnes = list(lignes[0].keys()) if lignes else []
     valeurs = [[ligne[c] for c in colonnes] for ligne in lignes]
-    payload = {"millesime": millesime(source), "colonnes": colonnes, "valeurs": valeurs}
+    payload = {"millesime": millesime(source)}
+    if source.name in CAMPAGNES:
+        payload["campagne"] = campagne(source)
+    payload |= {"colonnes": colonnes, "valeurs": valeurs}
     cible.write_text(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
