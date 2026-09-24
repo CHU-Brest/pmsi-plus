@@ -1990,7 +1990,11 @@ ol.chemin > li::before {
   font-feature-settings: var(--num-tabular);
 }
 
-.fiche-frontiere {
+/* Encadré des codes et actes frontières : il suit un tableau de la fiche et
+   en prend la largeur, au lieu de la largeur de lecture des messages
+   (`.contenu .message-avertissement`, posé plus haut). */
+.contenu .fiche-frontiere {
+  max-width: none;
   margin-top: var(--sp-4);
 }
 
