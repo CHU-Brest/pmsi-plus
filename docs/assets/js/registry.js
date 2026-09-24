@@ -79,6 +79,13 @@ export const REGISTRY = [
   },
   {
     section: "Groupage",
+    slug: "tarifs",
+    titre: "Tarifs des GHS",
+    module: "tarifs",
+    resume: "Arrêté tarifaire, secteur public : tarif de chaque GHS, bornes basse et haute, extrêmes bas et haut.",
+  },
+  {
+    section: "Groupage",
     slug: "frontieres",
     cache: true,
     titre: "Codes frontières en DP",

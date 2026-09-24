@@ -888,6 +888,19 @@ table.tableau-donnees td.code {
   color: var(--text-primary);
 }
 
+/* Montants et durées (colonnes mises en forme, cf. `formats` de tableau()) :
+   à droite, en chiffres tabulaires, les ordres de grandeur s'alignent. */
+table.tableau-donnees th.nombre,
+table.tableau-donnees td.nombre {
+  text-align: right;
+}
+
+table.tableau-donnees td.nombre {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
+}
+
 /* Cellules à coche : `max-width: 0` (posé plus haut pour tronquer les
    textes longs) réduit la boîte de contenu à zéro, et la coche se collait
    alors au bord gauche de sa colonne au lieu d'y être centrée. Ces cellules
@@ -1802,6 +1815,70 @@ li.fin::before {
   font: var(--text-data);
   font-feature-settings: var(--num-tabular);
   color: var(--text-primary);
+}
+
+/* ==== Tarifs des GHS (algorithme, fiche code) ==== */
+.codes-liste th.nombre,
+.codes-liste td.nombre {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.codes-liste td.nombre {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
+}
+
+/* Ligne d'un GHS commun à tous les GHM du tableau, et GHM sans tarif. */
+.codes-liste td.tous {
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.codes-liste td.sans-tarif {
+  color: var(--text-muted);
+}
+
+.tarifs-ghs {
+  margin-top: var(--sp-2);
+}
+
+.note-tarifs {
+  margin: var(--sp-2) 0 0;
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  max-width: var(--largeur-lecture);
+}
+
+.tarifs-racine {
+  margin: var(--sp-2) 0 0;
+  background: var(--surface-card);
+  border: var(--bw-hair) solid var(--border-default);
+}
+
+.tarifs-racine summary {
+  padding: var(--sp-2) var(--sp-3);
+  font: var(--text-body-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.tarifs-racine summary .code {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  margin-right: var(--sp-1);
+}
+
+.tarifs-racine summary .compte {
+  color: var(--text-muted);
+}
+
+.tarifs-racine .tarifs-ghs,
+.tarifs-racine .note-tarifs,
+.tarifs-racine > .message-info {
+  margin: 0 var(--sp-3) var(--sp-3);
 }
 
 ol.chemin {

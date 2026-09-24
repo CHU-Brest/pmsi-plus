@@ -12,12 +12,20 @@ JSON.
 
 Remplacer un xlsx dans data/, relancer ce script, committer le xlsx et le
 JSON regénéré : c'est tout ce qu'il faut pour mettre à jour un référentiel.
+
+L'arrêté tarifaire (data/groupage/tarifs.xlsx) est relu tel que l'ATIH le
+publie : le script y prend la feuille des GHS du secteur public, en vérifie
+l'en-tête et chaque ligne, et s'arrête plutôt que de deviner — un intitulé
+déplacé, un couple GHS-GHM en double, un montant illisible ou une racine
+inconnue de data/groupage/racines.xlsx arrêtent la conversion.
 """
 
 from __future__ import annotations
 
 import csv
 import json
+import re
+import sys
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -35,6 +43,7 @@ DOSSIER_SORTIE = RACINE / "docs" / "assets" / "data"
 class Jeu:
     theme: str  # sous-dossier commun à data/<theme>/ et docs/assets/data/<theme>/
     fichier: str  # nom du xlsx (ou csv) dans data/<theme>/
+    feuille: str | None = None  # feuille du classeur à lire ; None : la feuille active
 
 
 # La seule liste à tenir à jour : ajouter un référentiel, c'est ajouter une
@@ -50,6 +59,7 @@ JEUX: tuple[Jeu, ...] = (
     Jeu("groupage", "actes.xlsx"),
     Jeu("groupage", "cma.csv"),
     Jeu("groupage", "racines.xlsx"),
+    Jeu("groupage", "tarifs.xlsx", feuille="Tarifs public"),
 )
 
 # Liste des CMA livrée par l'ATIH en csv (point-virgule, Windows-1252),
@@ -82,6 +92,31 @@ def lire_csv(chemin: Path) -> list[dict]:
 # vide d'une cellule nulle, donc le comblement se fait à la lecture.
 COLONNES_TEXTE_VIDE_SI_NULLE = {"_caracteristiques"}
 
+# Arrêté tarifaire MCO, tel que le publie l'ATIH : une soixantaine de
+# feuilles (GHS, suppléments, forfaits, secteurs public et privé). Trois
+# lignes de titre y précèdent l'en-tête, dont les intitulés courent sur
+# plusieurs lignes (« TARIF\n(en euros) ») : ils sont relus sous des noms
+# courts. Un intitulé ajouté, ôté ou déplacé par l'ATIH arrête la conversion,
+# plutôt que de publier une colonne de montants sous le nom d'une autre.
+LIGNE_ENTETE = {"tarifs.xlsx": 4}
+COLONNES_XLSX = {
+    "tarifs.xlsx": {
+        "GHS": "GHS",
+        "GHM": "GHM",
+        "LIBELLE": "Libellé",
+        "Bornes basses": "Borne basse",
+        "Bornes hautes": "Borne haute",
+        "TARIF (en euros)": "Tarif",
+        "FORFAIT EXB": "Forfait EXB",
+        "TARIF EXB (en euros)": "Tarif EXB",
+        "TARIF EXH (en euros)": "Tarif EXH",
+    }
+}
+
+
+class ErreurDonnees(Exception):
+    pass
+
 
 def _valeur(v: object) -> object:
     if isinstance(v, (datetime, date)):
@@ -89,13 +124,32 @@ def _valeur(v: object) -> object:
     return v
 
 
-def lire(chemin: Path) -> list[dict]:
-    """Une ligne par ligne non vide de la feuille active, clefs = en-têtes."""
+def renommer(fichier: str, entetes: list[str]) -> list[str]:
+    """Intitulés de l'ATIH → noms courts de COLONNES_XLSX, dans le même ordre."""
+    attendus = COLONNES_XLSX[fichier]
+    lus = [" ".join(e.split()) for e in entetes]
+    while lus and not lus[-1]:  # cellules vides au bout de la ligne d'en-tête
+        lus.pop()
+    if lus != list(attendus):
+        raise ErreurDonnees(f"{fichier} : en-tête inattendu {lus}, attendu {list(attendus)}")
+    return [attendus[e] for e in lus]
+
+
+def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
+    """Une ligne par ligne non vide de la feuille (la feuille active par
+    défaut), clefs = en-têtes."""
     classeur = load_workbook(chemin, read_only=True, data_only=True)
     try:
-        feuille = classeur.active
-        lignes = feuille.iter_rows(values_only=True)
+        if nom_feuille is None:
+            feuille = classeur.active
+        elif nom_feuille in classeur.sheetnames:
+            feuille = classeur[nom_feuille]
+        else:
+            raise ErreurDonnees(f"{chemin.name} : pas de feuille « {nom_feuille} » ({', '.join(classeur.sheetnames)})")
+        lignes = feuille.iter_rows(min_row=LIGNE_ENTETE.get(chemin.name, 1), values_only=True)
         entetes = [str(c).strip() if c is not None else "" for c in next(lignes)]
+        if chemin.name in COLONNES_XLSX:
+            entetes = renommer(chemin.name, entetes)
         resultat = []
         for ligne in lignes:
             if all(v is None for v in ligne):
@@ -111,9 +165,74 @@ def lire(chemin: Path) -> list[dict]:
         classeur.close()
 
 
+RE_GHM = re.compile(r"^\d{2}[CKMZ]\d{2}[0-9A-Z]$")
+MONTANTS = ("Tarif", "Forfait EXB", "Tarif EXB", "Tarif EXH")
+
+
+def verifier_tarifs(lignes: list[dict]) -> None:
+    """Chaque ligne se lit sans rien deviner : un couple GHS-GHM unique, des
+    bornes et montants lisibles et cohérents entre eux, un seul tarif par
+    GHS (le même, quel que soit le GHM qu'il couvre), un seul libellé par
+    GHM, et des racines que la classification publiée connaît."""
+    if not lignes:
+        raise ErreurDonnees("tarifs.xlsx : aucune ligne de tarif")
+    couples = set()
+    par_ghs: dict[int, tuple] = {}
+    libelles: dict[str, str] = {}
+    for ligne in lignes:
+        ghs, ghm, libelle = ligne["GHS"], ligne["GHM"], ligne["Libellé"]
+        bb, bh = ligne["Borne basse"], ligne["Borne haute"]
+        ou = f"tarifs.xlsx, GHS {ghs}, GHM {ghm}"
+        if isinstance(ghs, bool) or not isinstance(ghs, int) or ghs <= 0:
+            raise ErreurDonnees(f"{ou} : numéro de GHS illisible")
+        if not isinstance(ghm, str) or not RE_GHM.match(ghm):
+            raise ErreurDonnees(f"{ou} : code GHM illisible")
+        if not isinstance(libelle, str) or not libelle.strip():
+            raise ErreurDonnees(f"{ou} : libellé vide")
+        for borne in (bb, bh):
+            if isinstance(borne, bool) or not isinstance(borne, int) or borne < 0:
+                raise ErreurDonnees(f"{ou} : borne illisible ({borne!r})")
+        for colonne in MONTANTS:
+            v = ligne[colonne]
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or v < 0 or round(v, 2) != v:
+                raise ErreurDonnees(f"{ou} : {colonne} illisible ({v!r})")
+        if ligne["Tarif"] == 0:
+            raise ErreurDonnees(f"{ou} : tarif nul")
+        # Une borne à 0 veut dire « pas d'extrême de ce côté » : un montant
+        # d'extrême sans sa borne ne s'appliquerait à aucun séjour.
+        if bh and bh <= bb:
+            raise ErreurDonnees(f"{ou} : borne haute {bh} inférieure ou égale à la borne basse {bb}")
+        if ligne["Tarif EXH"] and not bh:
+            raise ErreurDonnees(f"{ou} : tarif EXH sans borne haute")
+        if (ligne["Tarif EXB"] or ligne["Forfait EXB"]) and not bb:
+            raise ErreurDonnees(f"{ou} : extrême bas sans borne basse")
+        if ligne["Tarif EXB"] and ligne["Forfait EXB"]:
+            raise ErreurDonnees(f"{ou} : forfait EXB et tarif EXB à la fois")
+        if (ghs, ghm) in couples:
+            raise ErreurDonnees(f"{ou} : couple en double")
+        couples.add((ghs, ghm))
+        valeurs = (bb, bh, *(ligne[c] for c in MONTANTS))
+        if par_ghs.setdefault(ghs, valeurs) != valeurs:
+            raise ErreurDonnees(f"{ou} : bornes ou montants différents d'une autre ligne du GHS {ghs}")
+        if libelles.setdefault(ghm, libelle) != libelle:
+            raise ErreurDonnees(f"{ou} : libellé différent d'une autre ligne du GHM {ghm}")
+    # Un arrêté d'un autre millésime que la classification publiée : ses
+    # racines nouvelles n'auraient ni libellé ni place dans l'arbre.
+    racines = {l["ListeRacineGHM"] for l in lire(DOSSIER_DONNEES / "groupage" / "racines.xlsx")}
+    inconnues = sorted({ghm[:5] for ghm in libelles} - racines)
+    if inconnues:
+        raise ErreurDonnees(f"tarifs.xlsx : racines absentes de racines.xlsx {inconnues[:10]}")
+
+
+# Contrôles propres à un jeu, après lecture et avant écriture du JSON.
+VERIFICATIONS = {"tarifs.xlsx": verifier_tarifs}
+
+
 def convertir(jeu: Jeu) -> None:
     source = DOSSIER_DONNEES / jeu.theme / jeu.fichier
-    lignes = lire_csv(source) if source.suffix == ".csv" else lire(source)
+    lignes = lire_csv(source) if source.suffix == ".csv" else lire(source, jeu.feuille)
+    if jeu.fichier in VERIFICATIONS:
+        VERIFICATIONS[jeu.fichier](lignes)
 
     dossier_sortie = DOSSIER_SORTIE / jeu.theme
     dossier_sortie.mkdir(parents=True, exist_ok=True)
@@ -135,8 +254,11 @@ def convertir(jeu: Jeu) -> None:
 
 
 def main() -> None:
-    for jeu in JEUX:
-        convertir(jeu)
+    try:
+        for jeu in JEUX:
+            convertir(jeu)
+    except ErreurDonnees as e:
+        sys.exit(f"Conversion impossible : {e}")
 
 
 if __name__ == "__main__":

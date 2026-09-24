@@ -14,6 +14,7 @@ import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, nombre } from "../interface.js";
 import { couvre, couvreRacine } from "./cma.js";
 import { racinesAtteintes } from "./frontieres.js";
+import { chargerTarifs, noteTarifs, tableTarifs } from "../tarifs.js";
 
 const ORIENTATION = "orientation";
 // Un code de liste dans un libellé, avec ses parenthèses s'il en a : la
@@ -215,9 +216,12 @@ function pictogramme(n) {
 // ==== Vue ====
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
-  const [brut, racines] = await Promise.all([
+  // Libellés et tarifs sont des compléments : leur absence n'empêche pas
+  // de lire l'arbre.
+  const [brut, racines, tarifs] = await Promise.all([
     chargerJson("groupage", "arbre"),
     chargerJeu("groupage", "racines", "libellés des racines de GHM").catch(() => null),
+    chargerTarifs().catch(() => null),
   ]);
   const arbre = preparer(brut);
   // Libellé de chaque racine, pour l'infobulle des cases de GHM et le titre
@@ -255,13 +259,16 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 
   conteneur.append(
     el("h1", {}, "Algorithme de la fonction groupage"),
-    fraicheur([{ libelle: "arbre de décision de la fonction groupage", millesime: arbre.millesime }]),
+    fraicheur([
+      { libelle: "arbre de décision de la fonction groupage", millesime: arbre.millesime },
+      ...(tarifs ? [{ libelle: tarifs.libelle, millesime: tarifs.millesime }] : []),
+    ]),
     el(
       "p",
       {},
       "Les arbres de décision de la classification en GHM, tels que les dessine le volume 3 du ",
       el("strong", {}, arbre.version ?? "Manuel des GHM"),
-      " (ATIH), transcrits page à page. Chaque test s'enchaîne sous le précédent quand sa condition n'est pas satisfaite, et ouvre en retrait ce qui suit quand elle l'est. Un clic sur un code de liste en montre les codes ; un clic sur une case de GHM donne le chemin qui y mène."
+      " (ATIH), transcrits page à page. Chaque test s'enchaîne sous le précédent quand sa condition n'est pas satisfaite, et ouvre en retrait ce qui suit quand elle l'est. Un clic sur un code de liste en montre les codes ; un clic sur une case de GHM donne le chemin qui y mène et les tarifs de ses GHS."
     ),
     legende(),
     el("div", { class: "barre-outils" }, blocCmd, champ),
@@ -858,9 +865,21 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         { class: "panneau panneau-chemin" },
         entetePanneau(titre, fermer),
         el("p", { class: "compteur" }, `Chemin depuis la racine de la ${titreCmd(arbre._cmd.get(n.cmd))} :`),
-        ol
+        ol,
+        ...(n.genre === "ghm" ? blocTarifs(n, codes) : [])
       );
     });
+  }
+
+  /** Les GHS des GHM de la case — de la case seulement : une racine coupée
+   *  en plusieurs cases (25M02 en A, B, C…) n'y montre que les siens. */
+  function blocTarifs(n, codes) {
+    if (!tarifs) return [el("p", { class: "message-avertissement" }, "Tarifs des GHS indisponibles pour le moment.")];
+    return [
+      el("p", { class: "compteur" }, "Tarifs des GHS :"),
+      tableTarifs(tarifs, codes),
+      noteTarifs(`#/tarifs/${n.racine}`),
+    ];
   }
 
   /** Les étapes qui mènent au trait `depuis`, de la racine de la CMD vers

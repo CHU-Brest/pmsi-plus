@@ -15,9 +15,10 @@ individuelle — sont repris ici :
 | HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
 | HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
 | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
-| Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : étapes de l'arbre qui le testent, racines possibles, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
+| Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : étapes de l'arbre qui le testent, racines possibles et leurs tarifs, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
 | Groupage | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
-| Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes |
+| Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes ; chemin et tarifs de chaque case de GHM |
+| Groupage | Tarifs des GHS | arrêté tarifaire MCO, secteur public : tarif de chaque GHS, bornes basse et haute, extrêmes bas et haut |
 | Groupage (depuis la fiche) | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
 | Groupage (depuis la fiche) | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
 | Groupage (depuis la fiche) | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
@@ -30,7 +31,8 @@ générique de codage ne rejoint pas ce dépôt.
 Les référentiels publiés ici (intoxications, germes, actes CCAM, contexte patient,
 listes de la fonction groupage, acronymes) sont des tables de correspondance codes/référentiels maintenues par le DIM —
 aucune ne porte de donnée patient. L'algorithme de la fonction groupage est la transcription
-du volume 3 du Manuel des GHM, document public de l'ATIH. En cas de doute sur un futur ajout, trancher avant
+du volume 3 du Manuel des GHM, document public de l'ATIH ; les tarifs des GHS sont ceux de l'arrêté
+tarifaire MCO, publié au Journal officiel et diffusé par l'ATIH. En cas de doute sur un futur ajout, trancher avant
 de committer, pas après.
 
 ## Architecture
@@ -49,6 +51,7 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   groupage/diagnostics.xlsx
   groupage/actes.xlsx
   groupage/racines.xlsx       libellés des racines de GHM (ATIH), affichés dans la fiche code et l'algorithme
+  groupage/tarifs.xlsx        arrêté tarifaire MCO, tel que publié par l'ATIH ; seule la feuille « Tarifs public » est reprise
   groupage/cma.csv            liste des CMA de l'ATIH, telle que livrée (csv ; Windows-1252)
   groupage/manuel_ghm_volume_1_annexe_{4,5}.pdf   CMA × listes d'exclusion (ATIH)
   groupage/manuel_ghm_volume_3.pdf   Manuel des GHM, volume 3, tel que livré par l'ATIH
@@ -71,6 +74,7 @@ docs/                         racine servie par GitHub Pages
       recherche.js             normalisation + filtre multi mots clefs
       interface.js             drapeau de fraîcheur, champ de recherche, tableau
       donnees.js               chargement JSON avec cache mémoire
+      tarifs.js                tarifs des GHS : index par GHM, table compacte (thème, fiche code, algorithme)
       themes/<module>.js       une vue par thème (`module` de registry.js)
     data/<theme>/<jeu>.json    généré par build_data.py, ne pas éditer à la main
     data/groupage/arbre.json   généré par build_arbre.py, ne pas éditer à la main
@@ -143,6 +147,13 @@ correct même sans CSS.
 4. Vérifier en local (`python -m http.server 8000 --directory docs`, puis
    http://localhost:8000).
 5. Committer **le xlsx et les JSON générés ensemble**, pousser.
+
+L'arrêté tarifaire suit le même chemin, à chaque campagne : remplacer
+`data/groupage/tarifs.xlsx` par le classeur de l'ATIH (même nom), puis lancer
+`build_data.py`. Le script n'en lit que la feuille « Tarifs public » ; il en vérifie
+l'en-tête, chaque ligne (couple GHS-GHM unique, bornes et montants lisibles et cohérents,
+un seul tarif par GHS, un seul libellé par GHM) et que ses racines figurent dans
+`racines.xlsx`, et s'arrête sinon en nommant le GHS et le GHM en cause.
 
 Le drapeau « Données du JJ/MM/AAAA » de chaque thème est déduit de **git**, pas du mtime
 du fichier sur disque (un `git clone` réinitialise le mtime de tous les fichiers au moment
