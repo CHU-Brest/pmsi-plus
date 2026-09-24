@@ -146,14 +146,28 @@ def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
             feuille = classeur[nom_feuille]
         else:
             raise ErreurDonnees(f"{chemin.name} : pas de feuille « {nom_feuille} » ({', '.join(classeur.sheetnames)})")
-        lignes = feuille.iter_rows(min_row=LIGNE_ENTETE.get(chemin.name, 1), values_only=True)
+        verifie = chemin.name in COLONNES_XLSX
+        if verifie:
+            # En lecture seule, openpyxl s'arrête à l'étendue que le classeur
+            # déclare (balise <dimension>) : fausse, elle tronquerait la
+            # feuille sans rien dire. On lit jusqu'à la dernière cellule.
+            feuille.reset_dimensions()
+        ligne_entete = LIGNE_ENTETE.get(chemin.name, 1)
+        lignes = feuille.iter_rows(min_row=ligne_entete, values_only=True)
         entetes = [str(c).strip() if c is not None else "" for c in next(lignes)]
-        if chemin.name in COLONNES_XLSX:
+        if verifie:
             entetes = renommer(chemin.name, entetes)
         resultat = []
-        for ligne in lignes:
+        for n, ligne in enumerate(lignes, start=ligne_entete + 1):
             if all(v is None for v in ligne):
                 continue
+            if verifie:
+                # Sans étendue déclarée, une ligne s'arrête à sa dernière
+                # cellule remplie : on la complète, et une valeur au-delà de
+                # l'en-tête arrête la conversion au lieu d'être ignorée.
+                if any(v is not None for v in ligne[len(entetes):]):
+                    raise ErreurDonnees(f"{chemin.name}, ligne {n} : valeur hors des colonnes de l'en-tête")
+                ligne = (*ligne, *[None] * (len(entetes) - len(ligne)))
             enregistrement = {}
             for entete, v in zip(entetes, ligne):
                 if entete in COLONNES_TEXTE_VIDE_SI_NULLE and v is None:
@@ -165,27 +179,39 @@ def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
         classeur.close()
 
 
-RE_GHM = re.compile(r"^\d{2}[CKMZ]\d{2}[0-9A-Z]$")
+RE_GHM = re.compile(r"\d{2}[CKMZ]\d{2}[0-9A-Z]")  # en fullmatch : pas de « \n » final
 MONTANTS = ("Tarif", "Forfait EXB", "Tarif EXB", "Tarif EXH")
+
+# Racines de la classification qui n'ont aucun GHS dans « Tarifs public ».
+# Toute autre racine sans tarif arrête la conversion : un arrêté plus ancien
+# que racines.xlsx laisserait sinon ses nouvelles racines sans tarif, en
+# silence. Vérifier l'arrêté avant d'ajouter une racine ici.
+RACINES_SANS_TARIF = {
+    "14Z08",  # Interruptions volontaires de grossesse : séjours de moins de 3 jours
+    "15Z10",  # Mort-nés
+    "23Z03",  # Interventions de confort et autres interventions non prises en charge par l'AMO
+}
 
 
 def verifier_tarifs(lignes: list[dict]) -> None:
     """Chaque ligne se lit sans rien deviner : un couple GHS-GHM unique, des
     bornes et montants lisibles et cohérents entre eux, un seul tarif par
     GHS (le même, quel que soit le GHM qu'il couvre), un seul libellé par
-    GHM, et des racines que la classification publiée connaît."""
+    GHM. Et l'arrêté couvre la classification publiée : aucune racine
+    inconnue de racines.xlsx, aucune racine sans tarif hors de
+    RACINES_SANS_TARIF."""
     if not lignes:
         raise ErreurDonnees("tarifs.xlsx : aucune ligne de tarif")
-    couples = set()
-    par_ghs: dict[int, tuple] = {}
+    couples: set[tuple[int, str]] = set()
+    par_ghs: dict[int, tuple[str, tuple]] = {}  # GHS → (premier GHM lu, bornes et montants)
     libelles: dict[str, str] = {}
     for ligne in lignes:
         ghs, ghm, libelle = ligne["GHS"], ligne["GHM"], ligne["Libellé"]
         bb, bh = ligne["Borne basse"], ligne["Borne haute"]
-        ou = f"tarifs.xlsx, GHS {ghs}, GHM {ghm}"
+        ou = f"tarifs.xlsx, GHS {ghs!r}, GHM {ghm!r}"
         if isinstance(ghs, bool) or not isinstance(ghs, int) or ghs <= 0:
             raise ErreurDonnees(f"{ou} : numéro de GHS illisible")
-        if not isinstance(ghm, str) or not RE_GHM.match(ghm):
+        if not isinstance(ghm, str) or not RE_GHM.fullmatch(ghm):
             raise ErreurDonnees(f"{ou} : code GHM illisible")
         if not isinstance(libelle, str) or not libelle.strip():
             raise ErreurDonnees(f"{ou} : libellé vide")
@@ -212,16 +238,22 @@ def verifier_tarifs(lignes: list[dict]) -> None:
             raise ErreurDonnees(f"{ou} : couple en double")
         couples.add((ghs, ghm))
         valeurs = (bb, bh, *(ligne[c] for c in MONTANTS))
-        if par_ghs.setdefault(ghs, valeurs) != valeurs:
-            raise ErreurDonnees(f"{ou} : bornes ou montants différents d'une autre ligne du GHS {ghs}")
-        if libelles.setdefault(ghm, libelle) != libelle:
-            raise ErreurDonnees(f"{ou} : libellé différent d'une autre ligne du GHM {ghm}")
+        autre, attendues = par_ghs.setdefault(ghs, (ghm, valeurs))
+        if attendues != valeurs:
+            raise ErreurDonnees(f"{ou} : bornes et montants {valeurs} différents de ceux du GHM {autre} {attendues}")
+        attendu = libelles.setdefault(ghm, libelle)
+        if attendu != libelle:
+            raise ErreurDonnees(f"{ou} : libellé {libelle!r} différent de {attendu!r}")
     # Un arrêté d'un autre millésime que la classification publiée : ses
     # racines nouvelles n'auraient ni libellé ni place dans l'arbre.
     racines = {l["ListeRacineGHM"] for l in lire(DOSSIER_DONNEES / "groupage" / "racines.xlsx")}
-    inconnues = sorted({ghm[:5] for ghm in libelles} - racines)
+    tarifees = {ghm[:5] for ghm in libelles}
+    inconnues = sorted(tarifees - racines)
     if inconnues:
-        raise ErreurDonnees(f"tarifs.xlsx : racines absentes de racines.xlsx {inconnues[:10]}")
+        raise ErreurDonnees(f"tarifs.xlsx : {len(inconnues)} racine(s) absente(s) de racines.xlsx {inconnues[:10]}")
+    sans_tarif = sorted(racines - tarifees - RACINES_SANS_TARIF)
+    if sans_tarif:
+        raise ErreurDonnees(f"tarifs.xlsx : {len(sans_tarif)} racine(s) de racines.xlsx sans aucun GHS {sans_tarif[:10]}")
 
 
 # Contrôles propres à un jeu, après lecture et avant écriture du JSON.

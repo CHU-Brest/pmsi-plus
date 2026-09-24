@@ -150,10 +150,17 @@ correct même sans CSS.
 
 L'arrêté tarifaire suit le même chemin, à chaque campagne : remplacer
 `data/groupage/tarifs.xlsx` par le classeur de l'ATIH (même nom), puis lancer
-`build_data.py`. Le script n'en lit que la feuille « Tarifs public » ; il en vérifie
-l'en-tête, chaque ligne (couple GHS-GHM unique, bornes et montants lisibles et cohérents,
-un seul tarif par GHS, un seul libellé par GHM) et que ses racines figurent dans
-`racines.xlsx`, et s'arrête sinon en nommant le GHS et le GHM en cause.
+`build_data.py`. Le script n'en lit que la feuille « Tarifs public » et s'arrête plutôt
+que de deviner :
+
+- en-tête inattendu (colonne ajoutée, ôtée ou renommée par l'ATIH) : reporter le
+  changement dans `COLONNES_XLSX`, ou `LIGNE_ENTETE` si l'en-tête a changé de ligne ;
+- ligne illisible ou incohérente (couple GHS-GHM en double, borne ou montant illisible,
+  GHS à deux tarifs, GHM à deux libellés) : le message nomme le GHS et le GHM ;
+- racine de l'arrêté absente de `racines.xlsx`, ou racine de `racines.xlsx` sans aucun
+  GHS : l'arrêté et la classification ne sont pas de la même campagne, les mettre à jour
+  ensemble. Une racine volontairement sans tarif (IVG de moins de 3 jours, mort-nés…) se
+  déclare dans `RACINES_SANS_TARIF`.
 
 Le drapeau « Données du JJ/MM/AAAA » de chaque thème est déduit de **git**, pas du mtime
 du fichier sur disque (un `git clone` réinitialise le mtime de tous les fichiers au moment
