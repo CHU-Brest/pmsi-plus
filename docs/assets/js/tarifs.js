@@ -5,10 +5,10 @@
 // GHS d'un groupe de GHM (une case de l'arbre, une racine).
 //
 // Un GHM a le plus souvent plusieurs GHS : le GHS facturé dépend de
-// conditions de l'arrêté « prestations » (séjour de moins d'une journée,
-// séjour en UHCD, unité de soins palliatifs, acte particulier…) que le
-// tableau de l'ATIH ne porte pas. On les montre donc tous, sans en désigner
-// un d'office.
+// conditions de l'arrêté « prestations » (GHS intermédiaire d'un séjour de
+// moins d'une journée, GHS UHCD, prise en charge particulière : soins
+// palliatifs, infection ostéo-articulaire complexe, acte…) que le tableau de
+// l'ATIH ne porte pas. On les montre donc tous, sans en désigner un d'office.
 
 import { chargerJeu } from "./donnees.js";
 import { el, nombre } from "./interface.js";
@@ -56,7 +56,7 @@ export function noteTarifs(lien) {
   return el(
     "p",
     { class: "note-tarifs" },
-    "Tarifs nationaux du secteur public, avant coefficients (géographique, Ségur…) et hors suppléments. Un GHM peut relever de plusieurs GHS : le GHS facturé dépend des conditions de l'arrêté « prestations » (séjour de moins d'une journée, séjour en UHCD, unité de soins palliatifs, acte particulier…).",
+    "Tarifs nationaux du secteur public, avant coefficients (géographique, Ségur…) et hors suppléments. Un GHM peut relever de plusieurs GHS : le GHS facturé dépend des conditions de l'arrêté « prestations » (GHS intermédiaire d'un séjour de moins d'une journée, GHS UHCD, prise en charge particulière : soins palliatifs, infection ostéo-articulaire complexe, acte particulier…).",
     lien ? " " : null,
     lien ? el("a", { class: "lien-texte", href: lien }, "Voir dans les tarifs des GHS") : null
   );

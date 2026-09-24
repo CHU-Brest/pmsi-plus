@@ -75,7 +75,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       el(
         "li",
         {},
-        "Un GHM peut relever de plusieurs GHS : le GHS facturé dépend de conditions fixées par l'arrêté « prestations » (arrêté du 19 février 2015, articles 6 à 6 quater) — séjour de moins d'une journée, séjour en UHCD, unité ou lit identifié de soins palliatifs, acte particulier… Le tableau de l'ATIH donne les tarifs, pas ces conditions."
+        "Un GHM peut relever de plusieurs GHS : le GHS facturé dépend de conditions fixées par l'arrêté « prestations » (arrêté du 19 février 2015, articles 6 à 6 quater) — GHS intermédiaire d'un séjour de moins d'une journée (gradation des prises en charge ambulatoires), GHS des séjours en UHCD, GHS d'une prise en charge particulière (unité ou lit identifié de soins palliatifs, infection ostéo-articulaire complexe en centre de référence, acte particulier…). Le tableau de l'ATIH donne les tarifs, pas ces conditions."
       )
     ),
     el("div", { class: "barre-outils" }, champ),
