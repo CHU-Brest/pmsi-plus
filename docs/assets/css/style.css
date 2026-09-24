@@ -888,6 +888,29 @@ table.tableau-donnees td.code {
   color: var(--text-primary);
 }
 
+/* Montants et durées (colonnes mises en forme, cf. `formats` de tableau()) :
+   à droite, en chiffres tabulaires, les ordres de grandeur s'alignent. */
+table.tableau-donnees th.nombre,
+table.tableau-donnees td.nombre {
+  text-align: right;
+}
+
+/* La flèche de tri d'une colonne de nombres passe dans la marge de gauche
+   de l'en-tête : laissée à droite, elle décalerait l'intitulé par rapport
+   aux montants qu'il surmonte. L'en-tête, collant, lui sert de repère. */
+table.tableau-donnees thead th.nombre::after {
+  position: absolute;
+  left: var(--sp-1);
+  top: 50%;
+  margin: -6px 0 0;
+}
+
+table.tableau-donnees td.nombre {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
+}
+
 /* Cellules à coche : `max-width: 0` (posé plus haut pour tronquer les
    textes longs) réduit la boîte de contenu à zéro, et la coche se collait
    alors au bord gauche de sa colonne au lieu d'y être centrée. Ces cellules
@@ -1783,7 +1806,7 @@ li.fin::before {
   color: var(--text-secondary);
 }
 
-.codes-liste tr:last-child td {
+.codes-liste tbody:last-child tr:last-child td {
   border-bottom: none;
 }
 
@@ -1802,6 +1825,96 @@ li.fin::before {
   font: var(--text-data);
   font-feature-settings: var(--num-tabular);
   color: var(--text-primary);
+}
+
+/* ==== Tarifs des GHS (algorithme, fiche code) ==== */
+.codes-liste th.nombre,
+.codes-liste td.nombre {
+  text-align: right;
+}
+
+/* Un montant ne se coupe pas ; les intitulés, eux, peuvent passer à la
+   ligne pour que le tableau tienne dans le panneau de l'algorithme. */
+.codes-liste td.nombre {
+  white-space: nowrap;
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
+}
+
+/* En-tête de groupe (un GHM et ses GHS) : une cellule de données pour
+   l'œil, un en-tête pour les lecteurs d'écran, qui annoncent le GHM sur
+   chacune de ses lignes. */
+.codes-liste tbody th {
+  position: static;
+  width: 1%;
+  padding: var(--sp-2) var(--sp-3);
+  background: none;
+  border-bottom: var(--bw-hair) solid var(--slate-200);
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+/* L'en-tête du dernier groupe descend, par son rowspan, jusqu'au bas du
+   tableau : pas de filet en double avec le cadre. */
+.codes-liste tbody:last-child th {
+  border-bottom: none;
+}
+
+/* Groupe des GHS communs à tous les GHM du tableau, et GHM sans tarif. */
+.codes-liste th.tous {
+  font: var(--text-body-sm);
+  color: var(--text-muted);
+}
+
+.codes-liste td.sans-tarif {
+  color: var(--text-muted);
+}
+
+.tarifs-ghs {
+  margin-top: var(--sp-2);
+}
+
+.note-tarifs {
+  margin: var(--sp-2) 0 0;
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  max-width: var(--largeur-lecture);
+}
+
+.tarifs-racine {
+  margin: var(--sp-2) 0 0;
+  background: var(--surface-card);
+  border: var(--bw-hair) solid var(--border-default);
+}
+
+.tarifs-racine summary {
+  padding: var(--sp-2) var(--sp-3);
+  font: var(--text-body-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.tarifs-racine summary .code {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  margin-right: var(--sp-1);
+}
+
+.tarifs-racine summary .compte {
+  color: var(--text-muted);
+}
+
+.tarifs-racine .tarifs-ghs,
+.tarifs-racine .note-tarifs,
+.tarifs-racine > .message-info {
+  margin: 0 var(--sp-3) var(--sp-3);
 }
 
 ol.chemin {

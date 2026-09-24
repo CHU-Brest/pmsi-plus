@@ -1,12 +1,13 @@
 // Fiche code — tout ce que la fonction groupage fait d'un code CIM-10 ou
 // CCAM, sur une seule page : en diagnostic principal (listes, étapes de
-// l'arbre qui le testent, racines de GHM possibles, codes frontières), en
-// diagnostic associé (niveau de CMA, DP et racines qui l'excluent), ou comme
-// acte (listes, étapes, racines, actes frontières).
+// l'arbre qui le testent, racines de GHM possibles et leurs tarifs, codes
+// frontières), en diagnostic associé (niveau de CMA, DP et racines qui
+// l'excluent), ou comme acte (listes, étapes, racines et leurs tarifs, actes
+// frontières).
 //
 // Tout est calculé dans le navigateur à partir des référentiels déjà
 // publiés : arbre.json, listes de la fonction groupage, liste des CMA et
-// leurs exclusions.
+// leurs exclusions, tarifs des GHS.
 
 import { chargerJeu, chargerJson } from "../donnees.js";
 import { normaliser } from "../recherche.js";
@@ -14,6 +15,8 @@ import { el, fraicheur, nombre } from "../interface.js";
 import { racinesAtteintes, calculer as frontieresDp } from "./frontieres.js";
 import { calculer as frontieresActes } from "./actes_frontieres.js";
 import { couvre } from "./cma.js";
+import { codesGhm } from "./arbre.js";
+import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
 
 const SUGGESTIONS_MAX = 12;
 const RE_CCAM = /^[A-Z]{4}\d{3}/;
@@ -83,6 +86,27 @@ function indexer(arbre) {
 
 function racinesDe(arbre, vers) {
   return [...racinesAtteintes(arbre, vers, indexer(arbre).memo)].filter((r) => RE_RACINE.test(r)).sort();
+}
+
+/** Les racines que peuvent atteindre les étapes, sans doublon. */
+function racinesDesEtapes(arbre, etapes) {
+  return [...new Set(etapes.flatMap((e) => racinesDe(arbre, e.n.branches[e.i].vers)))].sort();
+}
+
+/** Les GHM d'une racine d'après les cases de l'arbre, y compris ceux que
+ *  l'arrêté ne tarife pas (09Z02A) : ils doivent figurer, sans tarif, dans
+ *  le tableau de leur racine plutôt que d'en disparaître. */
+function ghmDeRacineDansArbre(arbre, racine) {
+  if (!arbre._ghmParRacine) {
+    const index = new Map();
+    for (const n of Object.values(arbre.noeuds)) {
+      if (n.genre !== "ghm") continue;
+      if (!index.has(n.racine)) index.set(n.racine, new Set());
+      for (const g of codesGhm(n)) index.get(n.racine).add(g);
+    }
+    arbre._ghmParRacine = index;
+  }
+  return [...(arbre._ghmParRacine.get(racine) ?? [])].sort();
 }
 
 // ==== Vue ====
@@ -208,10 +232,11 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 // ==== Fiche d'un diagnostic ====
 
 async function ficheDiagnostic(arbre, code) {
-  const [diagnostics, cma, exclusions] = await Promise.all([
+  const [diagnostics, cma, exclusions, tarifs] = await Promise.all([
     jeux.diagnostics(),
     jeux.cma(),
     chargerJson("groupage", "cma_exclusions"),
+    chargerTarifs().catch(() => null),
   ]);
   const lignes = diagnostics.lignes.filter((l) => l.Code === code);
   const libelle = lignes[0]?.["Libellé code"] ?? cma.lignes.find((l) => l.Code === code)?.["Libellé"];
@@ -240,6 +265,7 @@ async function ficheDiagnostic(arbre, code) {
       ? tableEtapes(arbre, enDp)
       : el("p", { class: "message-info" }, "Aucune étape de l'arbre ne teste ce code en DP : la CMD que détermine ce DP le classe par ses autres tests."),
     frontiere.length ? blocFrontiere(code, frontiere, voisins) : null,
+    ...blocTarifs(arbre, tarifs, racinesDesEtapes(arbre, enDp)),
     el("h3", {}, "En diagnostic associé : CMA"),
     blocCma(exclusions, code),
     autres.length ? el("h3", {}, "Autres tests de l'arbre sur ce diagnostic") : null,
@@ -307,6 +333,42 @@ function tableEtapes(arbre, etapes) {
       )
     )
   );
+}
+
+// Au-delà, les racines restent repliées : la fiche d'un diagnostic testé à
+// plusieurs étapes en compte vite une dizaine.
+const RACINES_DEPLIEES_MAX = 3;
+
+/** Les GHS de chaque racine possible, une racine par encadré à déplier. */
+function blocTarifs(arbre, tarifs, racines) {
+  if (!racines.length) return [];
+  const titre = el("h3", {}, "Tarifs des racines possibles");
+  if (!tarifs) return [titre, el("p", { class: "message-avertissement" }, "Tarifs des GHS indisponibles pour le moment.")];
+  const deplier = racines.length <= RACINES_DEPLIEES_MAX;
+  return [
+    titre,
+    fraicheur([{ libelle: tarifs.libelle, millesime: tarifs.millesime }]),
+    noteTarifs("#/tarifs"),
+    ...racines.map((r) => {
+      const dansArbre = ghmDeRacineDansArbre(arbre, r);
+      const ghms = dansArbre.length ? dansArbre : ghmDeRacine(tarifs, r);
+      const n = nombreGhs(tarifs, ghms);
+      return el(
+        "details",
+        { class: "tarifs-racine", open: deplier ? "" : undefined },
+        el(
+          "summary",
+          {},
+          el("strong", { class: "code" }, r),
+          libelleRacine(r) ? ` ${libelleRacine(r)}` : "",
+          el("span", { class: "compte" }, n ? ` · ${n} GHS` : " · pas de tarif")
+        ),
+        n
+          ? tableTarifs(tarifs, ghms)
+          : el("p", { class: "message-info" }, "L'arrêté tarifaire ne donne aucun GHS pour cette racine.")
+      );
+    }),
+  ];
 }
 
 function blocFrontiere(code, frontiere, voisins) {
@@ -394,7 +456,7 @@ function titreElement(e) {
 // ==== Fiche d'un acte ====
 
 async function ficheActe(arbre, code) {
-  const actes = await jeux.actes();
+  const [actes, tarifs] = await Promise.all([jeux.actes(), chargerTarifs().catch(() => null)]);
   const lignes = actes.lignes.filter((l) => codeCcam(l.Code) === code);
   if (!lignes.length) {
     return [el("p", { class: "message-info" }, `${code} ne figure dans aucune liste d'actes de la fonction groupage : ce n'est pas un acte classant.`)];
@@ -433,6 +495,7 @@ async function ficheActe(arbre, code) {
           )
         )
       : null,
+    ...blocTarifs(arbre, tarifs, racinesDesEtapes(arbre, etapes)),
     el("h3", {}, "Listes de la fonction groupage"),
     el(
       "ul",

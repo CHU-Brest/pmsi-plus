@@ -128,14 +128,17 @@ document.addEventListener("keydown", (e) => {
  *  pour y revenir sans la souris. Un champ secondaire de la page (filtre
  *  d'un panneau) prend son propre `libelle` et `raccourci: false` : « / »
  *  ne mène qu'au premier champ de la page. */
-export function champMotsClefs({ id, exemple, onInput, libelle = "Mot(s) clef(s) :", raccourci: avecRaccourci = true }) {
+export function champMotsClefs({ id, exemple, onInput, valeur = "", libelle = "Mot(s) clef(s) :", raccourci: avecRaccourci = true }) {
   const label = el("label", {}, libelle);
   label.htmlFor = id;
 
   let minuteur = null;
+  // `valeur` pré-remplit le champ (lien profond) sans passer par onInput :
+  // le thème affiche lui-même le résultat, une seule fois.
   const input = el("input", {
     type: "search",
     id,
+    value: valeur || undefined,
     placeholder: exemple,
     autocomplete: "off",
     spellcheck: "false",
@@ -167,14 +170,14 @@ export function champMotsClefs({ id, exemple, onInput, libelle = "Mot(s) clef(s)
     {
       type: "button",
       class: "effacer",
-      hidden: "",
+      hidden: valeur ? undefined : "",
       "aria-label": "Effacer la recherche",
       onclick: viderChamp,
     },
     el("span", { class: "icone", "aria-hidden": "true" })
   );
   const raccourci = avecRaccourci
-    ? el("span", { class: "raccourci", "aria-hidden": "true" }, "/")
+    ? el("span", { class: "raccourci", "aria-hidden": "true", hidden: valeur ? "" : undefined }, "/")
     : null;
 
   return el(
@@ -200,15 +203,31 @@ function colonnesVisibles(lignes) {
   return Object.keys(lignes[0]).filter((c) => !c.startsWith("_"));
 }
 
-// Colonnes de codes (CIM-10, CCAM) : en chasse fixe, les codes s'alignent
-// et se comparent d'un coup d'œil d'une ligne à l'autre.
-const COLONNES_CODES = /^code|code$/;
+// Colonnes de codes (CIM-10, CCAM, GHM, GHS) : en chasse fixe, les codes
+// s'alignent et se comparent d'un coup d'œil d'une ligne à l'autre.
+const COLONNES_CODES = /^code|code$|^gh[ms]$/;
 
-function celluleValeur(v, colonne) {
+/** Texte affiché d'une cellule : la valeur brute, ou sa mise en forme quand
+ *  la colonne en a une (montant, durée). Sert aussi au calcul des largeurs,
+ *  pour qu'une colonne se dimensionne sur ce qu'elle affiche. */
+function texteCellule(v, format) {
+  if (v == null) return "";
+  return format ? format(v) : String(v);
+}
+
+function celluleValeur(v, colonne, format) {
   if (typeof v === "boolean") {
     // La coche est dessinée en CSS (masque Lucide sur `td.oui`) : la cellule
     // ne porte que son étiquette accessible, jamais de glyphe.
     return el("td", { class: v ? "oui" : "non", "aria-label": v ? "oui" : "non" });
+  }
+  // Colonne mise en forme : le tri garde la valeur brute, seule la cellule
+  // montre le texte formaté ; un nombre s'aligne alors à droite, en
+  // chiffres tabulaires, pour que les ordres de grandeur se lisent d'une
+  // ligne à l'autre.
+  if (format) {
+    const texte = texteCellule(v, format);
+    return el("td", { class: typeof v === "number" ? "nombre" : undefined, title: texte || undefined }, texte);
   }
   // Une seule ligne par cellule (tronquée avec « … » en CSS) : un libellé
   // long ne doit pas rendre sa ligne plus haute que les autres, sans quoi
@@ -258,8 +277,10 @@ const PADDING_CELLULE = 32;
 // plus rien dire, là où un libellé coupé reste lisible à l'infobulle — une
 // colonne d'identifiants se dimensionne donc sur sa valeur la *plus
 // longue*, pas sur la longueur moyenne de la colonne. On les reconnaît à
-// ça : aucune valeur ne dépasse quelques caractères.
-const CARACTERE_CODE_PX = 9.2;
+// ça : aucune valeur ne dépasse quelques caractères. 10 px et non moins :
+// dans les polices de repli les plus larges (DejaVu Sans, sous Linux), un
+// GHM à « M » tient 59 px pour 6 caractères (14M03D) et débordait à 9,2.
+const CARACTERE_CODE_PX = 10;
 const LONGUEUR_MAX_IDENTIFIANT = 20;
 
 // Colonne « vedette » : le libellé ou le nom est le texte qui identifie la
@@ -287,7 +308,7 @@ function largeurEnteteTexte(nbCaracteres) {
   return nbCaracteres * CARACTERE_ENTETE_PX + PADDING_CELLULE;
 }
 
-function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible) {
+function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible, formats) {
   const naturelles = new Map();
   for (const c of colonnes) {
     const largeurEntete = largeurEnteteTexte(c.length);
@@ -299,7 +320,7 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible) {
       let somme = 0;
       let plusLong = 0;
       for (const ligne of lignes) {
-        const longueur = String(ligne[c] ?? "").length;
+        const longueur = texteCellule(ligne[c], formats[c]).length;
         somme += longueur;
         if (longueur > plusLong) plusLong = longueur;
       }
@@ -323,8 +344,10 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible) {
   return new Map([...naturelles].map(([c, l]) => [c, Math.round(l * echelle)]));
 }
 
-/** Tableau simple, colonnes triables au clic ou au clavier, et paginé. */
-export function tableau(conteneur, lignes) {
+/** Tableau simple, colonnes triables au clic ou au clavier, et paginé.
+ *  `formats` associe à une colonne la fonction qui met sa valeur en forme
+ *  (montant en euros, durée…) ; le tri se fait toujours sur la valeur. */
+export function tableau(conteneur, lignes, { formats = {} } = {}) {
   conteneur.innerHTML = "";
   const colonnes = colonnesVisibles(lignes);
   if (!colonnes.length) return;
@@ -347,7 +370,7 @@ export function tableau(conteneur, lignes) {
   const pagination = el("div", { class: "pagination" });
   conteneur.append(zone, pagination);
 
-  const largeurs = largeursColonnes(colonnes, colonnesCases, lignes, zone.clientWidth || 800);
+  const largeurs = largeursColonnes(colonnes, colonnesCases, lignes, zone.clientWidth || 800, formats);
 
   function nbPages() {
     return Math.max(1, Math.ceil(lignesTriees.length / taillePage));
@@ -359,7 +382,7 @@ export function tableau(conteneur, lignes) {
     const lignesPage = lignesTriees.slice(debut, debut + taillePage);
     for (const ligne of lignesPage) {
       const tr = el("tr", {});
-      for (const c of colonnes) tr.append(celluleValeur(ligne[c], c));
+      for (const c of colonnes) tr.append(celluleValeur(ligne[c], c, formats[c]));
       tbody.append(tr);
     }
     // Lignes de remplissage, invisibles mais occupant leur place : sans
@@ -461,6 +484,7 @@ export function tableau(conteneur, lignes) {
         "th",
         {
           scope: "col",
+          class: formats[c] && typeof lignes[0][c] === "number" ? "nombre" : undefined,
           "data-colonne": c,
           "aria-sort": "none",
           tabindex: "0",
@@ -513,7 +537,7 @@ function compteur(affiches, total) {
 
 /** `tableau()` précédé de son compteur, ou un message si la recherche ne
  *  rend rien. */
-export function resultats(conteneur, lignes, { total } = {}) {
+export function resultats(conteneur, lignes, { total, formats } = {}) {
   conteneur.innerHTML = "";
   if (!lignes.length) {
     conteneur.append(
@@ -530,5 +554,5 @@ export function resultats(conteneur, lignes, { total } = {}) {
   );
   const zone = el("div", {});
   conteneur.append(zone);
-  tableau(zone, lignes);
+  tableau(zone, lignes, { formats });
 }
