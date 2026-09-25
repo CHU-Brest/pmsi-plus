@@ -321,6 +321,9 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 
   const lignes = lignesDiagnostics(diagnostics, k);
   const demande = chemin.join("/");
+  // Un nom de liste d'actes spécialisés (« 0106_09_15_30_45_47_48 »,
+  // lien de l'algorithme) pré-remplit la seconde section, pas la première.
+  const listeActes = actesSpe && k.listesSpe[demande] ? demande : "";
 
   conteneur.innerHTML = "";
   conteneur.append(
@@ -353,7 +356,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     id: "smr_groupage_diagnostics",
     titre: "Listes de diagnostics",
     exemple: "ex. : D-0112, I63.4, hémiplégie",
-    valeur: demande,
+    valeur: listeActes ? "" : demande,
     explication: [explicationDiagnostics(k)],
     corriger: (requete) => corrigerDiagnostics(diagnostics, requete),
     indication: (requete) => indicationGnDiagnostics(k, requete),
@@ -378,6 +381,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     id: "smr_groupage_actes",
     titre: "Listes d'actes spécialisés",
     exemple: "ex. : ALQ+183, 0147, diététique",
+    valeur: listeActes,
     // « / » ne mène qu'au premier champ de la page : pas de rappel ici.
     raccourci: false,
     explication: [
@@ -396,4 +400,8 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     indication: (requete) => indicationGnActes(k, requete),
   });
   conteneur.append(...gnSansListe(k));
+  if (listeActes) {
+    document.getElementById("smr_groupage_actes")?.closest(".barre-outils")?.previousElementSibling?.scrollIntoView();
+    return true;
+  }
 }
