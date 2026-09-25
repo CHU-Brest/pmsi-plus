@@ -29,7 +29,7 @@ individuelle — sont repris ici :
 | SMR | Groupage | Erreurs de la fonction groupage | codes erreur de la fonction groupage SMR |
 | SMR | Groupage (depuis la fiche) | CMA et exclusions | CMA SMR (diagnostics et actes CCAM) et vérificateur d'exclusion par les codes orientant dans le GN |
 | SMR | Réadaptation | Pondérations des actes | pondération des actes CSARR et CCAM de réadaptation, modulateurs de lieu et de temps |
-| SMR | Réadaptation | Transcodage CSAR → CSARR | acte CSARR retenu pour chaque acte CSAR, intervenant et modalité, et les écarts entre le fichier de pondérations CSAR et le CSARR transcodé |
+| SMR | Réadaptation | Transcodage CSAR ↔ CSARR | acte CSARR que la fonction groupage retient pour chaque acte CSAR, intervenant et modalité ; lecture inverse (actes CSAR qui aboutissent à un acte CSARR) ; écarts entre le fichier de pondérations CSAR et le CSARR transcodé |
 | commun | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
 Ce dépôt est public : rien de ce qui touche à l'activité de l'établissement ou à un
@@ -263,7 +263,7 @@ Particularités des fichiers de l'ATIH, relevées par le script : dans
 codes ; quelques codes de `CIM_infos_SMR.xlsx` arrivent avec leur point (« U11.9 ») ou un
 espace invisible ; pour sept couples acte CSAR / intervenant, la pondération du fichier CSAR
 diffère de celle du CSARR transcodé, que la fonction groupage retient — le thème
-« Transcodage CSAR → CSARR » les signale.
+« Transcodage CSAR ↔ CSARR » les signale.
 
 ## Déploiement
 

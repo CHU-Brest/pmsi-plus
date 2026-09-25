@@ -199,9 +199,9 @@ export const REGISTRY = [
     champ: "smr",
     section: "Réadaptation",
     slug: "csar",
-    titre: "Transcodage CSAR → CSARR",
+    titre: "Transcodage CSAR ↔ CSARR",
     module: "smr_csar",
-    resume: "Acte CSAR transcodé en acte CSARR par la fonction groupage, selon l'intervenant et la modalité, et sa pondération.",
+    resume: "L'acte CSARR que la fonction groupage retient pour chaque acte CSAR, et les actes CSAR qui aboutissent à chaque acte CSARR.",
   },
   {
     section: "Référentiels",

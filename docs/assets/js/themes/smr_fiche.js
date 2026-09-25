@@ -485,7 +485,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       " · ",
       el("a", { class: "lien-texte", href: "#/smr/ponderations" }, "pondérations des actes"),
       " · ",
-      el("a", { class: "lien-texte", href: "#/smr/csar" }, "transcodage CSAR → CSARR"),
+      el("a", { class: "lien-texte", href: "#/smr/csar" }, "transcodage CSAR ↔ CSARR"),
       "."
     )
   );
@@ -1234,7 +1234,7 @@ function ficheCsar(smr, { code: c, lignes }) {
           `Intervenants ${Object.keys(k.csar.transposition).join(" et ")} du CSAR : transposés en ${[...new Set(Object.values(k.csar.transposition))].map((iv) => `${iv} (${libelleIntervenant(k, iv).toLowerCase()})`).join(", ")} avant le transcodage. Volume 1, 3.3.1.2.`
         )
       : null,
-    el("p", {}, el("a", { class: "lien-texte", href: `#/smr/csar/${encodeURIComponent(c)}` }, "Voir dans le transcodage CSAR → CSARR")),
+    el("p", {}, el("a", { class: "lien-texte", href: `#/smr/csar/${encodeURIComponent(c)}` }, "Voir dans le transcodage CSAR ↔ CSARR")),
     el("h3", {}, "Caractère spécialisé"),
     el(
       "p",

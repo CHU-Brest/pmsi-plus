@@ -2749,6 +2749,13 @@ ol.chemin > li::before {
   }
 }
 
+/* ==== SMR — Transcodage CSAR ↔ CSARR ==== */
+/* Condition d'un transcodage (modalité, intervenants), à la suite du CSARR
+   qu'elle désigne : secondaire, elle ne doit pas se lire comme un libellé. */
+.csar-condition {
+  color: var(--text-muted);
+}
+
 /* ==== Petit écran ==== */
 @media (max-width: 860px) {
   .barre-haute {
