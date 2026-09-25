@@ -1,25 +1,35 @@
-// Point d'entrée : barre de navigation, tiroir sur petit écran, lien
-// « Signaler un problème », bascule de thème et routage par hash (`#/<slug>`).
+// Point d'entrée : sélecteur de champ (MCO, SMR), barre de navigation,
+// tiroir sur petit écran, lien « Signaler un problème », bascule de thème et
+// routage par hash (`#/<champ>/<slug>`).
 //
 // Chaque thème vit dans assets/js/themes/<module>.js et exporte une fonction
-// async `rendre(conteneur, { chemin })` qui vide puis remplit `conteneur`.
-// `chemin` porte ce qui suit le slug dans le hash (`#/arbre/01` → ["01"]) :
-// un thème qui n'en a pas l'usage l'ignore. `rendre` peut rendre `true`
-// quand il a lui-même placé la vue (lien profond vers une étape) : le
-// routeur ne la ramène alors pas en haut de page.
+// async `rendre(conteneur, { chemin, champ })` qui vide puis remplit
+// `conteneur`. `chemin` porte ce qui suit le slug dans le hash
+// (`#/mco/arbre/01` → ["01"]), `champ` le champ affiché (`"mco"`) : un thème
+// qui n'en a pas l'usage les ignore. `rendre` peut rendre `true` quand il a
+// lui-même placé la vue (lien profond vers une étape) : le routeur ne la
+// ramène alors pas en haut de page.
 
-import { REGISTRY, themeParDefaut, themeParSlug } from "./registry.js";
+import { CHAMPS, champParId, themeParDefaut, themeParSlug, themesDuChamp } from "./registry.js";
 import { el, squelette } from "./interface.js";
 
 const contenu = document.getElementById("contenu");
 const nav = document.getElementById("nav-themes");
+const selecteurChamp = document.getElementById("champs-pmsi");
+const titreBarreHaute = document.querySelector(".barre-haute-titre");
 const miseEnPage = document.getElementById("mise-en-page");
 const bascule = document.getElementById("bascule-barre-laterale");
 const voile = document.getElementById("voile");
 
-function construireNav() {
+// La liste des thèmes n'est reconstruite qu'au changement de champ.
+let champDeLaNav = null;
+
+function construireNav(champ) {
+  if (champ === champDeLaNav) return;
+  champDeLaNav = champ;
+
   const sections = new Map();
-  for (const theme of REGISTRY) {
+  for (const theme of themesDuChamp(champ)) {
     if (theme.cache) continue;
     if (!sections.has(theme.section)) sections.set(theme.section, []);
     sections.get(theme.section).push(theme);
@@ -33,7 +43,7 @@ function construireNav() {
         {},
         el(
           "a",
-          { href: `#/${t.slug}`, "data-slug": t.slug },
+          { href: `#/${champ}/${t.slug}`, "data-slug": t.slug },
           t.titre,
           t.travaux
             ? el("span", { class: "travaux", role: "img", "aria-label": "en travaux", title: "En travaux" }, " 🚧")
@@ -93,23 +103,122 @@ function actualiserSignalement() {
 
 for (const type of ["pointerenter", "focus", "click"]) signaler.addEventListener(type, actualiserSignalement);
 
+// ==== Champ (MCO, SMR) ====
+
+// Le dernier champ affiché vaut pour les adresses qui n'en nomment pas :
+// arrivée sur le site, ancien lien vers un thème commun. Sans stockage
+// (navigation privée, stockage bloqué), c'est le premier champ.
+const CLE_CHAMP = "pmsi-plus:champ";
+
+function champRetenu() {
+  try {
+    const id = localStorage.getItem(CLE_CHAMP);
+    if (champParId(id)) return id;
+  } catch {
+    // stockage indisponible
+  }
+  return CHAMPS[0].id;
+}
+
+function retenirChamp(id) {
+  try {
+    localStorage.setItem(CLE_CHAMP, id);
+  } catch {
+    // stockage indisponible : le champ ne survivra pas à la page
+  }
+}
+
+// Les adresses sans champ (`#/arbre/01`) datent d'avant le SMR : elles
+// visent le MCO.
+const CHAMP_DES_ANCIENNES_ADRESSES = "mco";
+
+/** Le hash découpé : `#/smr/fiche/I10` → { champ: "smr", slug: "fiche",
+ *  chemin: ["I10"] }, segments encore encodés. `champ` est nul quand le
+ *  hash n'en nomme pas. */
+function lireAdresse() {
+  const segments = location.hash.replace(/^#\/?/, "").split("/");
+  const champ = champParId(segments[0]) ? segments.shift() : null;
+  const [slug = "", ...chemin] = segments;
+  return { champ, slug, chemin };
+}
+
+/** Le thème que désigne une adresse, et le champ où l'afficher. Un thème
+ *  demandé dans un champ qui ne l'a pas s'ouvre dans celui qui l'a ; un
+ *  thème commun reste dans le champ demandé, à défaut le dernier affiché.
+ *  Un slug inconnu mène à l'accueil. */
+function resoudre({ champ, slug }) {
+  const theme = slug ? themeParSlug(slug, champ ?? CHAMP_DES_ANCIENNES_ADRESSES) ?? themeParSlug(slug) : null;
+  if (!theme) return { theme: themeParDefaut(), champ: champ ?? champRetenu() };
+  return { theme, champ: theme.champ ?? champ ?? champRetenu() };
+}
+
+// ==== Sélecteur de champ ====
+
+/** L'adresse de la page en cours dans le champ `cible` : le même thème s'il
+ *  est commun ; sinon son pendant (même slug) s'il en a un, avec la suite de
+ *  l'adresse quand les deux la déclarent `cheminCommun` ; sinon l'accueil
+ *  du champ. */
+function pendant(cible) {
+  const adresse = lireAdresse();
+  const { theme, champ } = resoudre(adresse);
+  if (champ === cible) return location.hash;
+  const suite = adresse.slug === theme.slug ? adresse.chemin : [];
+  if (!theme.champ) return `#/${[cible, theme.slug, ...suite].join("/")}`;
+  const vis = themeParSlug(theme.slug, cible);
+  if (!vis) return `#/${cible}/${themeParDefaut().slug}`;
+  return `#/${[cible, vis.slug, ...(theme.cheminCommun && vis.cheminCommun ? suite : [])].join("/")}`;
+}
+
+// Un lien par champ : changer de champ est une navigation comme une autre
+// (historique, nouvel onglet). Sa cible est recalculée au dernier moment,
+// comme celle du signalement.
+const liensChamp = CHAMPS.map((champ) => {
+  const lien = el("a", { href: `#/${champ.id}`, title: champ.libelle, "data-champ": champ.id }, champ.titre);
+  const actualiser = () => {
+    lien.href = pendant(champ.id);
+  };
+  for (const type of ["pointerenter", "focus", "click"]) lien.addEventListener(type, actualiser);
+  return lien;
+});
+selecteurChamp.append(...liensChamp);
+
+function marquerChamp(champ) {
+  for (const lien of liensChamp) {
+    if (lien.dataset.champ === champ) lien.setAttribute("aria-current", "true");
+    else lien.removeAttribute("aria-current");
+    lien.href = pendant(lien.dataset.champ);
+  }
+}
+
 // ==== Routage ====
 
-async function rendreTheme(slug, premierRendu, chemin = []) {
-  const theme = themeParSlug(slug) ?? themeParDefaut();
+let dernierRendu = 0;
+
+async function rendreTheme(theme, champ, premierRendu, chemin = []) {
+  const rendu = ++dernierRendu;
+  const titreChamp = champParId(champ).titre;
+  retenirChamp(champ);
+  construireNav(champ);
   marquerLienActif(theme.slug);
+  marquerChamp(champ);
+  titreBarreHaute.textContent = `PMSI+ · ${titreChamp}`;
   ouvrirBarre(false);
   document.title =
     theme.slug === "accueil"
       ? "PMSI+ — Aide au codage PMSI"
-      : `${theme.titre} — PMSI+`;
+      : theme.champ
+        ? `${theme.titre} · ${titreChamp} — PMSI+`
+        : `${theme.titre} — PMSI+`;
 
   contenu.innerHTML = "";
   contenu.append(squelette());
   let positionne = false;
   try {
     const module = await import(`./themes/${theme.module}.js`);
-    positionne = (await module.rendre(contenu, { chemin })) === true;
+    positionne = (await module.rendre(contenu, { chemin, champ })) === true;
+    // Un thème propre à un champ le rappelle au-dessus de son titre : la
+    // page ouverte depuis un lien, ou imprimée, dit de quel champ elle parle.
+    if (theme.champ && rendu === dernierRendu) contenu.prepend(el("p", { class: "champ-pmsi" }, titreChamp));
   } catch (erreur) {
     console.error(erreur);
     contenu.innerHTML = "";
@@ -143,8 +252,18 @@ function decoder(segment) {
 }
 
 function auChangementHash(premierRendu = false) {
-  const [slug, ...chemin] = location.hash.replace(/^#\/?/, "").split("/");
-  rendreTheme(slug || themeParDefaut().slug, premierRendu, chemin.map(decoder));
+  const adresse = lireAdresse();
+  const { theme, champ } = resoudre(adresse);
+  // L'adresse nomme toujours le champ affiché, pour que le retour arrière le
+  // retrouve : une adresse qui n'en nomme pas (arrivée sur le site, lien
+  // d'avant le SMR) ou qui en nomme un autre (thème absent du champ demandé)
+  // le reçoit, sans entrée d'historique (replaceState ne lève pas
+  // `hashchange`).
+  if (champ !== adresse.champ) {
+    const suite = adresse.slug ? [adresse.slug, ...adresse.chemin] : [];
+    history.replaceState(null, "", `#/${[champ, ...suite].join("/")}`);
+  }
+  rendreTheme(theme, champ, premierRendu, adresse.chemin.map(decoder));
 }
 
 // Le lien d'évitement mène au contenu sans passer par le hash : `#contenu`
@@ -154,6 +273,5 @@ document.querySelector(".lien-evitement")?.addEventListener("click", (e) => {
   contenu.focus();
 });
 
-construireNav();
 window.addEventListener("hashchange", () => auChangementHash());
 auChangementHash(true);

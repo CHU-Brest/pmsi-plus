@@ -1,15 +1,30 @@
-// La table des matières du site : sections et thèmes de la barre latérale.
+// La table des matières du site : champs, sections et thèmes de la barre
+// latérale.
 //
 // C'est la seule liste à tenir à jour pour ajouter, renommer ou réordonner un
-// thème. `module` nomme le fichier dans assets/js/themes/ qui exporte une
+// thème ; son ordre est celui de la barre latérale et de la page d'accueil.
+// `module` nomme le fichier dans assets/js/themes/ qui exporte une
 // fonction `rendre(conteneur)`, cf. main.js pour le contrat exact ; `resume`
 // est la phrase affichée sur la carte du thème en page d'accueil ; `travaux`
 // signale dans la barre latérale un thème encore en chantier ; `cache` garde
 // un thème joignable par son adresse (liens depuis la fiche code) sans
 // l'afficher dans la barre latérale ni en page d'accueil.
 //
+// `champ` range un thème dans un champ du PMSI (`CHAMPS`) : la barre latérale
+// n'affiche que les thèmes du champ choisi, et ceux sans `champ`, communs aux
+// deux. Un slug est unique dans un champ, mais un thème du SMR peut reprendre
+// le slug de son pendant MCO (`fiche`, `arbre`…) : changer de champ mène
+// alors de l'un à l'autre. `cheminCommun` y garde ce qui suit le slug dans
+// l'adresse (le code affiché par la fiche code), quand les deux pendants le
+// déclarent.
+//
 // Un thème ne porte qu'un référentiel de codage : jamais de donnée patient,
 // jamais de donnée d'activité de l'établissement.
+
+export const CHAMPS = [
+  { id: "mco", titre: "MCO", libelle: "Médecine, chirurgie, obstétrique et odontologie" },
+  { id: "smr", titre: "SMR", libelle: "Soins médicaux et de réadaptation" },
+];
 
 export const REGISTRY = [
   {
@@ -34,6 +49,7 @@ export const REGISTRY = [
     resume: "Germes et leurs codes CIM-10, avec et sans sepsis.",
   },
   {
+    champ: "mco",
     section: "HDJ",
     slug: "acte",
     titre: "Actes CCAM",
@@ -41,6 +57,7 @@ export const REGISTRY = [
     resume: "Actes et caractéristiques : classants annexe 8, FFM, SE1-SE8.",
   },
   {
+    champ: "mco",
     section: "HDJ",
     slug: "rh",
     titre: "Médicaments de la RH et LES",
@@ -48,6 +65,7 @@ export const REGISTRY = [
     resume: "Lire le statut réserve hospitalière / liste en sus dans le VIDAL Hoptimal.",
   },
   {
+    champ: "mco",
     section: "HDJ",
     slug: "ctxt",
     titre: "Contexte patient",
@@ -55,14 +73,17 @@ export const REGISTRY = [
     resume: "Codes CIM-10 de contexte patient et leur justification.",
   },
   {
+    champ: "mco",
     section: "Groupage",
     slug: "fiche",
     titre: "Fiche code",
     module: "fiche",
+    cheminCommun: true,
     travaux: true,
     resume: "Un code CIM-10 ou CCAM : ses tests dans l'arbre, ses racines de GHM, son niveau de CMA et ses exclusions.",
   },
   {
+    champ: "mco",
     section: "Groupage",
     slug: "groupage",
     titre: "Listes de la fonction groupage",
@@ -70,6 +91,7 @@ export const REGISTRY = [
     resume: "Listes de diagnostics et d'actes de la fonction groupage, par CMD.",
   },
   {
+    champ: "mco",
     section: "Groupage",
     slug: "arbre",
     titre: "Algorithme de la fonction groupage",
@@ -78,6 +100,7 @@ export const REGISTRY = [
     resume: "Arbres de décision du Manuel des GHM, CMD par CMD : tests, listes et racines de GHM.",
   },
   {
+    champ: "mco",
     section: "Groupage",
     slug: "tarifs",
     titre: "Tarifs des GHS",
@@ -85,6 +108,7 @@ export const REGISTRY = [
     resume: "Arrêté tarifaire, secteur public : tarif de chaque GHS, bornes basse et haute, extrêmes bas et haut.",
   },
   {
+    champ: "mco",
     section: "Groupage",
     slug: "frontieres",
     cache: true,
@@ -94,6 +118,7 @@ export const REGISTRY = [
     resume: "Catégories CIM-10 dont un caractère change la racine de GHM quand le code est en DP.",
   },
   {
+    champ: "mco",
     section: "Groupage",
     slug: "actes-frontieres",
     cache: true,
@@ -103,6 +128,7 @@ export const REGISTRY = [
     resume: "Actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes.",
   },
   {
+    champ: "mco",
     section: "Groupage",
     slug: "cma",
     cache: true,
@@ -120,10 +146,21 @@ export const REGISTRY = [
   },
 ];
 
+export function champParId(id) {
+  return CHAMPS.find((c) => c.id === id);
+}
+
+/** Les thèmes d'un champ : les siens, et les thèmes communs. */
+export function themesDuChamp(champ) {
+  return REGISTRY.filter((t) => !t.champ || t.champ === champ);
+}
+
 export function themeParDefaut() {
   return REGISTRY.find((t) => t.defaut) ?? REGISTRY[0];
 }
 
-export function themeParSlug(slug) {
-  return REGISTRY.find((t) => t.slug === slug);
+/** Le thème `slug` du champ `champ` : le sien, ou un thème commun. Sans
+ *  champ, le premier thème de ce slug, quel que soit son champ. */
+export function themeParSlug(slug, champ) {
+  return REGISTRY.find((t) => t.slug === slug && (!champ || !t.champ || t.champ === champ));
 }

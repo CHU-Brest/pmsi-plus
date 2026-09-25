@@ -8,21 +8,21 @@ du CHU de Brest.
 Seuls les thèmes d'**aide au codage** — des référentiels qu'on cherche, sans donnée
 individuelle — sont repris ici :
 
-| Section | Thème | Contenu |
-|---|---|---|
-| CIM-10 | Intox CIM-10 | médicaments → codes CIM-10 d'intoxication ; effets nocifs par substance |
-| CIM-10 | Germes CIM-10 | germes → code CIM-10, avec et sans sepsis |
-| HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
-| HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
-| HDJ | Contexte patient | codes CIM-10 de contexte et justification |
-| Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : étapes de l'arbre qui le testent, racines possibles et leurs tarifs, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
-| Groupage | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
-| Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes ; chemin et tarifs de chaque case de GHM |
-| Groupage | Tarifs des GHS | arrêté tarifaire MCO, secteur public : tarif de chaque GHS, bornes basse et haute, extrêmes bas et haut |
-| Groupage (depuis la fiche) | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
-| Groupage (depuis la fiche) | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
-| Groupage (depuis la fiche) | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
-| Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
+| Champ | Section | Thème | Contenu |
+|---|---|---|---|
+| commun | CIM-10 | Intox CIM-10 | médicaments → codes CIM-10 d'intoxication ; effets nocifs par substance |
+| commun | CIM-10 | Germes CIM-10 | germes → code CIM-10, avec et sans sepsis |
+| MCO | HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
+| MCO | HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
+| MCO | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
+| MCO | Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : étapes de l'arbre qui le testent, racines possibles et leurs tarifs, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
+| MCO | Groupage | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
+| MCO | Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes ; chemin et tarifs de chaque case de GHM |
+| MCO | Groupage | Tarifs des GHS | arrêté tarifaire MCO, secteur public : tarif de chaque GHS, bornes basse et haute, extrêmes bas et haut |
+| MCO | Groupage (depuis la fiche) | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
+| MCO | Groupage (depuis la fiche) | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
+| MCO | Groupage (depuis la fiche) | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
+| commun | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
 Ce dépôt est public : rien de ce qui touche à l'activité de l'établissement ou à un
 patient n'y a sa place, même agrégé ou censuré. Un thème qui n'est pas un référentiel
@@ -69,8 +69,8 @@ docs/                         racine servie par GitHub Pages
   assets/
     css/style.css             jetons du système de design du CDC, puis composants
     js/
-      main.js                 routage par hash (#/slug), navigation, tiroir mobile
-      registry.js             sections/thèmes
+      main.js                 routage par hash (#/champ/slug), sélecteur de champ, navigation, tiroir mobile
+      registry.js             champs, sections et thèmes
       recherche.js             normalisation + filtre multi mots clefs
       interface.js             drapeau de fraîcheur, champ de recherche, tableau
       donnees.js               chargement JSON avec cache mémoire
@@ -123,6 +123,17 @@ travaux (`travaux: true` dans `registry.js`).
 
 Côté clavier : `/` ramène au champ de recherche, `Échap` l'efface (et referme le tiroir
 sur petit écran), les en-têtes de colonnes se trient à `Entrée` ou `Espace`.
+
+Le sélecteur **MCO · SMR**, en tête de la barre latérale, choisit le champ PMSI : la barre
+latérale et la page d'accueil n'affichent que les thèmes du champ choisi (`champ: "mco"` ou
+`"smr"` dans `registry.js`) et les thèmes communs, sans `champ`. Le champ fait partie de
+l'adresse (`#/mco/fiche/I10`, `#/smr/arbre`). Une adresse qui n'en nomme pas — arrivée sur
+le site, lien d'avant le SMR comme `#/arbre/01` — le reçoit : le MCO pour un thème propre au
+MCO, le dernier champ affiché (retenu dans le navigateur) pour un thème commun. Changer de
+champ garde la page quand l'autre champ a un thème de même slug, et ce qui suit le slug
+quand les deux thèmes le déclarent `cheminCommun` (le code de la fiche code) ; sinon, il
+mène à l'accueil du champ. Un thème propre à un champ rappelle celui-ci au-dessus de son
+titre.
 
 L'icône GitHub en haut à droite mène au dépôt. Le bouton « Signaler un problème » au pied
 de la barre latérale ouvre un mail à basile.fuchs@chu-brest.fr, prérempli avec l'adresse de
@@ -204,8 +215,10 @@ page le test et le libellé de chacune, la CM/CMD écrite face à ce libellé, e
 
 Ajouter un thème : créer `data/<theme>/`, une ligne dans `JEUX` de `build_data.py`, un
 fichier `docs/assets/js/themes/<module>.js` exportant une fonction `rendre(conteneur)`, et
-une ligne dans `docs/assets/js/registry.js` dont le champ `module` nomme ce fichier (il
-peut différer du `slug`, qui fait l'adresse du thème).
+une ligne dans `docs/assets/js/registry.js` dont l'attribut `module` nomme ce fichier (il
+peut différer du `slug`, qui fait l'adresse du thème) et `champ` le champ PMSI (`"mco"`
+ou `"smr"` ; sans `champ`, le thème est commun aux deux). L'ordre de cette liste est celui
+de la barre latérale.
 
 ## Déploiement
 

@@ -1,22 +1,25 @@
-// Page d'accueil : ce que le site contient, et comment s'y chercher.
+// Page d'accueil : ce que le site contient dans le champ affiché, et comment
+// s'y chercher.
 
-import { REGISTRY } from "../registry.js";
+import { champParId, themesDuChamp } from "../registry.js";
 import { el } from "../interface.js";
 
-function carte(theme) {
+function carte(theme, champ) {
   return el(
     "a",
-    { class: "carte-theme", href: `#/${theme.slug}` },
+    { class: "carte-theme", href: `#/${champ}/${theme.slug}` },
     el("span", { class: "etiquette" }, theme.section),
     el("span", { class: "titre" }, theme.titre),
     theme.resume ? el("span", { class: "resume" }, theme.resume) : null
   );
 }
 
-export async function rendre(conteneur) {
+export async function rendre(conteneur, { champ }) {
   conteneur.innerHTML = "";
 
-  const cartes = REGISTRY.filter((t) => t.slug !== "accueil" && !t.cache).map(carte);
+  const titreChamp = champParId(champ).titre;
+  const themes = themesDuChamp(champ).filter((t) => t.slug !== "accueil" && !t.cache);
+  const sansThemePropre = !themes.some((t) => t.champ === champ);
 
   conteneur.append(
     el("h1", {}, "PMSI+"),
@@ -35,14 +38,30 @@ export async function rendre(conteneur) {
     el(
       "p",
       {},
+      "Le sélecteur ",
+      el("strong", {}, "MCO · SMR"),
+      ", en tête de la barre latérale, choisit le champ : la barre latérale et cette page n'affichent que ses thèmes, et ceux communs aux deux champs."
+    ),
+    el(
+      "p",
+      {},
       "La recherche est la même partout : insensible à la casse et aux accents, et ",
       el("strong", {}, "plusieurs mots clefs séparés par un espace sont cumulatifs"),
       ". Chercher « arthroscopie genou » ne demande pas que les deux mots se suivent, ni même qu'ils soient dans la même colonne. La touche ",
       el("kbd", {}, "/"),
       " ramène au champ de recherche, et un clic sur un en-tête de colonne trie le tableau."
     ),
-    el("h2", {}, "Thèmes disponibles"),
-    el("div", { class: "grille-themes" }, ...cartes),
+    el("h2", {}, `Thèmes disponibles en ${titreChamp}`),
+    ...(sansThemePropre
+      ? [
+          el(
+            "p",
+            { class: "message-info" },
+            `Aucun thème propre au ${titreChamp} pour l'instant : seuls les thèmes communs aux deux champs sont affichés.`
+          ),
+        ]
+      : []),
+    el("div", { class: "grille-themes" }, ...themes.map((t) => carte(t, champ))),
     el(
       "p",
       { class: "pied-page" },

@@ -344,8 +344,10 @@ a:hover {
 }
 
 /* Eyebrow : capitales cyan très espacées, précédées d'un filet — c'est la
-   signature des intertitres de la charte. */
-.barre-laterale nav h2 {
+   signature des intertitres de la charte. Le champ d'une page (MCO, SMR)
+   le reprend au-dessus de son titre, cf. `.champ-pmsi`. */
+.barre-laterale nav h2,
+.champ-pmsi {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
@@ -353,10 +355,14 @@ a:hover {
   letter-spacing: var(--ls-eyebrow);
   text-transform: uppercase;
   color: var(--text-eyebrow-color);
+}
+
+.barre-laterale nav h2 {
   margin: var(--sp-6) 0 var(--sp-2);
 }
 
-.barre-laterale nav h2::before {
+.barre-laterale nav h2::before,
+.champ-pmsi::before {
   content: "";
   width: 16px;
   height: var(--bw-thick);
@@ -395,6 +401,49 @@ a:hover {
   border-left-color: var(--brand);
   color: var(--brand);
   font-weight: var(--fw-semibold);
+}
+
+/* ==== Sélecteur de champ (MCO, SMR) ==== */
+/* Un segment par champ, d'un seul bloc ; le champ affiché est plein, aux
+   couleurs du bouton principal. */
+.champs-pmsi {
+  display: flex;
+  border: var(--bw-hair) solid var(--border-default);
+}
+
+.champs-pmsi a {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  color: var(--text-secondary);
+  font: var(--text-label);
+  font-weight: var(--fw-semibold);
+  transition: background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+.champs-pmsi a + a {
+  border-left: var(--bw-hair) solid var(--border-default);
+}
+
+.champs-pmsi a:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.champs-pmsi a[aria-current="true"] {
+  background: var(--brand);
+  color: var(--text-inverse);
+}
+
+/* Le champ au-dessus du titre d'un thème qui lui est propre. Il se loge
+   dans la marge haute de la zone de contenu (12px de haut, -16px + 4px de
+   marges) : le titre ne bouge pas et reste sur la ligne de l'icône GitHub. */
+.champ-pmsi {
+  margin: calc(-1 * var(--sp-4)) 0 var(--sp-1);
 }
 
 /* ==== Boutons ==== */
@@ -2366,6 +2415,11 @@ ol.chemin > li::before {
 
   .contenu {
     padding: 0;
+  }
+
+  /* Sans marge haute à la zone de contenu, le champ n'a plus où se loger. */
+  .champ-pmsi {
+    margin-top: 0;
   }
 
   .zone-tableau {
