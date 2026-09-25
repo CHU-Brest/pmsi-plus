@@ -19,11 +19,11 @@
 // GME vers l'algorithme ne peut pas être posé dans sa cellule. Il est donné
 // au-dessus du tableau dès que les résultats ne couvrent qu'un GN.
 
-import * as recherche from "../recherche.js";
-import { el, fraicheur, champMotsClefs, resultats, nombre } from "../interface.js";
-import { chargerTarifsSmr } from "../smr.js";
-import { lienArbre, lienTarifs, natureGmt } from "../smr_interface.js";
-import { euros, jours } from "../tarifs.js";
+import * as recherche from "../../recherche.js";
+import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
+import { chargerTarifsSmr } from "../../smr.js";
+import { lienArbre, lienTarifs, natureGmt } from "../../smr_interface.js";
+import { euros, jours } from "../../tarifs.js";
 
 const COLONNES_CHERCHABLES = ["GMT", "GME", "Nature", "Libellé"];
 
@@ -34,7 +34,7 @@ const FORMATS = Object.fromEntries([...DUREES.map((c) => [c, jours]), ...MONTANT
 
 // Code de groupe, entier ou en partie : CM (« 01 »), GN (« 0147 »), GR
 // (« 0147S »), GL (« 0147SC ») ou GME (« 0147SC2 »). Même forme que dans
-// la recherche de l'algorithme (smr_arbre.js).
+// la recherche de l'algorithme (smr/arbre.js).
 const RE_CODE_GROUPE = /^\d{2}(?:\d{2}(?:[A-Z](?:[A-Z]\d?)?)?)?$/;
 const RE_GMT = /^\d{4}$/;
 // Longueur d'un préfixe de GME → niveau du groupe qu'il désigne.

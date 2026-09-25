@@ -17,10 +17,10 @@
 // ouvert sur ce groupe). L'adresse suit la sélection sans entrée
 // d'historique, comme l'algorithme MCO.
 
-import * as recherche from "../recherche.js";
-import { el, fraicheur, champMotsClefs, nombre } from "../interface.js";
-import { chargerActesSpe, chargerClassification, chargerTarifsSmr, libelleGroupe, TYPES_READAPTATION } from "../smr.js";
-import { groupeLibelle, lienCode, lienTarifs, noteTarifsSmr, sourceFg, tableTarifsGme } from "../smr_interface.js";
+import * as recherche from "../../recherche.js";
+import { el, fraicheur, champMotsClefs, nombre } from "../../interface.js";
+import { chargerActesSpe, chargerClassification, chargerTarifsSmr, libelleGroupe, TYPES_READAPTATION } from "../../smr.js";
+import { groupeLibelle, lienCode, lienTarifs, noteTarifsSmr, sourceFg, tableTarifsGme } from "../../smr_interface.js";
 
 // Au-delà, la liste de résultats demande d'affiner la recherche plutôt que
 // de dérouler des centaines de groupes (« 01 » en ramène plus de 400).

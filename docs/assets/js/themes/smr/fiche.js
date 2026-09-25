@@ -16,8 +16,8 @@
 // (`cheminCommun`) : « I634 », « i63.4 » ou « alq247 » y ouvrent la même
 // fiche, et l'adresse est réécrite dans la graphie du site.
 
-import { el, fraicheur, nombre } from "../interface.js";
-import { normaliser } from "../recherche.js";
+import { el, fraicheur, nombre } from "../../interface.js";
+import { normaliser } from "../../recherche.js";
 import {
   chargerSmr,
   cle,
@@ -32,8 +32,8 @@ import {
   libelleGroupe,
   orienteDansCm,
   positionAutorisee,
-} from "../smr.js";
-import { groupeLibelle, lienArbre, lienFiche, sourceFg } from "../smr_interface.js";
+} from "../../smr.js";
+import { groupeLibelle, lienArbre, lienFiche, sourceFg } from "../../smr_interface.js";
 
 const SUGGESTIONS_MAX = 12;
 // Au-delà, les intervenants d'une ligne de tableau se replient : une ligne

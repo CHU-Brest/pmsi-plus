@@ -3,8 +3,9 @@
 //
 // C'est la seule liste à tenir à jour pour ajouter, renommer ou réordonner un
 // thème ; son ordre est celui de la barre latérale et de la page d'accueil.
-// `module` nomme le fichier dans assets/js/themes/ qui exporte une
-// fonction `rendre(conteneur)`, cf. main.js pour le contrat exact ; `resume`
+// `module` nomme le fichier dans assets/js/themes/ qui exporte une fonction
+// `rendre(conteneur)` (« smr/fiche » : dans le sous-dossier du champ), cf.
+// main.js pour le contrat exact ; `resume`
 // est la phrase affichée sur la carte du thème en page d'accueil ; `travaux`
 // signale dans la barre latérale un thème encore en chantier ; `cache` garde
 // un thème joignable par son adresse (liens depuis la fiche code) sans
@@ -142,7 +143,7 @@ export const REGISTRY = [
     section: "Groupage",
     slug: "fiche",
     titre: "Fiche code",
-    module: "smr_fiche",
+    module: "smr/fiche",
     cheminCommun: true,
     resume: "Un code CIM-10, CSARR, CCAM ou CSAR : CM et listes de GN, positions permises, CMA et exclusions, pondérations, actes spécialisés.",
   },
@@ -151,7 +152,7 @@ export const REGISTRY = [
     section: "Groupage",
     slug: "groupage",
     titre: "Listes de la fonction groupage",
-    module: "smr_groupage",
+    module: "smr/groupage",
     resume: "Listes de diagnostics d'entrée dans les GN et listes d'actes spécialisés.",
   },
   {
@@ -159,7 +160,7 @@ export const REGISTRY = [
     section: "Groupage",
     slug: "arbre",
     titre: "Algorithme de la fonction groupage",
-    module: "smr_arbre",
+    module: "smr/arbre",
     resume: "De la CM au GME : tests d'entrée dans les GN, types de réadaptation et seuils, règles de lourdeur, sévérité.",
   },
   {
@@ -167,7 +168,7 @@ export const REGISTRY = [
     section: "Groupage",
     slug: "tarifs",
     titre: "Tarifs des GME",
-    module: "smr_tarifs",
+    module: "smr/tarifs",
     resume: "Arrêté tarifaire SMR, annexe I : tarifs des GMT de chaque GME, zones basse, forfaitaire et haute.",
   },
   {
@@ -175,7 +176,7 @@ export const REGISTRY = [
     section: "Groupage",
     slug: "erreurs",
     titre: "Erreurs de la fonction groupage",
-    module: "smr_erreurs",
+    module: "smr/erreurs",
     resume: "Codes erreur de la fonction groupage SMR, bloquants ou non.",
   },
   {
@@ -184,7 +185,7 @@ export const REGISTRY = [
     slug: "cma",
     cache: true,
     titre: "CMA et exclusions",
-    module: "smr_cma",
+    module: "smr/cma",
     resume: "Liste des CMA SMR (diagnostics et actes CCAM) et vérificateur d'exclusion.",
   },
   {
@@ -192,7 +193,7 @@ export const REGISTRY = [
     section: "Réadaptation",
     slug: "ponderations",
     titre: "Pondérations des actes",
-    module: "smr_ponderations",
+    module: "smr/ponderations",
     resume: "Actes CSARR et CCAM de réadaptation : pondération, par intervenant le cas échéant, modulateurs de lieu, caractère spécialisé.",
   },
   {
@@ -200,7 +201,7 @@ export const REGISTRY = [
     section: "Réadaptation",
     slug: "csar",
     titre: "Transcodage CSAR ↔ CSARR",
-    module: "smr_csar",
+    module: "smr/csar",
     resume: "L'acte CSARR que la fonction groupage retient pour chaque acte CSAR, et les actes CSAR qui aboutissent à chaque acte CSARR.",
   },
   {

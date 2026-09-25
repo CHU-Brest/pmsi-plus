@@ -8,10 +8,10 @@
 // séjour dans le GN retenu l'exclut. L'adresse #/smr/cma/<code> y pré-remplit
 // le code candidat (la fiche code y renvoie).
 
-import * as recherche from "../recherche.js";
-import { el, fraicheur, champMotsClefs, resultats, nombre } from "../interface.js";
-import { chargerClassification, chargerDiagnostics, chargerExclusions, cle, estExclue, graphie, normaliserActe } from "../smr.js";
-import { lienFiche, sourceFg } from "../smr_interface.js";
+import * as recherche from "../../recherche.js";
+import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
+import { chargerClassification, chargerDiagnostics, chargerExclusions, cle, estExclue, graphie, normaliserActe } from "../../smr.js";
+import { lienFiche, sourceFg } from "../../smr_interface.js";
 
 /** Nombre de codes de chaque liste d'exclusion : les plages ont pour bornes
  *  des codes de CIM_infos_SMR, dont le rang dans l'ordre trié donne la

@@ -3,8 +3,8 @@
 // façon : graphie des codes, libellés des groupes, positions permises d'un
 // diagnostic et erreurs qu'il lève, exclusions des CMA, caractère spécialisé
 // d'un acte. Les règles du groupage elles-mêmes (volume 1 du Manuel des
-// GME, data/smr/manuel_gme_volume_1.pdf) sont présentées par l'algorithme,
-// themes/smr_arbre.js.
+// GME, data/smr/groupage/manuel_gme_volume_1.pdf) sont présentées par
+// l'algorithme, themes/smr/arbre.js.
 //
 // Rien ici ne touche au DOM : les fonctions reçoivent les jeux chargés en
 // argument (`smr`, cf. chargerSmr). Partagé par les thèmes SMR : fiche code,
@@ -52,10 +52,14 @@ const LIBELLES = {
   tarifs: "tarifs des GMT (arrêté tarifaire SMR, annexe I)",
 };
 
-/** La classification (brute) et ses index : tests par CM, GME par GL. */
+/** La classification (brute) et ses index : tests par CM, GME par GL. Les
+ *  tables de la réadaptation (listes d'actes spécialisés, intervenants,
+ *  modulateurs, CSAR : readaptation/referentiel.json) la rejoignent : les
+ *  thèmes lisent un seul objet, quelle que soit la section de la source. */
 export function chargerClassification() {
-  return chargerJson("smr", "classification").then((k) => {
+  return Promise.all([chargerJson("smr/groupage", "classification"), chargerJson("smr/readaptation", "referentiel")]).then(([k, r]) => {
     if (!k._testsParCm) {
+      Object.assign(k, r, { millesimes: { ...k.millesimes, ...r.millesimes } });
       k._testsParCm = new Map();
       for (const t of k.tests) {
         if (!k._testsParCm.has(t.cm)) k._testsParCm.set(t.cm, []);
@@ -73,19 +77,19 @@ export function chargerClassification() {
 
 /** Les codes CIM-10, indexés par clef sans point. */
 export function chargerDiagnostics() {
-  return chargerJeu("smr", "diagnostics", LIBELLES.diagnostics).then((jeu) => {
+  return chargerJeu("smr/groupage", "diagnostics", LIBELLES.diagnostics).then((jeu) => {
     if (!jeu._parCle) jeu._parCle = new Map(jeu.lignes.map((l) => [cle(l.Code), l]));
     return jeu;
   });
 }
 
 export function chargerExclusions() {
-  return chargerJson("smr", "exclusions");
+  return chargerJson("smr/groupage", "exclusions");
 }
 
 /** Pondérations : code → lignes (une « 00 », ou une par intervenant). */
 export function chargerActes() {
-  return chargerJeu("smr", "actes", LIBELLES.actes).then((jeu) => {
+  return chargerJeu("smr/readaptation", "actes", LIBELLES.actes).then((jeu) => {
     if (!jeu._parCode) {
       jeu._parCode = new Map();
       for (const l of jeu.lignes) {
@@ -99,7 +103,7 @@ export function chargerActes() {
 
 /** Listes d'actes spécialisés : code → numéros de liste. */
 export function chargerActesSpe() {
-  return chargerJeu("smr", "actes_spe", LIBELLES.actesSpe).then((jeu) => {
+  return chargerJeu("smr/readaptation", "actes_spe", LIBELLES.actesSpe).then((jeu) => {
     if (!jeu._parCode) {
       jeu._parCode = new Map();
       for (const l of jeu.lignes) {
@@ -113,7 +117,7 @@ export function chargerActesSpe() {
 
 /** Transcodage CSAR : code CSAR → lignes (une par intervenant et modalité). */
 export function chargerCsar() {
-  return chargerJeu("smr", "csar", LIBELLES.csar).then((jeu) => {
+  return chargerJeu("smr/readaptation", "csar", LIBELLES.csar).then((jeu) => {
     if (!jeu._parCode) {
       jeu._parCode = new Map();
       for (const l of jeu.lignes) {
@@ -127,7 +131,7 @@ export function chargerCsar() {
 
 /** Tarifs des GMT : GME → lignes, GMT principal d'abord. */
 export function chargerTarifsSmr() {
-  return chargerJeu("smr", "tarifs", LIBELLES.tarifs).then((jeu) => {
+  return chargerJeu("smr/groupage", "tarifs", LIBELLES.tarifs).then((jeu) => {
     if (!jeu._parGme) {
       jeu._parGme = new Map();
       for (const l of jeu.lignes) {

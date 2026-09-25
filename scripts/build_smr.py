@@ -5,37 +5,43 @@ Usage :
     pip install -r scripts/requirements.txt
     python scripts/build_smr.py
 
-Sources, dans data/smr/, sous les noms que leur donne l'ATIH :
+Sources, sous les noms que leur donne l'ATIH, rangées comme les sections SMR
+de la barre latérale :
 
-- les fichiers associés au Manuel des GME (CIM_infos_SMR.xlsx,
-  GN_liste_tests.xlsx, GR_infos.xlsx, GL_infos.xlsx,
-  TOTAL_listes_groupes.xlsx, ACTES_ponderations.xlsx, ACTES_listes_SPE.xlsx,
-  CMA_exclusion.xlsx, CMA_CCAM.xlsx, CSAR_infos.xlsx, FG_erreurs.TXT) ;
-- ACTES_ponderations_CSAR_transcodage.xlsx, des fichiers CSAR de la phase de
-  transcodage : le seul à dire quels actes CSAR acceptent un modulateur de
-  temps ou de lieu ;
-- tarifs.xlsx : les annexes de l'arrêté tarifaire SMR, dont on reprend
-  l'annexe I (établissements des a, b et c de l'article L. 162-22 du code de
-  la sécurité sociale).
+- data/smr/groupage/ : les fichiers associés au Manuel des GME qui décrivent
+  la classification (CIM_infos_SMR.xlsx, GN_liste_tests.xlsx, GR_infos.xlsx,
+  GL_infos.xlsx, TOTAL_listes_groupes.xlsx, CMA_exclusion.xlsx,
+  CMA_CCAM.xlsx, FG_erreurs.TXT), tarifs.xlsx — les annexes de l'arrêté
+  tarifaire SMR, dont on reprend l'annexe I (établissements des a, b et c de
+  l'article L. 162-22 du code de la sécurité sociale) — et le volume 1 du
+  manuel ;
+- data/smr/readaptation/ : ceux des actes (ACTES_ponderations.xlsx,
+  ACTES_listes_SPE.xlsx, CSAR_infos.xlsx) et
+  ACTES_ponderations_CSAR_transcodage.xlsx, des fichiers CSAR de la phase de
+  transcodage, le seul à dire quels actes CSAR acceptent un modulateur de
+  temps ou de lieu.
 
-Cibles, dans docs/assets/data/smr/ :
+Cibles, dans docs/assets/data/smr/, avec le même découpage :
 
-- diagnostics.json : chaque code CIM-10, sa CM, les positions où il peut
-  être codé, son orientation en deuxième intention, son caractère de CMA et
-  ses listes d'entrée dans les GN ;
-- classification.json : libellés des groupes, tests d'entrée dans les GN,
-  types de réadaptation et seuils, règles de lourdeur, listes d'actes
-  spécialisés, actes CCAM CMA, modulateurs, intervenants, erreurs ;
-- exclusions.json : les listes d'exclusion des CMA, en plages de codes ;
-- actes.json, actes_spe.json : pondérations des actes CSARR et CCAM, et
-  listes d'actes spécialisés ;
-- csar.json : transcodage des actes CSAR en actes CSARR ;
-- tarifs.json : tarifs des GMT de l'annexe I de l'arrêté tarifaire.
+- groupage/diagnostics.json : chaque code CIM-10, sa CM, les positions où il
+  peut être codé, son orientation en deuxième intention, son caractère de
+  CMA et ses listes d'entrée dans les GN ;
+- groupage/classification.json : libellés des groupes, tests d'entrée dans
+  les GN, types de réadaptation et seuils, règles de lourdeur, actes CCAM
+  CMA, erreurs ;
+- groupage/exclusions.json : les listes d'exclusion des CMA, en plages de
+  codes ;
+- groupage/tarifs.json : tarifs des GMT de l'annexe I de l'arrêté tarifaire ;
+- readaptation/referentiel.json : listes d'actes spécialisés et GN qu'elles
+  couvrent, intervenants, modulateurs, modulateurs et intervenants du CSAR ;
+- readaptation/actes.json, readaptation/actes_spe.json : pondérations des
+  actes CSARR et CCAM, et listes d'actes spécialisés ;
+- readaptation/csar.json : transcodage des actes CSAR en actes CSARR.
 
 Les règles de l'algorithme (ordre des tests, seuils « par jour ET par
 séjour », pondération des actes CSAR…) ne sont pas dans ces fichiers mais
-dans le volume 1 du Manuel des GME (data/smr/manuel_gme_volume_1.pdf) : elles
-sont présentées par l'algorithme du site (docs/assets/js/themes/smr_arbre.js).
+dans le volume 1 du Manuel des GME (data/smr/groupage/manuel_gme_volume_1.pdf) : elles
+sont présentées par l'algorithme du site (docs/assets/js/themes/smr/arbre.js).
 
 Comme les autres scripts, celui-ci s'arrête plutôt que de deviner : un
 en-tête qui change, un test d'entrée en GN illisible, une liste citée mais
@@ -57,8 +63,28 @@ from openpyxl import load_workbook
 from millesime import millesime
 
 RACINE = Path(__file__).resolve().parent.parent
-SOURCES = RACINE / "data" / "smr"
+DONNEES = RACINE / "data" / "smr"
 SORTIE = RACINE / "docs" / "assets" / "data" / "smr"
+
+# Les sources se rangent comme les sections SMR de la barre latérale.
+SECTIONS = {
+    "groupage": (
+        "CIM_infos_SMR.xlsx", "GN_liste_tests.xlsx", "GR_infos.xlsx", "GL_infos.xlsx",
+        "TOTAL_listes_groupes.xlsx", "CMA_exclusion.xlsx", "CMA_CCAM.xlsx", "FG_erreurs.TXT", "tarifs.xlsx",
+    ),
+    "readaptation": (
+        "ACTES_ponderations.xlsx", "ACTES_listes_SPE.xlsx", "CSAR_infos.xlsx",
+        "ACTES_ponderations_CSAR_transcodage.xlsx",
+    ),
+}
+
+
+def source(fichier: str) -> Path:
+    """Chemin d'une source, dans le dossier de sa section."""
+    for section, fichiers in SECTIONS.items():
+        if fichier in fichiers:
+            return DONNEES / section / fichier
+    raise KeyError(f"{fichier} : source SMR non déclarée dans SECTIONS")
 
 
 class ErreurDonnees(Exception):
@@ -73,7 +99,7 @@ def feuille(fichier: str, nom: str, ligne_entete: int, attendu: list[str]) -> li
     la ligne `ligne_entete`, 1 pour la première). Un en-tête différent arrête
     la conversion : une colonne ajoutée, ôtée ou renommée par l'ATIH ne doit
     pas décaler les valeurs sous le nom d'une autre."""
-    classeur = load_workbook(SOURCES / fichier, read_only=True, data_only=True)
+    classeur = load_workbook(source(fichier), read_only=True, data_only=True)
     try:
         if nom not in classeur.sheetnames:
             raise ErreurDonnees(f"{fichier} : pas de feuille « {nom} » ({', '.join(classeur.sheetnames)})")
@@ -786,7 +812,7 @@ def lire_erreurs():
     ligne « code<tab>libellé » par acte)."""
     erreurs, actes_concernes = [], {}
     section = None
-    for n, ligne in enumerate((SOURCES / "FG_erreurs.TXT").read_bytes().decode("cp1252").splitlines(), start=1):
+    for n, ligne in enumerate(source("FG_erreurs.TXT").read_bytes().decode("cp1252").splitlines(), start=1):
         if not ligne.strip():
             continue
         ou = f"FG_erreurs.TXT, ligne {n}"
@@ -835,10 +861,10 @@ CAMPAGNE_TARIFS = (2026, "da188708ac9e94ab1cd416b1881c766c3dcd4b37c9e6e7120fa582
 
 def lire_tarifs(groupes):
     annee, empreinte = CAMPAGNE_TARIFS
-    lue = hashlib.sha256((SOURCES / "tarifs.xlsx").read_bytes()).hexdigest()
+    lue = hashlib.sha256(source("tarifs.xlsx").read_bytes()).hexdigest()
     if lue != empreinte:
         raise ErreurDonnees(f"tarifs.xlsx a changé : déclarer sa campagne dans CAMPAGNE_TARIFS, avec son empreinte {lue}")
-    classeur = load_workbook(SOURCES / "tarifs.xlsx", read_only=True, data_only=True)
+    classeur = load_workbook(source("tarifs.xlsx"), read_only=True, data_only=True)
     try:
         ws = classeur[FEUILLE_TARIFS]
         ws.reset_dimensions()
@@ -885,16 +911,17 @@ def lire_tarifs(groupes):
 # ==== Écriture ====
 
 
-def ecrire(nom: str, contenu: dict) -> None:
-    SORTIE.mkdir(parents=True, exist_ok=True)
-    cible = SORTIE / f"{nom}.json"
+def ecrire(section: str, nom: str, contenu: dict) -> None:
+    dossier = SORTIE / section
+    dossier.mkdir(parents=True, exist_ok=True)
+    cible = dossier / f"{nom}.json"
     cible.write_text(json.dumps(contenu, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"{cible.relative_to(RACINE)} : {cible.stat().st_size // 1024} Ko")
 
 
-def colonnaire(colonnes: list[str], valeurs: list[list], source: str, **extra) -> dict:
+def colonnaire(colonnes: list[str], valeurs: list[list], fichier: str, **extra) -> dict:
     """Le format de build_data.py, que chargerJeu() (donnees.js) relit."""
-    return {"millesime": millesime(SOURCES / source), **extra, "colonnes": colonnes, "valeurs": valeurs}
+    return {"millesime": millesime(source(fichier)), **extra, "colonnes": colonnes, "valeurs": valeurs}
 
 
 def main() -> None:
@@ -919,6 +946,7 @@ def main() -> None:
         sys.exit(f"Conversion impossible : {e}")
 
     ecrire(
+        "groupage",
         "diagnostics",
         colonnaire(
             ["Code", "Libellé", "CM", "Profil", "Deuxième intention", "CMA", "Listes"],
@@ -927,12 +955,13 @@ def main() -> None:
         ),
     )
     ecrire(
+        "groupage",
         "classification",
         {
             "millesimes": {
-                f: millesime(SOURCES / f)
+                f: millesime(source(f))
                 for f in ("TOTAL_listes_groupes.xlsx", "GN_liste_tests.xlsx", "GR_infos.xlsx", "GL_infos.xlsx",
-                          "ACTES_listes_SPE.xlsx", "CMA_CCAM.xlsx", "CSAR_infos.xlsx", "FG_erreurs.TXT")
+                          "CMA_CCAM.xlsx", "FG_erreurs.TXT")
             },
             "groupes": groupes,
             "listes": listes,
@@ -940,21 +969,34 @@ def main() -> None:
             "gr": gr,
             "gl": gl,
             "classesAge": CLASSES_AGE,
-            "listesSpe": listes_spe,
-            "gnListeSpe": gn_liste,
             "cmaCcam": cma_ccam,
-            "intervenants": intervenants,
-            "modulateurs": modulateurs,
-            "csar": {"transposition": transposition, "temps": temps, "lieu": lieu_csar, "modulables": modulables},
             "erreurs": erreurs,
             "actesErreurs": actes_erreurs,
         },
     )
     ecrire(
+        "groupage",
         "exclusions",
-        {"millesime": millesime(SOURCES / "CMA_exclusion.xlsx"), "cma": exclusions_cma, "listes": listes_exclusion},
+        {"millesime": millesime(source("CMA_exclusion.xlsx")), "cma": exclusions_cma, "listes": listes_exclusion},
     )
     ecrire(
+        "readaptation",
+        "referentiel",
+        {
+            "millesimes": {
+                f: millesime(source(f))
+                for f in ("ACTES_ponderations.xlsx", "ACTES_listes_SPE.xlsx", "CSAR_infos.xlsx",
+                          "ACTES_ponderations_CSAR_transcodage.xlsx")
+            },
+            "listesSpe": listes_spe,
+            "gnListeSpe": gn_liste,
+            "intervenants": intervenants,
+            "modulateurs": modulateurs,
+            "csar": {"transposition": transposition, "temps": temps, "lieu": lieu_csar, "modulables": modulables},
+        },
+    )
+    ecrire(
+        "readaptation",
         "actes",
         colonnaire(
             ["Code", "Nomenclature", "Type", "Statut", "Intervenant", "Hiérarchie", "Libellé", "Pondération",
@@ -964,10 +1006,12 @@ def main() -> None:
         ),
     )
     ecrire(
+        "readaptation",
         "actes_spe",
         colonnaire(["Code", "Hiérarchie", "Nomenclature", "Libellé", "CM", "Liste", "Libellé liste"], actes_spe, "ACTES_listes_SPE.xlsx"),
     )
     ecrire(
+        "readaptation",
         "csar",
         colonnaire(
             ["Code CSAR", "Libellé CSAR", "Intervenant", "Modalité", "Code CSARR", "Libellé CSARR", "Équivalent",
@@ -977,6 +1021,7 @@ def main() -> None:
         ),
     )
     ecrire(
+        "groupage",
         "tarifs",
         colonnaire(list(COLONNES_TARIFS.values()), tarifs, "tarifs.xlsx", campagne=campagne),
     )

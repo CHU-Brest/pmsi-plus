@@ -16,10 +16,10 @@
 // L'adresse #/smr/csar/<recherche> pré-remplit le champ (« 01E01 »,
 // « ALQ+183 », « déglutition »).
 
-import * as recherche from "../recherche.js";
-import { el, fraicheur, champMotsClefs, nombre } from "../interface.js";
-import { chargerClassification, chargerCsar } from "../smr.js";
-import { lienFiche, sourceFg } from "../smr_interface.js";
+import * as recherche from "../../recherche.js";
+import { el, fraicheur, champMotsClefs, nombre } from "../../interface.js";
+import { chargerClassification, chargerCsar } from "../../smr.js";
+import { lienFiche, sourceFg } from "../../smr_interface.js";
 
 const MODALITES = { 0: "individuel", 1: "collectif", 2: "individuel ou collectif" };
 // Au-delà, la liste des intervenants d'une condition se résume.

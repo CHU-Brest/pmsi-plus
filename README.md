@@ -65,16 +65,19 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   groupage/manuel_ghm_volume_1_annexe_{4,5}.pdf   CMA × listes d'exclusion (ATIH)
   groupage/manuel_ghm_volume_3.pdf   Manuel des GHM, volume 3, tel que livré par l'ATIH
   medicaments/{rh,les}.png    captures VIDAL Hoptimal, sans donnée tabulée
-  smr/*.xlsx, smr/FG_erreurs.TXT   fichiers associés au Manuel des GME, sous les noms de l'ATIH
-  smr/ACTES_ponderations_CSAR_transcodage.xlsx   actes CSAR et modulateurs qu'ils acceptent (ATIH)
-  smr/tarifs.xlsx             annexes de l'arrêté tarifaire SMR ; seule l'annexe I (« Tarifs GMT - DAF ») est reprise
-  smr/manuel_gme_volume_1.pdf   Manuel des GME, volume 1 : les règles que présente l'algorithme SMR
+  smr/groupage/               fichiers associés au Manuel des GME qui décrivent la classification
+                              (CIM_infos_SMR, GN_liste_tests, GR_infos, GL_infos, TOTAL_listes_groupes,
+                              CMA_exclusion, CMA_CCAM, FG_erreurs), sous les noms de l'ATIH
+  smr/groupage/tarifs.xlsx    annexes de l'arrêté tarifaire SMR ; seule l'annexe I (« Tarifs GMT - DAF ») est reprise
+  smr/groupage/manuel_gme_volume_1.pdf   Manuel des GME, volume 1 : les règles que présente l'algorithme SMR
+  smr/readaptation/           fichiers des actes (ACTES_ponderations, ACTES_listes_SPE, CSAR_infos) et
+                              ACTES_ponderations_CSAR_transcodage (actes CSAR et modulateurs qu'ils acceptent)
 
 scripts/
   build_data.py               xlsx (et cma.csv) → JSON, seule dépendance : openpyxl
   build_arbre.py              PDF du manuel → arbre.json, seule dépendance : pymupdf
   build_cma.py                annexes 4 et 5 du volume 1 → cma_exclusions.json (pymupdf)
-  build_smr.py                fichiers de la fonction groupage SMR → data/smr/*.json (openpyxl)
+  build_smr.py                data/smr/<section>/ → docs/assets/data/smr/<section>/*.json (openpyxl)
   millesime.py                date du drapeau de fraîcheur, commune aux deux scripts
   requirements.txt
 
@@ -92,9 +95,10 @@ docs/                         racine servie par GitHub Pages
       smr.js                   fonction groupage SMR : chargement des jeux, positions permises, exclusions des CMA, actes spécialisés, sans DOM
       smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tarifs d'un GME)
       themes/<module>.js       une vue par thème (`module` de registry.js)
+      themes/smr/<module>.js   les thèmes propres au SMR, dans le sous-dossier de leur champ
     data/<theme>/<jeu>.json    généré par build_data.py, ne pas éditer à la main
     data/groupage/arbre.json   généré par build_arbre.py, ne pas éditer à la main
-    data/smr/<jeu>.json        généré par build_smr.py, ne pas éditer à la main
+    data/smr/<section>/<jeu>.json   généré par build_smr.py, ne pas éditer à la main
     img/{rh,les}.png           copies de data/medicaments/ servies par le site
     img/chu-brest.jpg          logo institutionnel, fourni par la charte — jamais redessiné
 ```
@@ -231,7 +235,8 @@ La page d'orientation (page 9) n'emploie aucun des symboles des autres pages : s
 page le test et le libellé de chacune, la CM/CMD écrite face à ce libellé, et leur ordre.
 
 Ajouter un thème : créer `data/<theme>/`, une ligne dans `JEUX` de `build_data.py`, un
-fichier `docs/assets/js/themes/<module>.js` exportant une fonction `rendre(conteneur)`, et
+fichier `docs/assets/js/themes/<module>.js` (`themes/smr/` pour un thème propre au SMR)
+exportant une fonction `rendre(conteneur)`, et
 une ligne dans `docs/assets/js/registry.js` dont l'attribut `module` nomme ce fichier (il
 peut différer du `slug`, qui fait l'adresse du thème) et `champ` le champ PMSI (`"mco"`
 ou `"smr"` ; sans `champ`, le thème est commun aux deux). L'ordre de cette liste est celui
@@ -242,11 +247,13 @@ de la barre latérale.
 Les tables du groupage SMR viennent des fichiers associés au Manuel des GME, que l'ATIH
 publie à chaque version de la fonction groupage ; les règles qui les relient (ordre des
 tests, seuils « par jour ET par séjour », pondération des actes CSAR, exclusions des CMA…)
-viennent du volume 1 du manuel : l'algorithme (`themes/smr_arbre.js`) les présente étape
+viennent du volume 1 du manuel : l'algorithme (`themes/smr/arbre.js`) les présente étape
 par étape, en citant le paragraphe de chacune.
 
-1. Remplacer les fichiers de `data/smr/` par ceux de la nouvelle version, sous les mêmes
-   noms (ceux de l'ATIH ; `tarifs.xlsx` pour les annexes de l'arrêté tarifaire).
+1. Remplacer les fichiers de `data/smr/groupage/` et `data/smr/readaptation/` par ceux de
+   la nouvelle version, sous les mêmes noms (ceux de l'ATIH ; `tarifs.xlsx` pour les
+   annexes de l'arrêté tarifaire). La section de chaque fichier est déclarée dans
+   `SECTIONS` (`build_smr.py`).
 2. `python scripts/build_smr.py`. Le script vérifie les en-têtes, que chaque liste citée
    par un test d'entrée en GN existe, que les GN, GR, GL et GME concordent d'un fichier à
    l'autre, que les règles de lourdeur se lisent et ne donnent que des niveaux connus, que
@@ -255,7 +262,7 @@ par étape, en citant le paragraphe de chacune.
    règle du MCO : sa campagne est déclarée dans `CAMPAGNE_TARIFS`, avec l'empreinte que
    donne le message d'arrêt.
 3. Relire le volume 1 de la nouvelle version : une règle qui change se reporte dans
-   l'algorithme (`themes/smr_arbre.js`), et dans `smr.js` si elle touche aux positions
+   l'algorithme (`themes/smr/arbre.js`), et dans `smr.js` si elle touche aux positions
    permises, aux exclusions des CMA ou aux actes spécialisés.
 4. Committer les fichiers de l'ATIH et les JSON générés ensemble.
 

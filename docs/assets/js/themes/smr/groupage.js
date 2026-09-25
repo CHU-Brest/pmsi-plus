@@ -10,10 +10,10 @@
 // fiche des codes trouvés est donc donné à part, sous la barre de
 // recherche, dès que la recherche n'en rend que quelques-uns.
 
-import * as recherche from "../recherche.js";
-import { el, fraicheur, champMotsClefs, resultats, nombre } from "../interface.js";
-import { chargerActesSpe, chargerClassification, chargerDiagnostics, cle, graphie, libelleGroupe } from "../smr.js";
-import { lienArbre, lienCode, sourceFg } from "../smr_interface.js";
+import * as recherche from "../../recherche.js";
+import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
+import { chargerActesSpe, chargerClassification, chargerDiagnostics, cle, graphie, libelleGroupe } from "../../smr.js";
+import { lienArbre, lienCode, sourceFg } from "../../smr_interface.js";
 
 // Au-delà, une ligne de liens serait plus longue que le tableau qu'elle
 // accompagne : la recherche est trop large pour qu'on vise un code.

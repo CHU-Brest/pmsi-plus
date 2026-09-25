@@ -8,10 +8,10 @@
 // intervenant, 0 pour un intervenant non attendu — est dans sa fiche code.
 // L'adresse #/smr/ponderations/<recherche> pré-remplit le champ.
 
-import * as recherche from "../recherche.js";
-import { el, fraicheur, champMotsClefs, resultats, nombre } from "../interface.js";
-import { chargerActes, chargerActesSpe, chargerClassification } from "../smr.js";
-import { lienFiche } from "../smr_interface.js";
+import * as recherche from "../../recherche.js";
+import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
+import { chargerActes, chargerActesSpe, chargerClassification } from "../../smr.js";
+import { lienFiche } from "../../smr_interface.js";
 
 const COLONNES_CHERCHABLES = ["Code", "Libellé", "Spécialisé"];
 const NOMENCLATURES = ["CSARR", "CCAM"];

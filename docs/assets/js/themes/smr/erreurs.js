@@ -6,10 +6,10 @@
 // non bloquante est signalée sans l'arrêter. L'adresse
 // #/smr/erreurs/<recherche> pré-remplit le champ (« 162 », « intervenant »).
 
-import * as recherche from "../recherche.js";
-import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
-import { chargerClassification } from "../smr.js";
-import { lienFiche, sourceFg } from "../smr_interface.js";
+import * as recherche from "../../recherche.js";
+import { el, fraicheur, champMotsClefs, resultats } from "../../interface.js";
+import { chargerClassification } from "../../smr.js";
+import { lienFiche, sourceFg } from "../../smr_interface.js";
 
 const COLONNES_CHERCHABLES = ["Code", "Libellé"];
 
