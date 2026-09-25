@@ -68,7 +68,7 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   smr/*.xlsx, smr/FG_erreurs.TXT   fichiers associés au Manuel des GME, sous les noms de l'ATIH
   smr/ACTES_ponderations_CSAR_transcodage.xlsx   actes CSAR et modulateurs qu'ils acceptent (ATIH)
   smr/tarifs.xlsx             annexes de l'arrêté tarifaire SMR ; seule l'annexe I (« Tarifs GMT - DAF ») est reprise
-  smr/manuel_gme_volume_1.pdf   Manuel des GME, volume 1 : les règles transcrites dans smr.js
+  smr/manuel_gme_volume_1.pdf   Manuel des GME, volume 1 : les règles que présente l'algorithme SMR
 
 scripts/
   build_data.py               xlsx (et cma.csv) → JSON, seule dépendance : openpyxl
@@ -89,7 +89,7 @@ docs/                         racine servie par GitHub Pages
       interface.js             drapeau de fraîcheur, champ de recherche, tableau
       donnees.js               chargement JSON avec cache mémoire
       tarifs.js                tarifs des GHS : index par GHM, table compacte (thème, fiche code, algorithme)
-      smr.js                   fonction groupage SMR : chargement des jeux et algorithme (CM, GN, GR, GL, GME), sans DOM
+      smr.js                   fonction groupage SMR : chargement des jeux, positions permises, exclusions des CMA, actes spécialisés, sans DOM
       smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tarifs d'un GME)
       themes/<module>.js       une vue par thème (`module` de registry.js)
     data/<theme>/<jeu>.json    généré par build_data.py, ne pas éditer à la main
@@ -242,8 +242,8 @@ de la barre latérale.
 Les tables du groupage SMR viennent des fichiers associés au Manuel des GME, que l'ATIH
 publie à chaque version de la fonction groupage ; les règles qui les relient (ordre des
 tests, seuils « par jour ET par séjour », pondération des actes CSAR, exclusions des CMA…)
-viennent du volume 1 du manuel et sont transcrites dans `docs/assets/js/smr.js`, chaque
-fonction citant le paragraphe qu'elle applique.
+viennent du volume 1 du manuel : l'algorithme (`themes/smr_arbre.js`) les présente étape
+par étape, en citant le paragraphe de chacune.
 
 1. Remplacer les fichiers de `data/smr/` par ceux de la nouvelle version, sous les mêmes
    noms (ceux de l'ATIH ; `tarifs.xlsx` pour les annexes de l'arrêté tarifaire).
@@ -255,7 +255,8 @@ fonction citant le paragraphe qu'elle applique.
    règle du MCO : sa campagne est déclarée dans `CAMPAGNE_TARIFS`, avec l'empreinte que
    donne le message d'arrêt.
 3. Relire le volume 1 de la nouvelle version : une règle qui change se reporte dans
-   `smr.js` et dans l'algorithme (`themes/smr_arbre.js`), qui la présente.
+   l'algorithme (`themes/smr_arbre.js`), et dans `smr.js` si elle touche aux positions
+   permises, aux exclusions des CMA ou aux actes spécialisés.
 4. Committer les fichiers de l'ATIH et les JSON générés ensemble.
 
 Particularités des fichiers de l'ATIH, relevées par le script : dans

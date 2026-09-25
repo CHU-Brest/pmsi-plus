@@ -35,7 +35,7 @@ Cibles, dans docs/assets/data/smr/ :
 Les règles de l'algorithme (ordre des tests, seuils « par jour ET par
 séjour », pondération des actes CSAR…) ne sont pas dans ces fichiers mais
 dans le volume 1 du Manuel des GME (data/smr/manuel_gme_volume_1.pdf) : elles
-sont transcrites dans docs/assets/js/smr.js.
+sont présentées par l'algorithme du site (docs/assets/js/themes/smr_arbre.js).
 
 Comme les autres scripts, celui-ci s'arrête plutôt que de deviner : un
 en-tête qui change, un test d'entrée en GN illisible, une liste citée mais
@@ -254,7 +254,7 @@ def lire_diagnostics(cm_connues: set[str]):
 
 RE_TEST = re.compile(r"(MMP ou AE|MMP|AE|DAS) D-(\d{4})\b\s*[-–]?\s*(.*)", re.S)
 # Conditions écrites en toutes lettres dans le seul test du GN 0871
-# (fractures multiples), transcrites en deux règles de smr.js.
+# (fractures multiples), réduites à deux mots-clefs que le site affiche.
 CONDITIONS = {
     "Si la MMP et l'AE sont classantes, seul, le code en MMP est retenu comme classant.": "mmpPrioritaire",
     "Les 4 premiers caractères du code classant en DAS doivent être différents des 4 premiers caractères du code classant en MMP ou AE.": "quatreCaracteresDifferents",

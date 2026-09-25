@@ -8,8 +8,8 @@
 // Les règles qui relient ces tables sont celles du volume 1 du Manuel des
 // GME, présentées étape par étape dans l'ordre du groupage : orientation en
 // CM (2.2.1), tests d'entrée en GN (2.2.2), type de réadaptation (3.4),
-// lourdeur (4.2), sévérité (5.2). Elles doivent rester celles qu'écrit
-// smr.js : une règle qui change dans l'un se reporte dans l'autre.
+// lourdeur (4.2), sévérité (5.2). Une règle qui change dans une nouvelle
+// version du manuel se reporte ici.
 //
 // Adresses : #/smr/arbre (vue d'ensemble et orientation en CM),
 // #/smr/arbre/<CM> (tests d'entrée en GN de la CM), #/smr/arbre/<GN> (le GN
@@ -29,7 +29,7 @@ const RESULTATS_MAX = 40;
 // aucun test d'entrée en GN ; elle n'a rien à montrer dans le sélecteur.
 const CM_ERREURS = "90";
 const NIVEAUX = ["CM", "GN", "GR", "GL", "GME"];
-// Types de réadaptation dans l'ordre où grouperReadaptation les teste :
+// Types de réadaptation dans l'ordre où le manuel les teste (3.4) :
 // pédiatrique d'abord, puis du plus au moins spécialisé ou intense.
 const TYPES_HC = ["P", "S", "T", "U"];
 const TYPES_HTP = ["H", "I", "J", "K", "L"];
@@ -48,7 +48,7 @@ const POSITIONS = {
 
 // Conditions du seul test écrit en toutes lettres (GN 0871, fractures
 // multiples), telles que les donne GN_liste_tests.xlsx ; build_smr.py les
-// réduit à ces deux mots-clefs, qu'applique evaluerNoeud (smr.js).
+// réduit à ces deux mots-clefs.
 const CONDITIONS = {
   mmpPrioritaire: "Si la MMP et l'AE sont classantes, seul le code en MMP est retenu comme classant.",
   quatreCaracteresDifferents:
@@ -186,10 +186,10 @@ function sansMotReadaptation(type) {
   return type.replace(/^réadaptation /, "");
 }
 
-// ==== Règles du type de réadaptation (grouperReadaptation, smr.js) ====
+// ==== Règles du type de réadaptation (volume 1, 3.4) ====
 
-/** Condition d'un test sur un couple de seuils [séjour, jour] (testSeuils,
- *  smr.js) : positive quand les deux scores atteignent leur seuil ; un
+/** Condition d'un test sur un couple de seuils [séjour, jour] (tableau 5
+ *  du manuel) : positive quand les deux scores atteignent leur seuil ; un
  *  seuil absent de GR_infos ne s'oppose pas au test. */
 function conditionSeuils(score, [sejour, jour]) {
   const parties = [];
@@ -200,7 +200,7 @@ function conditionSeuils(score, [sejour, jour]) {
 }
 
 /** Les tests du type de réadaptation en HC, dans l'ordre et avec les
- *  branches de grouperReadaptation : { si, type, precision }. */
+ *  branches du manuel (3.4.1) : { si, type, precision }. */
 function etapesHc(e) {
   const etapes = [];
   if (e.hc.includes("P")) {
@@ -224,8 +224,8 @@ function etapesHc(e) {
   return etapes;
 }
 
-/** Les tests du type de réadaptation en HTP, dans l'ordre de
- *  grouperReadaptation. */
+/** Les tests du type de réadaptation en HTP, dans l'ordre du manuel
+ *  (3.4.2). */
 function etapesHtp(e) {
   const etapes = [];
   if (e.htp.includes("H")) {
@@ -476,7 +476,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       "ensemble"
     );
 
-    // Les étapes d'orientation suivent orienterCm (smr.js) branche à branche.
+    // Les étapes d'orientation suivent la figure 4 du manuel branche à branche.
     const oui = () => el("span", { class: "issue oui" }, "oui");
     const non = () => el("span", { class: "issue non" }, "non");
     const etapes = [
@@ -551,11 +551,11 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     );
   }
 
-  // ---- Tests d'entrée en GN d'une CM (orienterGn, smr.js) ----
+  // ---- Tests d'entrée en GN d'une CM (volume 1, 2.2.2) ----
 
   function vueCm(cm) {
     const noeuds = k._testsParCm.get(cm);
-    // Même recherche de l'erreur que orienterGn : celle qui nomme la CM.
+    // L'erreur de FG_erreurs qui nomme la CM (301 à 314).
     const erreur = k.erreurs.find(([, libelle]) => libelle.endsWith(`dans la CM ${cm}`));
     const lignes = noeuds.map((noeud) => {
       const autres = index.rangs.get(noeud.gn).filter((r) => r !== noeud.ordre);
@@ -805,10 +805,10 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     ].filter(Boolean);
   }
 
-  // ---- Lourdeur (grouperLourdeur, smr.js) ----
+  // ---- Lourdeur (volume 1, 4.2) ----
 
   function blocLourdeur(grs) {
-    // Les classes que lit grouperLourdeur : classe d'âge de GL_infos,
+    // Les classes de GL_infos : classe d'âge,
     // dépendance cognitive [2-6] [7-8], physique [4-8] [9-12] [13-16],
     // statut post-chirurgical sans ou avec.
     const variables = [
@@ -868,7 +868,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       );
     }
     // Règles combinées (4.2.2.1) : le niveau de la dépendance physique
-    // dépend aussi de l'âge, que niveauVariable (smr.js) lit par tranches.
+    // dépend aussi de l'âge, lu par tranches.
     grs.forEach((gr, j) => {
       const phy = regles[j].phy;
       const combinees = phy.map((v, i) => [v, variables[2].classes[i]]).filter(([v]) => Array.isArray(v));
@@ -898,7 +898,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     return el("td", { class: "niveau" }, valeur);
   }
 
-  // ---- Sévérité et GME (grouperSeverite, smr.js) ----
+  // ---- Sévérité et GME (volume 1, 5.2) ----
 
   function blocGme(gn, hc, htp) {
     const corps = [...hc, ...htp].flatMap((gr) =>

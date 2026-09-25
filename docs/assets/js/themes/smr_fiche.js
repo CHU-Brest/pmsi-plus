@@ -78,7 +78,7 @@ const POSITIONS_LONGUES = {
 
 // Conditions du seul test écrit en toutes lettres (GN 0871, fractures
 // multiples), telles que les donne GN_liste_tests.xlsx ; build_smr.py les
-// réduit à ces deux mots-clefs, que smr.js applique.
+// réduit à ces deux mots-clefs.
 const CONDITIONS = {
   mmpPrioritaire: "Si la MMP et l'AE sont classantes, seul le code en MMP est retenu comme classant.",
   quatreCaracteresDifferents:
