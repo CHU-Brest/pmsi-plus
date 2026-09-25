@@ -1,6 +1,6 @@
 // Composants d'affichage partagés par les thèmes SMR : source de la
 // fonction groupage, liens entre thèmes, libellés des groupes et table des
-// tarifs d'un GME. Le calcul, lui, est dans smr.js (sans DOM).
+// tarifs d'un GME. Les règles de groupage, elles, sont dans smr.js (sans DOM).
 
 import { el } from "./interface.js";
 import { euros, jours } from "./tarifs.js";

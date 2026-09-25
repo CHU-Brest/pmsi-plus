@@ -8,7 +8,7 @@
 // Les fonctions de groupage sont pures : elles reçoivent les jeux chargés en
 // argument (`smr`, cf. chargerSmr) et ne touchent pas au DOM, pour être
 // vérifiées hors du navigateur. Partagé par les thèmes SMR : fiche code,
-// listes, algorithme, calcul du GME, tarifs, pondérations, transcodage CSAR.
+// listes, algorithme, tarifs, pondérations, transcodage CSAR, CMA.
 
 import { chargerJeu, chargerJson } from "./donnees.js";
 

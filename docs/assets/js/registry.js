@@ -165,15 +165,6 @@ export const REGISTRY = [
   {
     champ: "smr",
     section: "Groupage",
-    slug: "calcul",
-    titre: "Calcul du GME",
-    module: "smr_calcul",
-    travaux: true,
-    resume: "Groupe un séjour d'HC ou un RHS d'HTP pas à pas, des diagnostics et des actes jusqu'au GME et à ses tarifs.",
-  },
-  {
-    champ: "smr",
-    section: "Groupage",
     slug: "tarifs",
     titre: "Tarifs des GME",
     module: "smr_tarifs",

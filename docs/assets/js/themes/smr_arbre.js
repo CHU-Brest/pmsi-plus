@@ -5,12 +5,11 @@
 // tables (GN_liste_tests, GR_infos, GL_infos), que build_smr.py reprend
 // telles quelles dans classification.json.
 //
-// Les règles qui relient ces tables ne sont pas retranscrites ici depuis le
-// manuel : chaque étape affichée suit, dans le même ordre, la fonction de
-// smr.js qui l'applique (orienterCm, orienterGn, grouperReadaptation,
-// grouperLourdeur, grouperSeverite), pour que la page dise exactement ce que
-// calcule le thème « Calcul du GME ». Une règle qui change dans smr.js
-// se reporte donc ici.
+// Les règles qui relient ces tables sont celles du volume 1 du Manuel des
+// GME, présentées étape par étape dans l'ordre du groupage : orientation en
+// CM (2.2.1), tests d'entrée en GN (2.2.2), type de réadaptation (3.4),
+// lourdeur (4.2), sévérité (5.2). Elles doivent rester celles qu'écrit
+// smr.js : une règle qui change dans l'un se reporte dans l'autre.
 //
 // Adresses : #/smr/arbre (vue d'ensemble et orientation en CM),
 // #/smr/arbre/<CM> (tests d'entrée en GN de la CM), #/smr/arbre/<GN> (le GN
@@ -323,9 +322,8 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       {},
       "Le groupage d'un séjour SMR tel que le décrit le volume 1 du Manuel des GME : orientation en catégorie majeure (CM), " +
         "tests d'entrée dans les groupes nosologiques (GN), type de réadaptation, niveau de lourdeur, niveau de sévérité. " +
-        "Les tables sont celles des fichiers de l'ATIH ; les règles qui les relient, celles qu'applique le ",
-      el("a", { class: "lien-texte", href: "#/smr/calcul" }, "calcul du GME"),
-      ". Une CM donne ses tests d'entrée en GN ; un GN, ses types de réadaptation et leurs seuils, ses règles de lourdeur, " +
+        "Les tables sont celles des fichiers de l'ATIH ; les règles qui les relient, celles du volume 1. " +
+        "Une CM donne ses tests d'entrée en GN ; un GN, ses types de réadaptation et leurs seuils, ses règles de lourdeur, " +
         "ses GME et leurs tarifs."
     ),
     el("div", { class: "barre-outils" }, blocCm, champ),

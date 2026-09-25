@@ -25,7 +25,6 @@ individuelle — sont repris ici :
 | SMR | Groupage | Fiche code | un code CIM-10, CSARR, CCAM ou CSAR sur une page : CM, positions permises, orientation en deuxième intention, listes et tests d'entrée en GN, CMA et exclusions ; pondérations, actes spécialisés, transcodage CSAR |
 | SMR | Groupage | Listes de la fonction groupage | listes de diagnostics d'entrée dans les GN, listes d'actes spécialisés |
 | SMR | Groupage | Algorithme de la fonction groupage | Manuel des GME, volume 1 : orientation en CM, tests d'entrée dans les GN, types de réadaptation et seuils, règles de lourdeur, sévérité ; GME et tarifs de chaque GN |
-| SMR | Groupage | Calcul du GME | groupage pas à pas d'un séjour d'HC ou d'un RHS d'HTP, scores de réadaptation calculés depuis les actes ou saisis |
 | SMR | Groupage | Tarifs des GME | arrêté tarifaire SMR, annexe I (établissements des a, b et c de l'article L. 162-22 du CSS) : GMT de chaque GME |
 | SMR | Groupage | Erreurs de la fonction groupage | codes erreur de la fonction groupage SMR |
 | SMR | Groupage (depuis la fiche) | CMA et exclusions | CMA SMR (diagnostics et actes CCAM) et vérificateur d'exclusion par les codes orientant dans le GN |
@@ -256,8 +255,7 @@ fonction citant le paragraphe qu'elle applique.
    règle du MCO : sa campagne est déclarée dans `CAMPAGNE_TARIFS`, avec l'empreinte que
    donne le message d'arrêt.
 3. Relire le volume 1 de la nouvelle version : une règle qui change se reporte dans
-   `smr.js`. Les exemples chiffrés du manuel (GN 0147, 0118, 0839) doivent donner les
-   mêmes groupes dans le thème « Calcul du GME ».
+   `smr.js` et dans l'algorithme (`themes/smr_arbre.js`), qui la présente.
 4. Committer les fichiers de l'ATIH et les JSON générés ensemble.
 
 Particularités des fichiers de l'ATIH, relevées par le script : dans
