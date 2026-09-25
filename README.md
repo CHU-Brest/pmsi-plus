@@ -8,21 +8,29 @@ du CHU de Brest.
 Seuls les thèmes d'**aide au codage** — des référentiels qu'on cherche, sans donnée
 individuelle — sont repris ici :
 
-| Section | Thème | Contenu |
-|---|---|---|
-| CIM-10 | Intox CIM-10 | médicaments → codes CIM-10 d'intoxication ; effets nocifs par substance |
-| CIM-10 | Germes CIM-10 | germes → code CIM-10, avec et sans sepsis |
-| HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
-| HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
-| HDJ | Contexte patient | codes CIM-10 de contexte et justification |
-| Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : étapes de l'arbre qui le testent, racines possibles et leurs tarifs, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
-| Groupage | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
-| Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes ; chemin et tarifs de chaque case de GHM |
-| Groupage | Tarifs des GHS | arrêté tarifaire MCO, secteur public : tarif de chaque GHS, bornes basse et haute, extrêmes bas et haut |
-| Groupage (depuis la fiche) | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
-| Groupage (depuis la fiche) | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
-| Groupage (depuis la fiche) | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
-| Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
+| Champ | Section | Thème | Contenu |
+|---|---|---|---|
+| commun | CIM-10 | Intox CIM-10 | médicaments → codes CIM-10 d'intoxication ; effets nocifs par substance |
+| commun | CIM-10 | Germes CIM-10 | germes → code CIM-10, avec et sans sepsis |
+| MCO | HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
+| MCO | HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
+| MCO | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
+| MCO | Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : étapes de l'arbre qui le testent, racines possibles et leurs tarifs, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
+| MCO | Groupage | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
+| MCO | Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes ; chemin et tarifs de chaque case de GHM |
+| MCO | Groupage | Tarifs des GHS | arrêté tarifaire MCO, secteur public : tarif de chaque GHS, bornes basse et haute, extrêmes bas et haut |
+| MCO | Groupage (depuis la fiche) | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
+| MCO | Groupage (depuis la fiche) | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
+| MCO | Groupage (depuis la fiche) | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
+| SMR | Groupage | Fiche code | un code CIM-10, CSARR, CCAM ou CSAR sur une page : CM, positions permises, orientation en deuxième intention, listes et tests d'entrée en GN, CMA et exclusions ; pondérations, actes spécialisés, transcodage CSAR |
+| SMR | Groupage | Listes de la fonction groupage | listes de diagnostics d'entrée dans les GN, listes d'actes spécialisés |
+| SMR | Groupage | Algorithme de la fonction groupage | Manuel des GME, volume 1 : orientation en CM, tests d'entrée dans les GN, types de réadaptation et seuils, règles de lourdeur, sévérité ; GME et tarifs de chaque GN |
+| SMR | Groupage | Tarifs des GME | arrêté tarifaire SMR, annexe I (établissements des a, b et c de l'article L. 162-22 du CSS) : GMT de chaque GME |
+| SMR | Groupage | Erreurs de la fonction groupage | codes erreur de la fonction groupage SMR |
+| SMR | Groupage (depuis la fiche) | CMA et exclusions | CMA SMR (diagnostics et actes CCAM) et vérificateur d'exclusion par les codes orientant dans le GN |
+| SMR | Réadaptation | Pondérations des actes | pondération des actes CSARR et CCAM de réadaptation, modulateurs de lieu et de temps |
+| SMR | Réadaptation | Transcodage CSAR ↔ CSARR | acte CSARR que la fonction groupage retient pour chaque acte CSAR, intervenant et modalité ; lecture inverse (actes CSAR qui aboutissent à un acte CSARR) ; écarts entre le fichier de pondérations CSAR et le CSARR transcodé |
+| commun | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
 Ce dépôt est public : rien de ce qui touche à l'activité de l'établissement ou à un
 patient n'y a sa place, même agrégé ou censuré. Un thème qui n'est pas un référentiel
@@ -32,7 +40,8 @@ Les référentiels publiés ici (intoxications, germes, actes CCAM, contexte pat
 listes de la fonction groupage, acronymes) sont des tables de correspondance codes/référentiels maintenues par le DIM —
 aucune ne porte de donnée patient. L'algorithme de la fonction groupage est la transcription
 du volume 3 du Manuel des GHM, document public de l'ATIH ; les tarifs des GHS sont ceux de l'arrêté
-tarifaire MCO, publié au Journal officiel et diffusé par l'ATIH. En cas de doute sur un futur ajout, trancher avant
+tarifaire MCO, publié au Journal officiel et diffusé par l'ATIH. Côté SMR, le groupage reprend le Manuel des GME
+(volume 1) et ses fichiers associés, et les tarifs l'annexe I de l'arrêté tarifaire SMR, tous publics. En cas de doute sur un futur ajout, trancher avant
 de committer, pas après.
 
 ## Architecture
@@ -56,11 +65,19 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   groupage/manuel_ghm_volume_1_annexe_{4,5}.pdf   CMA × listes d'exclusion (ATIH)
   groupage/manuel_ghm_volume_3.pdf   Manuel des GHM, volume 3, tel que livré par l'ATIH
   medicaments/{rh,les}.png    captures VIDAL Hoptimal, sans donnée tabulée
+  smr/groupage/               fichiers associés au Manuel des GME qui décrivent la classification
+                              (CIM_infos_SMR, GN_liste_tests, GR_infos, GL_infos, TOTAL_listes_groupes,
+                              CMA_exclusion, CMA_CCAM, FG_erreurs), sous les noms de l'ATIH
+  smr/groupage/tarifs.xlsx    annexes de l'arrêté tarifaire SMR ; seule l'annexe I (« Tarifs GMT - DAF ») est reprise
+  smr/groupage/manuel_gme_volume_1.pdf   Manuel des GME, volume 1 : les règles que présente l'algorithme SMR
+  smr/readaptation/           fichiers des actes (ACTES_ponderations, ACTES_listes_SPE, CSAR_infos) et
+                              ACTES_ponderations_CSAR_transcodage (actes CSAR et modulateurs qu'ils acceptent)
 
 scripts/
   build_data.py               xlsx (et cma.csv) → JSON, seule dépendance : openpyxl
   build_arbre.py              PDF du manuel → arbre.json, seule dépendance : pymupdf
   build_cma.py                annexes 4 et 5 du volume 1 → cma_exclusions.json (pymupdf)
+  build_smr.py                data/smr/<section>/ → docs/assets/data/smr/<section>/*.json (openpyxl)
   millesime.py                date du drapeau de fraîcheur, commune aux deux scripts
   requirements.txt
 
@@ -69,15 +86,19 @@ docs/                         racine servie par GitHub Pages
   assets/
     css/style.css             jetons du système de design du CDC, puis composants
     js/
-      main.js                 routage par hash (#/slug), navigation, tiroir mobile
-      registry.js             sections/thèmes
+      main.js                 routage par hash (#/champ/slug), sélecteur de champ, navigation, tiroir mobile
+      registry.js             champs, sections et thèmes
       recherche.js             normalisation + filtre multi mots clefs
       interface.js             drapeau de fraîcheur, champ de recherche, tableau
       donnees.js               chargement JSON avec cache mémoire
       tarifs.js                tarifs des GHS : index par GHM, table compacte (thème, fiche code, algorithme)
+      smr.js                   fonction groupage SMR : chargement des jeux, positions permises, exclusions des CMA, actes spécialisés, sans DOM
+      smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tarifs d'un GME)
       themes/<module>.js       une vue par thème (`module` de registry.js)
+      themes/smr/<module>.js   les thèmes propres au SMR, dans le sous-dossier de leur champ
     data/<theme>/<jeu>.json    généré par build_data.py, ne pas éditer à la main
     data/groupage/arbre.json   généré par build_arbre.py, ne pas éditer à la main
+    data/smr/<section>/<jeu>.json   généré par build_smr.py, ne pas éditer à la main
     img/{rh,les}.png           copies de data/medicaments/ servies par le site
     img/chu-brest.jpg          logo institutionnel, fourni par la charte — jamais redessiné
 ```
@@ -124,10 +145,20 @@ travaux (`travaux: true` dans `registry.js`).
 Côté clavier : `/` ramène au champ de recherche, `Échap` l'efface (et referme le tiroir
 sur petit écran), les en-têtes de colonnes se trient à `Entrée` ou `Espace`.
 
-L'icône GitHub en haut à droite et le bouton « Signaler un problème » au pied de la barre
-latérale ouvrent le formulaire d'issue du dépôt (compte GitHub requis), prérempli avec
-l'adresse de la page et un rappel : les issues sont publiques, comme le dépôt. L'adresse du
-dépôt est écrite dans `docs/index.html`.
+Le sélecteur **MCO · SMR**, en tête de la barre latérale, choisit le champ PMSI : la barre
+latérale et la page d'accueil n'affichent que les thèmes du champ choisi (`champ: "mco"` ou
+`"smr"` dans `registry.js`) et les thèmes communs, sans `champ`. Le champ fait partie de
+l'adresse (`#/mco/fiche/I10`, `#/smr/arbre`). Une adresse qui n'en nomme pas — arrivée sur
+le site, lien d'avant le SMR comme `#/arbre/01` — le reçoit : le MCO pour un thème propre au
+MCO, le dernier champ affiché (retenu dans le navigateur) pour un thème commun. Changer de
+champ garde la page quand l'autre champ a un thème de même slug, et ce qui suit le slug
+quand les deux thèmes le déclarent `cheminCommun` (le code de la fiche code) ; sinon, il
+mène à l'accueil du champ. Un thème propre à un champ rappelle celui-ci au-dessus de son
+titre.
+
+L'icône GitHub en haut à droite mène au dépôt. Le bouton « Signaler un problème » au pied
+de la barre latérale ouvre un mail à basile.fuchs@chu-brest.fr, prérempli avec l'adresse de
+la page. Les deux adresses sont écrites dans `docs/index.html`.
 
 **En cas de changement visuel du site, incrémenter `?v=` sur le lien vers `style.css`
 dans `docs/index.html`.** GitHub Pages sert les fichiers statiques avec un cache de
@@ -204,9 +235,43 @@ La page d'orientation (page 9) n'emploie aucun des symboles des autres pages : s
 page le test et le libellé de chacune, la CM/CMD écrite face à ce libellé, et leur ordre.
 
 Ajouter un thème : créer `data/<theme>/`, une ligne dans `JEUX` de `build_data.py`, un
-fichier `docs/assets/js/themes/<module>.js` exportant une fonction `rendre(conteneur)`, et
-une ligne dans `docs/assets/js/registry.js` dont le champ `module` nomme ce fichier (il
-peut différer du `slug`, qui fait l'adresse du thème).
+fichier `docs/assets/js/themes/<module>.js` (`themes/smr/` pour un thème propre au SMR)
+exportant une fonction `rendre(conteneur)`, et
+une ligne dans `docs/assets/js/registry.js` dont l'attribut `module` nomme ce fichier (il
+peut différer du `slug`, qui fait l'adresse du thème) et `champ` le champ PMSI (`"mco"`
+ou `"smr"` ; sans `champ`, le thème est commun aux deux). L'ordre de cette liste est celui
+de la barre latérale.
+
+## Mettre à jour la fonction groupage SMR
+
+Les tables du groupage SMR viennent des fichiers associés au Manuel des GME, que l'ATIH
+publie à chaque version de la fonction groupage ; les règles qui les relient (ordre des
+tests, seuils « par jour ET par séjour », pondération des actes CSAR, exclusions des CMA…)
+viennent du volume 1 du manuel : l'algorithme (`themes/smr/arbre.js`) les présente étape
+par étape, en citant le paragraphe de chacune.
+
+1. Remplacer les fichiers de `data/smr/groupage/` et `data/smr/readaptation/` par ceux de
+   la nouvelle version, sous les mêmes noms (ceux de l'ATIH ; `tarifs.xlsx` pour les
+   annexes de l'arrêté tarifaire). La section de chaque fichier est déclarée dans
+   `SECTIONS` (`build_smr.py`).
+2. `python scripts/build_smr.py`. Le script vérifie les en-têtes, que chaque liste citée
+   par un test d'entrée en GN existe, que les GN, GR, GL et GME concordent d'un fichier à
+   l'autre, que les règles de lourdeur se lisent et ne donnent que des niveaux connus, que
+   chaque acte des listes spécialisées et du transcodage CSAR a une pondération, et que
+   chaque GME a un tarif. Il s'arrête plutôt que de deviner. L'arrêté tarifaire suit la
+   règle du MCO : sa campagne est déclarée dans `CAMPAGNE_TARIFS`, avec l'empreinte que
+   donne le message d'arrêt.
+3. Relire le volume 1 de la nouvelle version : une règle qui change se reporte dans
+   l'algorithme (`themes/smr/arbre.js`), et dans `smr.js` si elle touche aux positions
+   permises, aux exclusions des CMA ou aux actes spécialisés.
+4. Committer les fichiers de l'ATIH et les JSON générés ensemble.
+
+Particularités des fichiers de l'ATIH, relevées par le script : dans
+`CMA_exclusion.xlsx`, « Compteur » est la longueur du texte de la cellule, pas le nombre de
+codes ; quelques codes de `CIM_infos_SMR.xlsx` arrivent avec leur point (« U11.9 ») ou un
+espace invisible ; pour sept couples acte CSAR / intervenant, la pondération du fichier CSAR
+diffère de celle du CSARR transcodé, que la fonction groupage retient — le thème
+« Transcodage CSAR ↔ CSARR » les signale.
 
 ## Déploiement
 

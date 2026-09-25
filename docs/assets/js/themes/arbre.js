@@ -296,7 +296,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     // L'adresse suit la CMD affichée, sans ajouter d'entrée d'historique ni
     // déclencher le routeur (replaceState ne lève pas `hashchange`).
     if (historique) {
-      const cible = `#/arbre/${cmd}${noeud ? `/${noeud}` : ""}${noeud && cas != null ? `/${cas}` : ""}`;
+      const cible = `#/mco/arbre/${cmd}${noeud ? `/${noeud}` : ""}${noeud && cas != null ? `/${cas}` : ""}`;
       if (location.hash !== cible) history.replaceState(null, "", cible);
     }
     return noeud ? montrer(noeud, cas) : false;
@@ -826,7 +826,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
               el(
                 "tr",
                 {},
-                el("td", { class: "code" }, el("a", { href: `#/fiche/${l.Code.split("-")[0]}`, title: "Fiche du code" }, l.Code)),
+                el("td", { class: "code" }, el("a", { href: `#/mco/fiche/${l.Code.split("-")[0]}`, title: "Fiche du code" }, l.Code)),
                 el("td", {}, l["Libellé code"]),
                 avecCma
                   ? el(
@@ -896,7 +896,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       zone.append(
         el("p", { class: "compteur" }, "Tarifs des GHS :"),
         tableTarifs(tarifs, codes),
-        noteTarifs(tarifee ? `#/tarifs/${n.racine}` : null)
+        noteTarifs(tarifee ? `#/mco/tarifs/${n.racine}` : null)
       );
     });
     return [zone];

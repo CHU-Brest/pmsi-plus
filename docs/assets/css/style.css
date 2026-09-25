@@ -344,8 +344,10 @@ a:hover {
 }
 
 /* Eyebrow : capitales cyan très espacées, précédées d'un filet — c'est la
-   signature des intertitres de la charte. */
-.barre-laterale nav h2 {
+   signature des intertitres de la charte. Le champ d'une page (MCO, SMR)
+   le reprend au-dessus de son titre, cf. `.champ-pmsi`. */
+.barre-laterale nav h2,
+.champ-pmsi {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
@@ -353,10 +355,14 @@ a:hover {
   letter-spacing: var(--ls-eyebrow);
   text-transform: uppercase;
   color: var(--text-eyebrow-color);
+}
+
+.barre-laterale nav h2 {
   margin: var(--sp-6) 0 var(--sp-2);
 }
 
-.barre-laterale nav h2::before {
+.barre-laterale nav h2::before,
+.champ-pmsi::before {
   content: "";
   width: 16px;
   height: var(--bw-thick);
@@ -395,6 +401,49 @@ a:hover {
   border-left-color: var(--brand);
   color: var(--brand);
   font-weight: var(--fw-semibold);
+}
+
+/* ==== Sélecteur de champ (MCO, SMR) ==== */
+/* Un segment par champ, d'un seul bloc ; le champ affiché est plein, aux
+   couleurs du bouton principal. */
+.champs-pmsi {
+  display: flex;
+  border: var(--bw-hair) solid var(--border-default);
+}
+
+.champs-pmsi a {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  color: var(--text-secondary);
+  font: var(--text-label);
+  font-weight: var(--fw-semibold);
+  transition: background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+.champs-pmsi a + a {
+  border-left: var(--bw-hair) solid var(--border-default);
+}
+
+.champs-pmsi a:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.champs-pmsi a[aria-current="true"] {
+  background: var(--brand);
+  color: var(--text-inverse);
+}
+
+/* Le champ au-dessus du titre d'un thème qui lui est propre. Il se loge
+   dans la marge haute de la zone de contenu (12px de haut, -16px + 4px de
+   marges) : le titre ne bouge pas et reste sur la ligne de l'icône GitHub. */
+.champ-pmsi {
+  margin: calc(-1 * var(--sp-4)) 0 var(--sp-1);
 }
 
 /* ==== Boutons ==== */
@@ -445,14 +494,14 @@ a:hover {
   mask-image: var(--i-external);
 }
 
-/* ==== Signaler un problème ==== */
-/* Deux liens vers le formulaire d'issue du dépôt : l'icône GitHub en haut à
-   droite, et le bouton en toutes lettres au pied de la barre latérale.
+/* ==== Lien vers le dépôt, signalement ==== */
+/* L'icône GitHub en haut à droite mène au dépôt ; le bouton « Signaler un
+   problème », au pied de la barre latérale, ouvre un mail (main.js).
 
    Sur grand écran, l'icône se pose sur la ligne du titre de la page, dans
    l'alignement de la zone de contenu dont elle reprend les marges ; le
    titre lui laisse sa place. */
-.signaler-coin {
+.lien-depot {
   position: absolute;
   top: var(--sp-8);
   right: var(--sp-7);
@@ -463,7 +512,7 @@ a:hover {
   padding: 0;
 }
 
-.signaler-coin .icone {
+.lien-depot .icone {
   width: 18px;
   height: 18px;
   -webkit-mask-image: var(--i-github);
@@ -2226,6 +2275,487 @@ ol.chemin > li::before {
   cursor: help;
 }
 
+/* ==== SMR — Listes de la fonction groupage ==== */
+/* Liens vers la fiche des codes trouvés : le tableau partagé n'affiche que
+   du texte, ils suivent donc la barre de recherche, sur une ligne à part. */
+.liens-fiches {
+  margin: 0 0 var(--sp-3);
+  font: var(--text-body-sm);
+  color: var(--text-secondary);
+  max-width: var(--largeur-lecture);
+}
+
+/* Codes et numéros de GN en chiffres tabulaires, comme dans les tableaux. */
+.liens-fiches a,
+.gn-sans-liste a {
+  font-weight: var(--fw-medium);
+  font-feature-settings: var(--num-tabular);
+}
+
+/* Intertitre des GN sans liste d'actes spécialisés : même rôle que les
+   intertitres de la fiche code, sous le tableau de sa section. */
+.contenu h3.gn-sans-liste-titre {
+  font: var(--text-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-eyebrow-color);
+  margin: var(--sp-7) 0 var(--sp-3);
+}
+
+.gn-sans-liste {
+  margin: 0;
+  padding-left: var(--sp-5);
+  font: var(--text-body-sm);
+}
+
+.gn-sans-liste li + li {
+  margin-top: var(--sp-2);
+}
+
+/* ==== SMR — Fiche code ==== */
+/* Codes cités dans une cellule ou au fil du texte (liste d'actes
+   spécialisés, GN) : chiffres tabulaires, comme les colonnes de codes. */
+.fiche-smr .code {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
+}
+
+/* Les tableaux de la fiche s'affichent en entier : coupés à 420px comme
+   dans la fiche MCO, les GN d'un acte spécialisé pour quinze listes
+   disparaissaient sous le pli du cadre. Seul le tableau d'une trentaine
+   d'intervenants défile dans son cadre, sous son en-tête collant. */
+.fiche-smr .codes-liste {
+  max-height: none;
+}
+
+.fiche-smr .codes-liste.defilant {
+  max-height: 420px;
+}
+
+/* En-tête de ligne ou de groupe (position, modulateur, liste D-xxxx) suivi
+   de son libellé : le code garde la police des données, le libellé celle
+   du texte, et passe à la ligne pour que le tableau tienne sur un
+   téléphone. Largeur libre : réduite au minimum (`width: 1%`, fiche MCO),
+   la colonne repliait un libellé de modulateur sur cinq lignes. */
+.fiche-smr .codes-liste tbody th {
+  width: auto;
+  white-space: normal;
+}
+
+.fiche-smr .codes-liste tbody th .racine-libellee {
+  font: var(--text-body-sm);
+  color: var(--text-secondary);
+}
+
+/* Filet sous chaque en-tête de ligne : la fiche MCO l'ôte dans le dernier
+   <tbody>, où ses en-têtes de groupe descendent jusqu'au cadre ; un en-tête
+   de ligne (modulateur, position, propriété) n'y descend pas. */
+.fiche-smr .codes-liste tbody:last-child tr:not(:last-child) > th[scope="row"] {
+  border-bottom: var(--bw-hair) solid var(--slate-200);
+}
+
+/* Sur grand écran, les en-têtes de colonnes restent sur une ligne : leurs
+   césures (« PONDÉ-RATION ») ne servent qu'au téléphone. */
+@media (min-width: 601px) {
+  .fiche-smr .codes-liste thead th {
+    white-space: nowrap;
+  }
+}
+
+/* Source et paragraphe du manuel sous un tableau ou un paragraphe : plus
+   discrets que le texte, à la largeur de lecture. */
+.fiche-smr .fiche-note {
+  margin: var(--sp-2) 0 0;
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  max-width: var(--largeur-lecture);
+}
+
+/* Intervenant non attendu (pondération 0), position non permise, liste
+   sans test : la cellule s'efface sans disparaître. */
+.fiche-smr td.non-attendu,
+.fiche-smr .racine-libellee.non-attendu {
+  color: var(--text-muted);
+}
+
+/* Liste d'intervenants repliée dans une cellule (« les 29 autres ») : le
+   résumé se lit comme un lien, la liste dépliée garde une ligne par
+   intervenant. */
+.fiche-smr td details summary {
+  color: var(--text-link);
+  cursor: pointer;
+}
+
+.fiche-smr td details[open] summary {
+  margin-bottom: var(--sp-1);
+}
+
+/* Écart entre la pondération du fichier CSAR de l'ATIH et celle du CSARR
+   transcodé, la seule que retient la fonction groupage (volume 1,
+   3.3.1.3) : la ligne se teinte et porte une étiquette, pour que les
+   quelques couples concernés ne se perdent pas dans le tableau. */
+.fiche-smr .codes-liste tr.ecart > * {
+  background: var(--status-warning-bg);
+}
+
+/* Sur sa propre ligne, sous la pondération retenue : la colonne reste
+   étroite, et l'étiquette ne passe pas sous le pli d'un téléphone. */
+.etiquette-ecart {
+  display: block;
+  width: fit-content;
+  margin-top: var(--sp-1);
+  padding: 2px var(--sp-2);
+  border: var(--bw-hair) solid var(--amber-600);
+  background: var(--surface-card);
+  font: var(--text-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--amber-700);
+}
+
+.ecart-detail {
+  display: block;
+  margin-top: var(--sp-1);
+  font: var(--text-body-sm);
+  font-size: var(--fs-2xs);
+  color: var(--amber-700);
+}
+
+/* Téléphone : les mots les plus longs des cellules de données
+   (« interdisciplinaire », « Neuropsychologue ») se coupent plutôt que de
+   faire défiler le tableau — césure du navigateur quand il en a une pour le
+   français, coupure nue sinon —, et les cellules resserrent leurs marges.
+   Les en-têtes de ligne (modulateur, liste, CSARR) gardent leurs mots
+   entiers, et fixent ainsi la largeur de leur colonne ; les codes ne se
+   coupent qu'aux points de coupure prévus (`<wbr>`). */
+@media (max-width: 600px) {
+  .fiche-smr .codes-liste td,
+  .fiche-smr .codes-liste tbody th {
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-2);
+    hyphens: auto;
+  }
+
+  .fiche-smr .codes-liste td {
+    overflow-wrap: anywhere;
+  }
+
+  .fiche-smr .codes-liste .code {
+    overflow-wrap: normal;
+  }
+}
+
+/* ==== SMR — Algorithme de la fonction groupage ==== */
+/* Les tables du Manuel des GME (tests d'entrée en GN, types de
+   réadaptation, règles de lourdeur, GME) se lisent en entier : pas de
+   hauteur bornée comme une liste de codes. Elles défilent en largeur dans
+   leur cadre sur téléphone, jamais la page. Les tarifs, eux, gardent la
+   hauteur bornée des autres thèmes (une trentaine de GME, trois GMT
+   chacun). */
+.smr-arbre {
+  max-width: 1100px;
+}
+
+.smr-arbre .codes-liste:not(.tarifs-ghs) {
+  max-height: none;
+}
+
+/* Le texte réservé aux lecteurs d'écran d'une case « – » est positionné
+   en absolu : sans ancêtre positionné, il échapperait au défilement du
+   cadre et élargirait la page sur téléphone. */
+.smr-arbre .codes-liste {
+  position: relative;
+}
+
+.smr-arbre .note + .codes-liste {
+  margin-top: var(--sp-3);
+}
+
+/* Le dernier groupe de lignes d'un tableau perd le filet de ses en-têtes
+   de ligne (règle commune des listes de codes, faite pour l'en-tête de
+   groupe qui descend jusqu'au cadre) : on le rend à ceux qui ne sont pas
+   sur la dernière ligne. */
+.smr-arbre .codes-liste tbody:last-child tr:not(:last-child) th[scope="row"] {
+  border-bottom: var(--bw-hair) solid var(--slate-200);
+}
+
+/* Vue d'ensemble : l'intitulé d'un niveau passe à la ligne plutôt que de
+   comprimer les colonnes voisines. */
+.smr-arbre .codes-liste.ensemble tbody th {
+  width: 30%;
+  white-space: normal;
+}
+
+/* Tarifs : assez de largeur pour lire la nature d'un GMT sur deux ou trois
+   lignes, quitte à faire défiler le tableau dans son cadre. */
+.smr-arbre .tarifs-ghs table {
+  min-width: 62rem;
+}
+
+.smr-arbre > section > h2:first-child {
+  margin-top: var(--sp-6);
+}
+
+.smr-arbre h3 {
+  font: var(--text-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-eyebrow-color);
+  margin: var(--sp-7) 0 var(--sp-3);
+}
+
+.smr-arbre > section > p:not(.sous-titre),
+.smr-arbre .note,
+.smr-arbre .etapes-titre {
+  max-width: var(--largeur-lecture);
+}
+
+/* Source, définitions et précisions sous un tableau : plus discrètes que
+   le texte courant. */
+.smr-arbre .note {
+  margin: var(--sp-2) 0 0;
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.smr-arbre .etapes-titre {
+  margin: var(--sp-4) 0 0;
+  font: var(--text-body-sm);
+  color: var(--text-primary);
+}
+
+/* Codes de groupe et numéros de liste : chiffres tabulaires, comme les
+   colonnes de codes ; un numéro de liste reste un lien. */
+.smr-arbre .code {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
+}
+
+.smr-arbre a.code {
+  color: var(--text-link);
+  white-space: nowrap;
+}
+
+.smr-arbre .codes-liste th.rang {
+  text-align: right;
+}
+
+/* Les tests d'un nœud, l'un sous l'autre ; le libellé de la liste sous
+   ses positions et son numéro. */
+.smr-arbre .test,
+.smr-arbre .test-liste {
+  display: block;
+}
+
+.smr-arbre .test + .test {
+  margin-top: var(--sp-2);
+}
+
+.smr-arbre .numero-test {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.smr-arbre .test-conditions-titre {
+  display: block;
+  margin-top: var(--sp-2);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.smr-arbre .test-conditions {
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-5);
+}
+
+/* Précision sous le contenu d'une case : score testé d'un type, groupe et
+   exemple d'un niveau, informations qu'il mobilise. */
+.smr-arbre .sous-ligne {
+  display: block;
+  margin-top: var(--sp-1);
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.smr-arbre .rangs-autres {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* GN d'arrivée : un bouton qui se lit comme un lien, qui ouvre le GN sous
+   le tableau. */
+.smr-arbre .bouton-gn {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--text-link);
+  text-align: left;
+  cursor: pointer;
+}
+
+.smr-arbre .bouton-gn:hover {
+  text-decoration: underline;
+}
+
+.smr-arbre .bouton-gn .code {
+  color: inherit;
+  font-weight: var(--fw-semibold);
+}
+
+/* Le GN ouvert, à chacun de ses rangs. */
+.smr-arbre .codes-liste tr.actif > * {
+  background: var(--blue-050);
+}
+
+.smr-arbre tr.surbrillance > *,
+.smr-arbre th.surbrillance {
+  animation: surbrillance 2.4s var(--ease-standard);
+}
+
+/* Niveaux de lourdeur et de sévérité : une lettre ou un chiffre par case,
+   centrés pour se comparer d'une colonne de GR à l'autre ; une règle
+   combinée s'écrit en toutes lettres. */
+.smr-arbre .codes-liste th.niveau,
+.smr-arbre .codes-liste td.niveau {
+  text-align: center;
+}
+
+.smr-arbre .codes-liste td.niveau {
+  font: var(--text-data);
+  font-feature-settings: var(--num-tabular);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.smr-arbre .codes-liste td.niveau.sans-objet {
+  color: var(--text-muted);
+}
+
+.smr-arbre .codes-liste td.niveau.combinee {
+  min-width: 14ch;
+  text-align: left;
+  white-space: normal;
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+}
+
+/* Étapes du type de réadaptation : la condition, puis le GR. */
+.smr-arbre ol.chemin {
+  max-width: 880px;
+}
+
+.smr-arbre .precision {
+  color: var(--text-muted);
+}
+
+/* Largeur commune aux GR d'une liste d'étapes : les flèches s'alignent. */
+.smr-arbre .etape-gr {
+  flex-shrink: 0;
+  min-width: min(42ch, 100%);
+  color: var(--text-primary);
+}
+
+/* Panneau d'un GN, sous les tests de sa CM. */
+.smr-gn {
+  margin: var(--sp-6) 0 0;
+  padding: var(--pad-card);
+  background: var(--surface-card);
+  border: var(--bw-hair) solid var(--border-default);
+  border-top: var(--border-accent-w) solid var(--brand);
+  box-shadow: var(--shadow-sm);
+  scroll-margin-top: var(--sp-10);
+}
+
+.smr-gn [id] {
+  scroll-margin-top: var(--sp-10);
+}
+
+.smr-gn-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.contenu .smr-gn-entete h2 {
+  margin: 0;
+  outline: none;
+}
+
+.smr-gn-entete h2 .code {
+  font: inherit;
+  font-feature-settings: var(--num-tabular);
+}
+
+.smr-gn-entete .bouton-icone {
+  flex-shrink: 0;
+}
+
+.smr-gn > .sous-titre {
+  margin-top: var(--sp-2);
+}
+
+.smr-gn > h3:first-of-type {
+  margin-top: var(--sp-5);
+}
+
+/* Niveau du groupe trouvé (GN, GR, GL, GME), entre son code et son
+   libellé. */
+.resultat-niveau {
+  flex-shrink: 0;
+  min-width: 4ch;
+  font: var(--text-eyebrow);
+  font-size: var(--fs-3xs);
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--text-muted);
+}
+
+@media (max-width: 860px) {
+  .smr-gn {
+    padding: var(--sp-3);
+  }
+
+  /* Intitulés de variable sur deux lignes : les colonnes de GR gagnent la
+     place. */
+  .smr-arbre .codes-liste.lourdeur tbody th[scope="rowgroup"] {
+    white-space: normal;
+  }
+
+  /* Cases resserrées : les colonnes de seuils tiennent dans le cadre. */
+  .smr-arbre .codes-liste th,
+  .smr-arbre .codes-liste td {
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-2);
+  }
+
+  /* La sévérité se lit au dernier chiffre du GME et dans son libellé : sa
+     colonne cède la place au libellé. */
+  .smr-arbre .codes-liste.gme .niveau {
+    display: none;
+  }
+
+  /* Le GR d'une étape passe sous sa condition, aligné sur elle. */
+  .smr-arbre .etape-gr {
+    flex-basis: 100%;
+    min-width: 0;
+    padding-left: calc(2ch + var(--sp-3));
+  }
+}
+
+/* ==== SMR — Transcodage CSAR ↔ CSARR ==== */
+/* Condition d'un transcodage (modalité, intervenants), à la suite du CSARR
+   qu'elle désigne : secondaire, elle ne doit pas se lire comme un libellé. */
+.csar-condition {
+  color: var(--text-muted);
+}
+
 /* ==== Petit écran ==== */
 @media (max-width: 860px) {
   .barre-haute {
@@ -2252,7 +2782,7 @@ ol.chemin > li::before {
   /* L'icône GitHub suit la barre haute, collante : fixée à sa droite, à la
      hauteur du bouton « Thèmes » (même marge, même taille). Au-dessus de la
      barre, sous le voile du tiroir. */
-  .signaler-coin {
+  .lien-depot {
     position: fixed;
     top: var(--sp-2);
     right: var(--sp-4);
@@ -2357,7 +2887,7 @@ ol.chemin > li::before {
 @media print {
   .barre-laterale,
   .barre-haute,
-  .signaler-coin,
+  .lien-depot,
   .barre-outils,
   .pagination,
   .lien-evitement {
@@ -2366,6 +2896,11 @@ ol.chemin > li::before {
 
   .contenu {
     padding: 0;
+  }
+
+  /* Sans marge haute à la zone de contenu, le champ n'a plus où se loger. */
+  .champ-pmsi {
+    margin-top: 0;
   }
 
   .zone-tableau {

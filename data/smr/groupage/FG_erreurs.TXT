@@ -1,0 +1,234 @@
+04|Erreur mémoire|Bloquant
+05|Table endommagée|Bloquant
+07|Table introuvable|Bloquant
+10|Numéro FINESS : taille incorrecte ou présence de caractères non autorisés|Bloquant
+11|Numéro de séjour SMR absent|Bloquant
+12|Numéro de séjour SMR non alphanumérique|Bloquant
+13|Date de naissance absente|Bloquant
+14|Date de naissance : taille incorrecte ou non numérique|Bloquant
+15|Date de naissance incohérente|Bloquant
+16|Date de naissance postérieure à la semaine du RHS|Bloquant
+17|Date de naissance improbable par rapport à l'année d'entrée|Bloquant
+18|Code sexe : absent ou non numérique|Bloquant
+19|Code sexe erroné|Bloquant
+20|Code postal absent|Non-bloquant
+21|Code postal non numérique|Non-bloquant
+22|Type d'hospitalisation : absent ou non numérique|Bloquant
+23|Type d'hospitalisation erroné|Bloquant
+24|Date d'entrée dans l'unité médicale: absente ou mauvais format|Bloquant
+25|Date d'entrée dans l'unité médicale incohérente|Bloquant
+26|Date d'entrée dans l'unité médicale postérieure à la date système|Non-bloquant
+28|Mode d'entrée : absent ou non numérique|Bloquant
+29|Mode d'entrée erroné|Bloquant
+30|Provenance absente|Bloquant
+31|Provenance erronée|Bloquant
+33|Date de sortie de l'unité médicale : taille incorrecte|Bloquant
+34|Date de sortie de l'unité médicale non numérique|Bloquant
+35|Date de sortie de l'unité médicale incohérente|Bloquant
+36|RHS avec incohérence entre date de sortie de l'unité médicale et date d'entrée dans l'unité médicale|Bloquant
+37|Date de sortie de l'unité médicale postérieure à la date système|Non-bloquant
+38|Mode de sortie absent|Bloquant
+39|Mode de sortie non numérique|Bloquant
+40|Mode de sortie erroné|Bloquant
+41|Destination absente|Bloquant
+42|Destination erronée|Bloquant
+43|Destination incohérente|Bloquant
+44|Numéro de semaine : erreur sur N° semaine|Bloquant
+45|Numéro de semaine : erreur sur année|Bloquant
+46|Numéro de semaine : année < 1980|Non-bloquant
+47|Numéro de semaine < numéro de semaine de la date d'entrée dans l'unité médicale|Bloquant
+48|Numéro de semaine > numéro de semaine de la date de sortie de l'unité médicale|Bloquant
+49|Indicateur de présence erroné|Bloquant
+50|Numéro unité médicale absent|Bloquant
+51|Type d'autorisation d'unité médicale non accepté|Bloquant
+52|Date de dernière intervention chirurgicale incohérente|Bloquant
+53|Semaine de la date de dernière intervention chirurgicale postérieure à la semaine du RHS|Bloquant
+54|Finalité principale de prise en charge : absente, de format incorrect ou introuvable|Bloquant
+57|Finalité principale de prise en charge non acceptée|Bloquant
+58|Manifestation morbide principale : absente, de format incorrect ou introuvable|Bloquant
+59|Longueur ou format du RHS incorrect|Bloquant
+61|Manifestation morbide principale = Finalité principale de prise en charge|Bloquant
+65|Manifestation morbide principale non acceptée|Bloquant
+67|Affection étiologique : format incorrect ou introuvable|Bloquant
+69|Affection étiologique = Finalité principale de prise en charge ou manifestation morbide principale|Bloquant
+71|Affection étiologique non acceptée|Bloquant
+72|Dépendance erronée|Bloquant
+73|Nombre de diagnostics associés significatifs absent|Bloquant
+74|Nombre de diagnostics associés significatifs non numérique|Bloquant
+75|Nombre d'actes CSARR absent|Bloquant
+76|Nombre d'actes CSARR non numérique|Bloquant
+77|Nombre d'actes CCAM absent|Bloquant
+78|Nombre d'actes CCAM non numérique|Bloquant
+79|Diagnostic associé significatif : format incorrect ou introuvable|Bloquant
+80|Diagnostic associé significatif non accepté|Bloquant
+82|Acte CSARR: n'existe pas dans le catalogue de référence|Bloquant
+83|Nombre de réalisations de l'acte CSARR absent|Bloquant
+84|Nombre de réalisations de l'acte CSARR non numérique ou égal à zéro|Bloquant
+85|Acte CSARR : code intervenant non accepté|Bloquant
+86|Acte CSARR : code extension documentaire non accepté|Non-bloquant
+87|Code d'acte CCAM ne respectant pas le format de référence|Bloquant
+88|Acte CCAM: n'existe pas dans le catalogue de référence|Bloquant
+89|Nombre d’occurrence d'actes CCAM absent|Bloquant
+90|Nombre d’occurrence d'actes CCAM non numérique ou égal à zéro|Bloquant
+91|Acte CSAR: n'existe pas dans le catalogue de référence|Bloquant
+92|Date de début de séjour : absente ou mauvais format|Bloquant
+93|Date de début de séjour incohérente|Bloquant
+94|Date de début de séjour antérieure à 1980|Non-bloquant
+95|Date de fin de séjour : mauvais format|Bloquant
+96|Date de fin de séjour : incohérente|Bloquant
+97|Date de début de séjour postérieure à la date d'entrée dans l'UM|Bloquant
+98|Date d'entrée dans l'UM postérieure à la date de fin du séjour|Bloquant
+99|Date de fin du séjour antérieure à la date de sortie de l'UM|Bloquant
+100|Date de fin du séjour antérieure à la semaine du RHS|Bloquant
+101|Date de fin du séjour postérieure à la date système|Non-bloquant
+102|Journée de présence antérieure à la date de début du séjour|Bloquant
+103|Journée de présence postérieure à la date de fin du séjour|Bloquant
+104|Code modulateur de lieu non accepté|Non-bloquant
+105|Code modulateur patient non accepté|Non-bloquant
+106|Code modulateur de technicité non accepté|Non-bloquant
+107|Acte CSARR : code extension documentaire non accepté|Bloquant
+108|Acte CSAR : code extension documentaire non accepté|Bloquant
+109|Date de réalisation de l’acte CCAM non renseignée|Non-bloquant
+110|Numéro de semaine incompatible avec l'utilisation d'un acte CCAM|Bloquant
+111|Date de réalisation de l'acte CCAM incompatible avec le numéro de semaine|Bloquant
+112|Numéro de semaine incompatible avec l'utilisation d'un acte CSARR|Bloquant
+113|Date de réalisation de l'acte CSARR incompatible avec le numéro de semaine|Bloquant
+114|Code supplémentaire appareillage de l'acte CSARR non accepté|Bloquant
+115|Code modulateur de lieu non accepté pour un acte CSAR|Non-bloquant
+116|Nombre réels de patients non numérique|Bloquant
+118|Code modulateur de technicité non accepté pour un acte CSAR|Non-bloquant
+119|Nombre d’intervenants non numérique|Bloquant
+122|Nombre d’intervenants incohérent|Non-bloquant
+124|Date de réalisation de l’acte CSARR non renseignée|Bloquant
+125|Numéro de semaine incompatible avec l'utilisation d'un acte CSAR|Bloquant
+126|Date de réalisation de l'acte CSAR incompatible avec le numéro de semaine|Bloquant
+127|Date de réalisation de l’acte CSAR non renseignée|Bloquant
+128|Nombre de réalisations de l'acte CSAR absent|Bloquant
+129|Nombre de réalisations de l'acte CSAR non numérique ou égal à zéro|Bloquant
+130|Finalité principale de prise en charge : code OMS réservé pour usage urgent|Bloquant
+131|Manifestation morbide principale : code OMS réservé pour usage urgent|Bloquant
+132|Affection étiologique : code OMS réservé pour usage urgent|Bloquant
+133|Diagnostic associé significatif : code OMS réservé pour usage urgent|Bloquant
+134|Code modulateur de lieu non éligible pour un acte CSAR|Non-bloquant
+136|Code modulateur de temps non accepté|Non-bloquant
+137|Code modulateur de technicité non éligible pour un acte CSAR|Non-bloquant
+138|Code modulateur de temps non éligible pour un acte CSAR|Non-bloquant
+139|Code module / niveau de technicité d'un acte CSAR non accepté|Non-bloquant
+140|Code module / niveau de technicité non éligible pour le modulateur de technicité d'un acte CSAR|Non-bloquant
+141|Acte CCAM : format incorrect de l'extension ATIH|Bloquant 
+143|Acte CCAM : extension ATIH non acceptée|Bloquant
+144|Acte CCAM dont l'extension ATIH existe mais n'est pas renseignée|Non-bloquant
+145|Poursuite du même projet thérapeutique : valeur non acceptée|Bloquant
+146|Code activité d'un acte CCAM non renseigné ou valeur erronée|Bloquant 
+147|Lits (ou places) identifié(e)s ou dédié(e)s : valeur non acceptée|Non-bloquant
+148|Type d'unité spécifique : valeur non acceptée|Non-bloquant
+149|Code module / niveau de technicité d'un acte CSARR non accepté|Non-bloquant
+150|RHS sans journées de présence dans un séjour HTC multi-RHS|Non-bloquant
+151|Nombre réels de patients incorrect|Bloquant
+152|Code supplémentaire appareillage de l'acte CSARR requis mais absent|Bloquant
+153|Présence non attendue d'un code supplémentaire appareillage d'un acte CSARR|Non-bloquant
+154|Séjour HTC : journée de sortie cochée dans les indicateurs de présence|Bloquant
+155|Jour du décès non coché dans les indicateurs de présence|Bloquant
+156|Code module / niveau de technicité non éligible pour le modulateur de technicité d'un acte CSARR|Non-bloquant
+157|Code modulateur de lieu L3 non associé à un modulateur de technicité pour un acte CSARR|Non-bloquant
+158|Sexe indéterminé incompatible avec l’age à la date du lundi du RHS|Non-bloquant
+160|Nombre total de réalisations de l'acte CSARR supérieur à 14|Non-bloquant
+161|Acte CSARR ZZC+221 : nombre de réalisations incohérent|Non-bloquant
+162|Acte CSARR : code intervenant 21 (Infirmier) non attendu|Non-bloquant
+163|Acte CSARR : code intervenant 88 (Autre intervenant) non attendu|Non-bloquant
+164|Présence non attendue d'un code supplémentaire appareillage d'un acte CSARR|Bloquant
+165|Nombre total de réalisations de l'acte CSAR par RHS supérieur à 14|Non-bloquant
+166|Acte CSAR : code intervenant 21 (Infirmier) non attendu|Non-bloquant
+167|Acte CSAR : code intervenant 88 (Autre intervenant) non attendu|Non-bloquant
+170|Acte CSARR : code supplémentaire «appareillage» non autorisé|Non-bloquant
+171|Nombre réels de patients incorrect|Non-bloquant
+172|Acte CSARR : geste complémentaire codé isolément|Non-bloquant
+173|Nombre de réalisations de l'acte CSARR en une journée d'HTP supérieur à 2|Non-bloquant
+174|Nombre de réalisations de l'acte CSAR en une journée d'HTP supérieur à 2|Non-bloquant
+175|Nombre d'actes CSAR absent|Bloquant
+176|Nombre d'actes CSAR non numérique|Bloquant
+179|Modalité collective non acceptée pour l'acte CSAR|Bloquant
+180|Modalité collective non éligible pour l'acte CSAR|Non-bloquant
+181|Modalité pluriprofessionnelle non acceptée pour l'acte CSAR|Bloquant
+183|Numéro de semaine incompatible avec l'utilisation de l'extension d'un acte CCAM|Bloquant
+185|Acte CSAR : code intervenant non accepté|Bloquant
+200|Type d'hospitalisation différent de la référence|Bloquant
+201|Sexe différent de la référence|Bloquant
+202|Date de naissance différente de la référence|Bloquant
+203|Date de début de séjour différente de la référence|Bloquant
+204|Date de fin du séjour différente de la référence|Bloquant
+205|Année de la semaine différente de celle de la référence|Bloquant
+230|Incohérence dans la numérotation du numéro de semaine|Bloquant
+231|Journées de présences communes pour les RHS d'une même semaine|Bloquant
+232|Suite de RHS en hospitalisation complète ne contenant pas le premier RHS du séjour|Bloquant
+233|RHS hors période|Bloquant
+234|Date de dernière intervention chirurgicale absente sur le 1er RHS du séjour et renseignée sur d'autres RHS|Non-bloquant
+235|Date d'entrée dans l'unité médicale inchangée après une mutation|Non-bloquant
+236|Séjour HTC multi-RHS : nombre de journées de présence total égal à zéro|Bloquant
+300|Aucune CM trouvée|Bloquant
+301|Aucun GN trouvé dans la CM 01|Bloquant
+302|Aucun GN trouvé dans la CM 03|Bloquant
+303|Aucun GN trouvé dans la CM 04|Bloquant
+304|Aucun GN trouvé dans la CM 05|Bloquant
+305|Aucun GN trouvé dans la CM 06|Bloquant
+306|Aucun GN trouvé dans la CM 08|Bloquant
+307|Aucun GN trouvé dans la CM 09|Bloquant
+308|Aucun GN trouvé dans la CM 10|Bloquant
+309|Aucun GN trouvé dans la CM 11|Bloquant
+310|Aucun GN trouvé dans la CM 16|Bloquant
+311|Aucun GN trouvé dans la CM 18|Bloquant
+312|Aucun GN trouvé dans la CM 19|Bloquant
+313|Aucun GN trouvé dans la CM 23|Bloquant
+314|Aucun GN trouvé dans la CM 27|Bloquant
+401|Groupe de réadaptation non trouvé|Bloquant
+402|Groupe de lourdeur non trouvé|Bloquant
+
+
+
+Erreur 162 : liste des actes concernés
+
+ANQ+126	Évaluation de la sensibilité de la peau et des articulations d'un patient douloureux
+ANQ+173	Évaluation de la sensibilité de la peau et des articulations d'un patient indolore
+DKQ+008	Quantification des capacités fonctionnelles cardiovasculaires et/ou respiratoires pour la réalisation des gestes quotidiens
+EQQ+206	Mesure transcutanée de la pression partielle en oxygène [TcPO2] au cours d'un exercice à puissance croissante
+PEQ+017	Évaluation initiale du risque de chute
+PEQ+038	Évaluation intermédiaire du risque de chute
+PEQ+238	Évaluation finale du risque de chute
+QAQ+067	Évaluation finale qualitative et quantitative de l'état cutané et trophique de la tête et/ou de main
+QAQ+093	Évaluation intermédiaire qualitative et quantitative de l'état cutané et trophique de la tête et/ou de main
+QAQ+198	Évaluation initiale qualitative et quantitative de l'état cutané et trophique de la tête et/ou de main
+QZQ+104	Évaluation intermédiaire qualitative et quantitative de l'état cutané et trophique en dehors de la tête et des mains
+QZQ+186	Évaluation finale qualitative et quantitative de l'état cutané et trophique en dehors de la tête et des mains
+QZQ+255	Évaluation initiale qualitative et quantitative de l'état cutané et trophique en dehors de la tête et des mains
+ZGQ+046	Évaluation intermédiaire ou évaluation ponctuelle ciblée sur une activité, des capacités du patient pour les activités de la vie quotidienne [AVQ] avec mise en situation
+ZGQ+137	Évaluation initiale des capacités du patient pour les activités de la vie quotidienne [AVQ] avec mise en situation
+ZGQ+279	Évaluation finale des capacités du patient pour les activités de la vie quotidienne [AVQ] avec mise en situation
+HQQ+136	Évaluation initiale des troubles de la déglutition
+HQQ+106	Évaluation intermédiaire des troubles de la déglutition
+HQQ+257	Évaluation finale des troubles de la déglutition
+ALQ+114	Évaluation comportementale structurée
+NKR+010	Séance individuelle de rééducation et/ou réadaptation à la marche 
+HQR+293	Séance de rééducation des troubles de la déglutition
+
+Erreur 163 : actes concernés
+
+ANQ+126	Évaluation de la sensibilité de la peau et des articulations d'un patient douloureux
+ANQ+173	Évaluation de la sensibilité de la peau et des articulations d'un patient indolore
+DKQ+008	Quantification des capacités fonctionnelles cardiovasculaires et/ou respiratoires pour la réalisation des gestes quotidiens
+EQQ+206	Mesure transcutanée de la pression partielle en oxygène [TcPO2] au cours d'un exercice à puissance croissante
+HSQ+237	Évaluation intermédiaire qualitative et quantitative des objectifs nutritionnels
+PEQ+017	Évaluation initiale du risque de chute
+PEQ+038	Évaluation intermédiaire du risque de chute
+PEQ+238	Évaluation finale du risque de chute
+QAQ+067	Évaluation finale qualitative et quantitative de l'état cutané et trophique de la tête et/ou de main
+QAQ+093	Évaluation intermédiaire qualitative et quantitative de l'état cutané et trophique de la tête et/ou de main
+QAQ+198	Évaluation initiale qualitative et quantitative de l'état cutané et trophique de la tête et/ou de main
+QZQ+104	Évaluation intermédiaire qualitative et quantitative de l'état cutané et trophique en dehors de la tête et des mains
+QZQ+186	Évaluation finale qualitative et quantitative de l'état cutané et trophique en dehors de la tête et des mains
+QZQ+255	Évaluation initiale qualitative et quantitative de l'état cutané et trophique en dehors de la tête et des mains
+ZGQ+046	Évaluation intermédiaire ou évaluation ponctuelle ciblée sur une activité, des capacités du patient pour les activités de la vie quotidienne [AVQ] avec mise en situation
+ZGQ+137	Évaluation initiale des capacités du patient pour les activités de la vie quotidienne [AVQ] avec mise en situation
+ZGQ+279	Évaluation finale des capacités du patient pour les activités de la vie quotidienne [AVQ] avec mise en situation
+ZZC+221	Synthèse interdisciplinaire de rééducation et/ou de réadaptation
+ALQ+114	Évaluation comportementale structurée
+NKR+010	Séance individuelle de rééducation et/ou réadaptation à la marche 

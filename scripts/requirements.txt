@@ -1,4 +1,4 @@
-# build_data.py : lire un classeur xlsx en pur Python. Écrire le JSON ne
+# build_data.py, build_smr.py : lire un classeur xlsx en pur Python. Écrire le JSON ne
 # demande rien d'autre que la bibliothèque standard.
 openpyxl==3.1.5
 # build_arbre.py : relire le PDF du Manuel des GHM (images, traits, textes et
