@@ -445,14 +445,14 @@ a:hover {
   mask-image: var(--i-external);
 }
 
-/* ==== Signaler un problème ==== */
-/* Deux liens vers le formulaire d'issue du dépôt : l'icône GitHub en haut à
-   droite, et le bouton en toutes lettres au pied de la barre latérale.
+/* ==== Lien vers le dépôt, signalement ==== */
+/* L'icône GitHub en haut à droite mène au dépôt ; le bouton « Signaler un
+   problème », au pied de la barre latérale, ouvre un mail (main.js).
 
    Sur grand écran, l'icône se pose sur la ligne du titre de la page, dans
    l'alignement de la zone de contenu dont elle reprend les marges ; le
    titre lui laisse sa place. */
-.signaler-coin {
+.lien-depot {
   position: absolute;
   top: var(--sp-8);
   right: var(--sp-7);
@@ -463,7 +463,7 @@ a:hover {
   padding: 0;
 }
 
-.signaler-coin .icone {
+.lien-depot .icone {
   width: 18px;
   height: 18px;
   -webkit-mask-image: var(--i-github);
@@ -2252,7 +2252,7 @@ ol.chemin > li::before {
   /* L'icône GitHub suit la barre haute, collante : fixée à sa droite, à la
      hauteur du bouton « Thèmes » (même marge, même taille). Au-dessus de la
      barre, sous le voile du tiroir. */
-  .signaler-coin {
+  .lien-depot {
     position: fixed;
     top: var(--sp-2);
     right: var(--sp-4);
@@ -2357,7 +2357,7 @@ ol.chemin > li::before {
 @media print {
   .barre-laterale,
   .barre-haute,
-  .signaler-coin,
+  .lien-depot,
   .barre-outils,
   .pagination,
   .lien-evitement {

@@ -124,10 +124,9 @@ travaux (`travaux: true` dans `registry.js`).
 Côté clavier : `/` ramène au champ de recherche, `Échap` l'efface (et referme le tiroir
 sur petit écran), les en-têtes de colonnes se trient à `Entrée` ou `Espace`.
 
-L'icône GitHub en haut à droite et le bouton « Signaler un problème » au pied de la barre
-latérale ouvrent le formulaire d'issue du dépôt (compte GitHub requis), prérempli avec
-l'adresse de la page et un rappel : les issues sont publiques, comme le dépôt. L'adresse du
-dépôt est écrite dans `docs/index.html`.
+L'icône GitHub en haut à droite mène au dépôt. Le bouton « Signaler un problème » au pied
+de la barre latérale ouvre un mail à basile.fuchs@chu-brest.fr, prérempli avec l'adresse de
+la page. Les deux adresses sont écrites dans `docs/index.html`.
 
 **En cas de changement visuel du site, incrémenter `?v=` sur le lien vers `style.css`
 dans `docs/index.html`.** GitHub Pages sert les fichiers statiques avec un cache de
