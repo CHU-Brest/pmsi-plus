@@ -32,10 +32,21 @@ export const RE_CCAM = /^[A-Z]{4}\d{3}$/;
 export const RE_CSAR = /^\d{2}[A-Z]\d{2}$/;
 export const RE_CIM = /^[A-Z]\d{2}[0-9+]*$/;
 
+/** Code d'acte saisi → graphie des fichiers de l'ATIH : capitales, sans
+ *  espace ; « ALQ247 » → « ALQ+247 » (CSARR saisi sans son « + ») ;
+ *  « EBLA0030 » → « EBLA003 » (code CCAM suivi de sa phase, comme dans
+ *  CMA_CCAM.xlsx). Un code CIM-10 ou CSAR est rendu tel quel. */
+export function normaliserActe(code) {
+  const brut = String(code ?? "").toUpperCase().replace(/\s/g, "");
+  if (/^[A-Z]{3}\d{3}$/.test(brut)) return `${brut.slice(0, 3)}+${brut.slice(3)}`;
+  if (/^[A-Z]{4}\d{4}$/.test(brut)) return brut.slice(0, 7);
+  return brut;
+}
+
 /** Nomenclature d'un code saisi : « CIM-10 », « CSARR », « CCAM », « CSAR »
  *  ou null. */
 export function nomenclature(code) {
-  const brut = String(code ?? "").toUpperCase().replace(/\s/g, "");
+  const brut = normaliserActe(code);
   if (RE_CSARR.test(brut)) return "CSARR";
   if (RE_CSAR.test(brut)) return "CSAR";
   if (RE_CCAM.test(brut)) return "CCAM";
@@ -350,7 +361,7 @@ export function transcoderCsar(smr, code, intervenant, collectif) {
  * T4 (CSAR seulement) ; `collectif` : modalité collective (CSAR).
  */
 export function ponderer(smr, acte) {
-  const code = String(acte.code ?? "").toUpperCase().replace(/\s/g, "");
+  const code = normaliserActe(acte.code);
   const nature = nomenclature(code);
   const nombre = Math.max(1, Number(acte.nombre) || 1);
   const k = smr.classification;
@@ -552,6 +563,9 @@ export function estExclue(smr, cma, orientant) {
   const index = smr.exclusions.cma[graphie(cma)];
   if (index == null) return false;
   const c = cle(orientant);
+  // Les plages ne valent que pour les codes de CIM_infos_SMR : un code
+  // inconnu compris entre deux bornes n'y figure pas pour autant.
+  if (!smr.diagnostics._parCle.has(c)) return false;
   return smr.exclusions.listes[index].some(([a, b]) => c >= a && c <= b);
 }
 
@@ -573,7 +587,7 @@ export function marqueursSeverite(smr, { rhs, orientants }) {
       marqueurs.push({ nature: "CIM-10", code: graphie(c), position, excluePar: excluePar.map(graphie), retenu: !excluePar.length });
     }
     for (const acte of r.actesCcam ?? []) {
-      const a = String(acte).toUpperCase().replace(/\s/g, "").slice(0, 7);
+      const a = normaliserActe(acte).slice(0, 7);
       if (vus.has(a) || !k._cmaCcam.has(a)) continue;
       vus.add(a);
       marqueurs.push({ nature: "CCAM", code: a, excluePar: [], retenu: true });

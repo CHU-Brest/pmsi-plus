@@ -22,6 +22,15 @@ individuelle — sont repris ici :
 | MCO | Groupage (depuis la fiche) | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
 | MCO | Groupage (depuis la fiche) | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
 | MCO | Groupage (depuis la fiche) | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
+| SMR | Groupage | Fiche code | un code CIM-10, CSARR, CCAM ou CSAR sur une page : CM, positions permises, orientation en deuxième intention, listes et tests d'entrée en GN, CMA et exclusions ; pondérations, actes spécialisés, transcodage CSAR |
+| SMR | Groupage | Listes de la fonction groupage | listes de diagnostics d'entrée dans les GN, listes d'actes spécialisés |
+| SMR | Groupage | Algorithme de la fonction groupage | Manuel des GME, volume 1 : orientation en CM, tests d'entrée dans les GN, types de réadaptation et seuils, règles de lourdeur, sévérité ; GME et tarifs de chaque GN |
+| SMR | Groupage | Calcul du GME | groupage pas à pas d'un séjour d'HC ou d'un RHS d'HTP, scores de réadaptation calculés depuis les actes ou saisis |
+| SMR | Groupage | Tarifs des GME | arrêté tarifaire SMR, annexe I (établissements des a, b et c de l'article L. 162-22 du CSS) : GMT de chaque GME |
+| SMR | Groupage | Erreurs de la fonction groupage | codes erreur de la fonction groupage SMR |
+| SMR | Groupage (depuis la fiche) | CMA et exclusions | CMA SMR (diagnostics et actes CCAM) et vérificateur d'exclusion par les codes orientant dans le GN |
+| SMR | Réadaptation | Pondérations des actes | pondération des actes CSARR et CCAM de réadaptation, modulateurs de lieu et de temps |
+| SMR | Réadaptation | Transcodage CSAR → CSARR | acte CSARR retenu pour chaque acte CSAR, intervenant et modalité, et les écarts entre le fichier de pondérations CSAR et le CSARR transcodé |
 | commun | Référentiels | Acronymes & abréviations | sigles médicaux et leur signification |
 
 Ce dépôt est public : rien de ce qui touche à l'activité de l'établissement ou à un
@@ -32,7 +41,8 @@ Les référentiels publiés ici (intoxications, germes, actes CCAM, contexte pat
 listes de la fonction groupage, acronymes) sont des tables de correspondance codes/référentiels maintenues par le DIM —
 aucune ne porte de donnée patient. L'algorithme de la fonction groupage est la transcription
 du volume 3 du Manuel des GHM, document public de l'ATIH ; les tarifs des GHS sont ceux de l'arrêté
-tarifaire MCO, publié au Journal officiel et diffusé par l'ATIH. En cas de doute sur un futur ajout, trancher avant
+tarifaire MCO, publié au Journal officiel et diffusé par l'ATIH. Côté SMR, le groupage reprend le Manuel des GME
+(volume 1) et ses fichiers associés, et les tarifs l'annexe I de l'arrêté tarifaire SMR, tous publics. En cas de doute sur un futur ajout, trancher avant
 de committer, pas après.
 
 ## Architecture
@@ -56,11 +66,16 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   groupage/manuel_ghm_volume_1_annexe_{4,5}.pdf   CMA × listes d'exclusion (ATIH)
   groupage/manuel_ghm_volume_3.pdf   Manuel des GHM, volume 3, tel que livré par l'ATIH
   medicaments/{rh,les}.png    captures VIDAL Hoptimal, sans donnée tabulée
+  smr/*.xlsx, smr/FG_erreurs.TXT   fichiers associés au Manuel des GME, sous les noms de l'ATIH
+  smr/ACTES_ponderations_CSAR_transcodage.xlsx   actes CSAR et modulateurs qu'ils acceptent (ATIH)
+  smr/tarifs.xlsx             annexes de l'arrêté tarifaire SMR ; seule l'annexe I (« Tarifs GMT - DAF ») est reprise
+  smr/manuel_gme_volume_1.pdf   Manuel des GME, volume 1 : les règles transcrites dans smr.js
 
 scripts/
   build_data.py               xlsx (et cma.csv) → JSON, seule dépendance : openpyxl
   build_arbre.py              PDF du manuel → arbre.json, seule dépendance : pymupdf
   build_cma.py                annexes 4 et 5 du volume 1 → cma_exclusions.json (pymupdf)
+  build_smr.py                fichiers de la fonction groupage SMR → data/smr/*.json (openpyxl)
   millesime.py                date du drapeau de fraîcheur, commune aux deux scripts
   requirements.txt
 
@@ -75,9 +90,12 @@ docs/                         racine servie par GitHub Pages
       interface.js             drapeau de fraîcheur, champ de recherche, tableau
       donnees.js               chargement JSON avec cache mémoire
       tarifs.js                tarifs des GHS : index par GHM, table compacte (thème, fiche code, algorithme)
+      smr.js                   fonction groupage SMR : chargement des jeux et algorithme (CM, GN, GR, GL, GME), sans DOM
+      smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tarifs d'un GME)
       themes/<module>.js       une vue par thème (`module` de registry.js)
     data/<theme>/<jeu>.json    généré par build_data.py, ne pas éditer à la main
     data/groupage/arbre.json   généré par build_arbre.py, ne pas éditer à la main
+    data/smr/<jeu>.json        généré par build_smr.py, ne pas éditer à la main
     img/{rh,les}.png           copies de data/medicaments/ servies par le site
     img/chu-brest.jpg          logo institutionnel, fourni par la charte — jamais redessiné
 ```
@@ -219,6 +237,35 @@ une ligne dans `docs/assets/js/registry.js` dont l'attribut `module` nomme ce fi
 peut différer du `slug`, qui fait l'adresse du thème) et `champ` le champ PMSI (`"mco"`
 ou `"smr"` ; sans `champ`, le thème est commun aux deux). L'ordre de cette liste est celui
 de la barre latérale.
+
+## Mettre à jour la fonction groupage SMR
+
+Les tables du groupage SMR viennent des fichiers associés au Manuel des GME, que l'ATIH
+publie à chaque version de la fonction groupage ; les règles qui les relient (ordre des
+tests, seuils « par jour ET par séjour », pondération des actes CSAR, exclusions des CMA…)
+viennent du volume 1 du manuel et sont transcrites dans `docs/assets/js/smr.js`, chaque
+fonction citant le paragraphe qu'elle applique.
+
+1. Remplacer les fichiers de `data/smr/` par ceux de la nouvelle version, sous les mêmes
+   noms (ceux de l'ATIH ; `tarifs.xlsx` pour les annexes de l'arrêté tarifaire).
+2. `python scripts/build_smr.py`. Le script vérifie les en-têtes, que chaque liste citée
+   par un test d'entrée en GN existe, que les GN, GR, GL et GME concordent d'un fichier à
+   l'autre, que les règles de lourdeur se lisent et ne donnent que des niveaux connus, que
+   chaque acte des listes spécialisées et du transcodage CSAR a une pondération, et que
+   chaque GME a un tarif. Il s'arrête plutôt que de deviner. L'arrêté tarifaire suit la
+   règle du MCO : sa campagne est déclarée dans `CAMPAGNE_TARIFS`, avec l'empreinte que
+   donne le message d'arrêt.
+3. Relire le volume 1 de la nouvelle version : une règle qui change se reporte dans
+   `smr.js`. Les exemples chiffrés du manuel (GN 0147, 0118, 0839) doivent donner les
+   mêmes groupes dans le thème « Calcul du GME ».
+4. Committer les fichiers de l'ATIH et les JSON générés ensemble.
+
+Particularités des fichiers de l'ATIH, relevées par le script : dans
+`CMA_exclusion.xlsx`, « Compteur » est la longueur du texte de la cellule, pas le nombre de
+codes ; quelques codes de `CIM_infos_SMR.xlsx` arrivent avec leur point (« U11.9 ») ou un
+espace invisible ; pour sept couples acte CSAR / intervenant, la pondération du fichier CSAR
+diffère de celle du CSARR transcodé, que la fonction groupage retient — le thème
+« Transcodage CSAR → CSARR » les signale.
 
 ## Déploiement
 
