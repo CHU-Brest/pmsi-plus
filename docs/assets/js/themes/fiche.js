@@ -6,9 +6,8 @@
 // leurs tarifs, actes frontières).
 //
 // Tout est calculé dans le navigateur à partir des référentiels déjà
-// publiés : arbre.json, listes de la fonction groupage, diagnostics
-// d'entrée de la CMD 14 (volume 2), liste des CMA et leurs exclusions,
-// tarifs des GHS.
+// publiés : arbre.json, listes de la fonction groupage, liste des CMA et
+// leurs exclusions, tarifs des GHS.
 
 import { chargerJeu, chargerJson } from "../donnees.js";
 import { normaliser } from "../recherche.js";
@@ -48,7 +47,6 @@ const jeux = {
   diagnostics: () => chargerJeu("groupage", "diagnostics", "listes de diagnostics de la fonction groupage"),
   actes: () => chargerJeu("groupage", "actes", "listes d'actes de la fonction groupage"),
   cma: () => chargerJeu("groupage", "cma", "liste des CMA de la fonction groupage"),
-  entrees: () => chargerJeu("groupage", "entrees", "diagnostics d'entrée des CMD (volume 2)"),
   racines: () => chargerJeu("groupage", "racines", "libellés des racines de GHM"),
 };
 
@@ -211,11 +209,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     if (q.length < 2) return;
     const code = graphie(q);
     const ccam = /^[a-z]{4}\d/i.test(q.replace(/\s+/g, ""));
-    const aChercher = ccam
-      ? ["actes"]
-      : /^[a-z]\d/i.test(q)
-        ? ["diagnostics", "cma", "entrees"]
-        : ["diagnostics", "cma", "entrees", "actes"];
+    const aChercher = ccam ? ["actes"] : /^[a-z]\d/i.test(q) ? ["diagnostics", "cma"] : ["diagnostics", "cma", "actes"];
     const trouves = new Map();
     const mots = normaliser(q).split(/\s+/).filter(Boolean);
     for (const nom of aChercher) {
@@ -270,17 +264,14 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 // ==== Fiche d'un diagnostic ====
 
 async function ficheDiagnostic(arbre, code) {
-  const [diagnostics, cma, entrees, exclusions, tarifs] = await Promise.all([
+  const [diagnostics, cma, exclusions, tarifs] = await Promise.all([
     jeux.diagnostics(),
     jeux.cma(),
-    jeux.entrees(),
     chargerJson("groupage", "cma_exclusions"),
     chargerTarifs().catch(() => null),
   ]);
   const lignes = diagnostics.lignes.filter((l) => l.Code === code);
-  const entreesDuCode = entrees.lignes.filter((l) => l.Code === code);
-  const libelle =
-    lignes[0]?.["Libellé code"] ?? cma.lignes.find((l) => l.Code === code)?.["Libellé"] ?? entreesDuCode[0]?.["Libellé"];
+  const libelle = lignes[0]?.["Libellé code"] ?? cma.lignes.find((l) => l.Code === code)?.["Libellé"];
   if (!libelle) {
     return [el("p", { class: "message-info" }, `${code} ne figure ni dans les listes de la fonction groupage, ni parmi les CMA.`)];
   }
@@ -288,11 +279,10 @@ async function ficheDiagnostic(arbre, code) {
   const { parListe } = indexer(arbre);
   const etapes = listes.flatMap((l) => (parListe.get(l) ?? []).map((e) => ({ ...e, liste: l })));
   const surLeDp = (e) => e.n.genre === "test" && e.n.symbole === "DP";
-  const cmds = [...cmdsDuDp(listes, entreesDuCode)].map(([cmd, origine]) => etapeCmd(arbre, cmd, origine)).filter(Boolean);
+  const cmds = listes.map((l) => etapeCmd(arbre, l)).filter(Boolean);
   const parcours = parcoursEnDp(listes);
   const enDp = [...cmds, ...marquerAtteintes(arbre, etapes.filter(surLeDp), cmds, parcours)];
   const autres = etapes.filter((e) => !surLeDp(e));
-  const cmdsDuVolume2 = [...new Set(entrees.lignes.map((l) => l.CMD))].join(", ");
 
   if (!arbre._frontieresDp) arbre._frontieresDp = frontieresDp(arbre, diagnostics.lignes);
   const frontiere = arbre._frontieresDp.filter((f) => f.Code === code);
@@ -311,7 +301,7 @@ async function ficheDiagnostic(arbre, code) {
       : el(
           "p",
           { class: "message-info" },
-          `${code} ne figure ni dans une liste de diagnostics propre à une CMD, numérotée d'après elle (D-0307 pour la CMD 03), ni parmi les diagnostics d'entrée relevés dans le volume 2 du manuel (CMD ${cmdsDuVolume2}) : la CMD où il oriente le séjour en DP n'est pas calculée ici.`
+          `${code} ne figure dans aucune liste de diagnostics propre à une CMD, numérotée d'après elle (D-0307 pour la CMD 03) : la CMD où il oriente le séjour en DP n'est pas calculée ici.`
         ),
     enDp.length ? tableEtapes(arbre, enDp, parcours) : null,
     enDp.length
@@ -338,26 +328,15 @@ async function ficheDiagnostic(arbre, code) {
   ];
 }
 
-/** Les CMD où le code oriente le séjour en DP, et ce qui l'y range : sa
- *  liste de diagnostics de CMD (« D-0307 » : CMD 03) ou, à défaut, les
- *  diagnostics d'entrée que donne le volume 2 du manuel (CMD 14, dont les
- *  listes D-14xx n'en contiennent qu'une partie). Un code des appareils
- *  génitaux est dans deux listes de CMD, 12 et 13, selon le sexe. */
-function cmdsDuDp(listes, entrees) {
-  const cmds = new Map();
-  for (const l of listes) {
-    const m = RE_LISTE_CMD.exec(l);
-    if (m && !cmds.has(m[1])) cmds.set(m[1], l);
-  }
-  for (const e of entrees) if (!cmds.has(e.CMD)) cmds.set(e.CMD, "diagnostic d'entrée du volume 2");
-  return cmds;
-}
-
-/** L'étape qui oriente le séjour en DP vers la CMD : la racine de son arbre
- *  (« DP : CMD 03 »), avec ce qui y range le code. */
-function etapeCmd(arbre, cmd, origine) {
-  const c = arbre.cmd.find((x) => x.cmd === cmd);
-  return c ? { id: c.racine, n: arbre.noeuds[c.racine], i: 0, libelle: `CMD ${c.cmd} ${c.titre} (${origine})` } : null;
+/** L'étape qui oriente le séjour en DP vers la CMD d'une liste : pour
+ *  « D-0307 », la racine de l'arbre de la CMD 03 (« DP : CMD 03 »). Null
+ *  pour une liste qui n'est pas propre à une CMD. Un code des appareils
+ *  génitaux est dans deux de ces listes, CMD 12 et 13, selon le sexe. */
+function etapeCmd(arbre, liste) {
+  const m = RE_LISTE_CMD.exec(liste);
+  const cmd = m && arbre.cmd.find((c) => c.cmd === m[1]);
+  if (!cmd) return null;
+  return { id: cmd.racine, n: arbre.noeuds[cmd.racine], i: 0, liste, libelle: `CMD ${cmd.cmd} ${cmd.titre} (${liste})` };
 }
 
 /** Marque `nonAtteinte` les étapes sur le DP dont le séjour ne prend pas le
