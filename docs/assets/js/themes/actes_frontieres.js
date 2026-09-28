@@ -128,7 +128,7 @@ export async function rendre(conteneur) {
       "p",
       { class: "sous-titre" },
       "Limites : les racines sont celles de tous les tests d'actes de la CMD qui citent l'acte, sans l'ordre dans lequel l'arbre les examine ; un acte absent des listes publiées (non classant) n'apparaît pas. Voir aussi ",
-      el("a", { class: "lien-texte", href: "#/arbre" }, "l'algorithme de la fonction groupage"),
+      el("a", { class: "lien-texte", href: "#/mco/arbre" }, "l'algorithme de la fonction groupage"),
       "."
     ),
     el(

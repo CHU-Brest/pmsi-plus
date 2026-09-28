@@ -111,9 +111,9 @@ export async function rendre(conteneur) {
       "p",
       { class: "sous-titre" },
       "Limites : seuls les tests sur le DP de l'arbre sont examinés, sans valorisation (elle est dans la fiche de chaque code et dans les ",
-      el("a", { class: "lien-texte", href: "#/tarifs" }, "tarifs des GHS"),
+      el("a", { class: "lien-texte", href: "#/mco/tarifs" }, "tarifs des GHS"),
       ") ; le choix de la CMD par le DP, fait en amont de l'arbre, n'est pas couvert. Voir aussi ",
-      el("a", { class: "lien-texte", href: "#/arbre" }, "l'algorithme de la fonction groupage"),
+      el("a", { class: "lien-texte", href: "#/mco/arbre" }, "l'algorithme de la fonction groupage"),
       "."
     ),
     el("div", { class: "barre-outils" }, champ),

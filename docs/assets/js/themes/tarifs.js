@@ -1,7 +1,7 @@
 // Tarifs des GHS — la feuille « Tarifs public » de l'arrêté tarifaire MCO :
 // une ligne par couple GHS-GHM, avec le tarif, les bornes et les extrêmes.
-// L'adresse #/tarifs/<recherche> pré-remplit le champ : la fiche code et
-// l'algorithme y renvoient pour une racine (« #/tarifs/01C03 »).
+// L'adresse #/mco/tarifs/<recherche> pré-remplit le champ : la fiche code
+// et l'algorithme y renvoient pour une racine (« #/mco/tarifs/01C03 »).
 
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
@@ -49,7 +49,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   const lignes = lignesAffichees(jeu);
   conteneur.innerHTML = "";
 
-  // Lien profond (#/tarifs/01C03) : le champ arrive rempli.
+  // Lien profond (#/mco/tarifs/01C03) : le champ arrive rempli.
   const [demande = ""] = chemin;
   const zoneResultats = el("div", {});
   const champ = champMotsClefs({

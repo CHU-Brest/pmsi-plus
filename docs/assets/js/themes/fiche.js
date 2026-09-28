@@ -158,11 +158,11 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       "p",
       { class: "pied-page" },
       "Vues d'ensemble : ",
-      el("a", { class: "lien-texte", href: "#/frontieres" }, "codes frontières en DP"),
+      el("a", { class: "lien-texte", href: "#/mco/frontieres" }, "codes frontières en DP"),
       " · ",
-      el("a", { class: "lien-texte", href: "#/actes-frontieres" }, "actes frontières"),
+      el("a", { class: "lien-texte", href: "#/mco/actes-frontieres" }, "actes frontières"),
       " · ",
-      el("a", { class: "lien-texte", href: "#/cma" }, "liste des CMA"),
+      el("a", { class: "lien-texte", href: "#/mco/cma" }, "liste des CMA"),
       "."
     )
   );
@@ -215,7 +215,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   async function ouvrir(code, { historique = true } = {}) {
     zoneSuggestions.innerHTML = "";
     saisie.value = code;
-    if (historique && location.hash !== `#/fiche/${code}`) history.replaceState(null, "", `#/fiche/${code}`);
+    if (historique && location.hash !== `#/mco/fiche/${code}`) history.replaceState(null, "", `#/mco/fiche/${code}`);
     zoneFiche.innerHTML = "";
     zoneFiche.append(el("p", { class: "compteur", role: "status" }, "Chargement…"));
     const contenu = RE_CCAM.test(code) ? await ficheActe(arbre, code) : await ficheDiagnostic(arbre, code);
@@ -294,7 +294,7 @@ function resume(enDp, frontiere, exclusions, code) {
 
 function lienArbre(e) {
   const cas = e.n.branches.length > 1 ? `/${e.i}` : "";
-  return el("a", { href: `#/arbre/${e.n.cmd}/${e.id}${cas}` }, `CMD ${e.n.cmd} · p. ${e.n.page}`);
+  return el("a", { href: `#/mco/arbre/${e.n.cmd}/${e.id}${cas}` }, `CMD ${e.n.cmd} · p. ${e.n.page}`);
 }
 
 function celluleRacines(racines) {
@@ -348,7 +348,7 @@ function blocTarifs(arbre, tarifs, racines) {
   return [
     titre,
     fraicheur([{ libelle: tarifs.libelle, millesime: tarifs.millesime }]),
-    noteTarifs("#/tarifs"),
+    noteTarifs("#/mco/tarifs"),
     ...racines.map((r) => {
       const dansArbre = ghmDeRacineDansArbre(arbre, r);
       const ghms = dansArbre.length ? dansArbre : ghmDeRacine(tarifs, r);
@@ -383,7 +383,7 @@ function blocFrontiere(code, frontiere, voisins) {
       "ul",
       {},
       ...ailleurs.slice(0, 15).map((v) =>
-        el("li", {}, el("a", { href: `#/fiche/${v.Code}` }, v.Code), ` ${v["Libellé code"]} → ${racinesEnClair(v.Racines)}`)
+        el("li", {}, el("a", { href: `#/mco/fiche/${v.Code}` }, v.Code), ` ${v["Libellé code"]} → ${racinesEnClair(v.Racines)}`)
       ),
       ailleurs.length > 15 ? el("li", {}, `… et ${ailleurs.length - 15} autres (voir les codes frontières en DP).`) : null
     )
@@ -490,7 +490,7 @@ async function ficheActe(arbre, code) {
             "ul",
             {},
             ...voisins.slice(0, 15).map((v) =>
-              el("li", {}, el("a", { href: `#/fiche/${codeCcam(v.Code)}` }, codeCcam(v.Code)), ` ${v["Libellé code"]} → ${racinesEnClair(v.Racines)} (CMD ${v.CMD})`)
+              el("li", {}, el("a", { href: `#/mco/fiche/${codeCcam(v.Code)}` }, codeCcam(v.Code)), ` ${v["Libellé code"]} → ${racinesEnClair(v.Racines)} (CMD ${v.CMD})`)
             )
           )
         )
