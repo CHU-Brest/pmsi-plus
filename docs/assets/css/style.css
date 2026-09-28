@@ -2204,6 +2204,61 @@ ol.chemin > li::before {
   margin-right: var(--sp-1);
 }
 
+/* Les tableaux de la fiche s'affichent en entier : coupés à 420px, les
+   racines dépliées de la CMD du DP (MCO) ou les GN d'un acte spécialisé
+   pour quinze listes (SMR) disparaissaient sous le pli du cadre. */
+.fiche .codes-liste {
+  max-height: none;
+}
+
+/* Liste repliée dans une cellule (« 27 racines : … », « les 29 autres
+   intervenants ») : le résumé se lit comme un lien, la liste dépliée garde
+   une ligne par élément. */
+.fiche td details summary {
+  color: var(--text-link);
+  cursor: pointer;
+}
+
+.fiche td details[open] summary {
+  margin-bottom: var(--sp-1);
+}
+
+/* Étape sur le DP que ce DP n'atteint pas : la cellule de ses racines
+   s'efface sans disparaître. */
+.fiche td.non-atteinte {
+  color: var(--text-muted);
+}
+
+/* Téléphone : les mots les plus longs des cellules de données
+   (« musculosquelettique », « interdisciplinaire ») se coupent plutôt que
+   de faire défiler le tableau — césure du navigateur quand il en a une pour
+   le français, coupure nue sinon —, et les cellules resserrent leurs
+   marges. Les codes ne se coupent qu'aux points de coupure prévus
+   (`<wbr>`). */
+@media (max-width: 600px) {
+  .fiche .codes-liste td {
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-2);
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+
+  .fiche .codes-liste .code {
+    overflow-wrap: normal;
+  }
+}
+
+/* Note sous un tableau ou un paragraphe (sens d'une colonne, source,
+   paragraphe du manuel) : plus discrète que le texte, à la largeur de
+   lecture. */
+.fiche .fiche-note {
+  margin: var(--sp-2) 0 0;
+  font: var(--text-body-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  max-width: var(--largeur-lecture);
+}
+
 .fiche-listes {
   margin: 0;
   padding-left: var(--sp-5);
@@ -2321,14 +2376,9 @@ ol.chemin > li::before {
   color: var(--text-primary);
 }
 
-/* Les tableaux de la fiche s'affichent en entier : coupés à 420px comme
-   dans la fiche MCO, les GN d'un acte spécialisé pour quinze listes
-   disparaissaient sous le pli du cadre. Seul le tableau d'une trentaine
-   d'intervenants défile dans son cadre, sous son en-tête collant. */
-.fiche-smr .codes-liste {
-  max-height: none;
-}
-
+/* Seul le tableau d'une trentaine d'intervenants défile dans son cadre,
+   sous son en-tête collant ; les autres s'affichent en entier (cf. « Fiche
+   code »). */
 .fiche-smr .codes-liste.defilant {
   max-height: 420px;
 }
@@ -2363,33 +2413,11 @@ ol.chemin > li::before {
   }
 }
 
-/* Source et paragraphe du manuel sous un tableau ou un paragraphe : plus
-   discrets que le texte, à la largeur de lecture. */
-.fiche-smr .fiche-note {
-  margin: var(--sp-2) 0 0;
-  font: var(--text-body-sm);
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  max-width: var(--largeur-lecture);
-}
-
 /* Intervenant non attendu (pondération 0), position non permise, liste
    sans test : la cellule s'efface sans disparaître. */
 .fiche-smr td.non-attendu,
 .fiche-smr .racine-libellee.non-attendu {
   color: var(--text-muted);
-}
-
-/* Liste d'intervenants repliée dans une cellule (« les 29 autres ») : le
-   résumé se lit comme un lien, la liste dépliée garde une ligne par
-   intervenant. */
-.fiche-smr td details summary {
-  color: var(--text-link);
-  cursor: pointer;
-}
-
-.fiche-smr td details[open] summary {
-  margin-bottom: var(--sp-1);
 }
 
 /* Écart entre la pondération du fichier CSAR de l'ATIH et celle du CSARR
@@ -2423,27 +2451,14 @@ ol.chemin > li::before {
   color: var(--amber-700);
 }
 
-/* Téléphone : les mots les plus longs des cellules de données
-   (« interdisciplinaire », « Neuropsychologue ») se coupent plutôt que de
-   faire défiler le tableau — césure du navigateur quand il en a une pour le
-   français, coupure nue sinon —, et les cellules resserrent leurs marges.
-   Les en-têtes de ligne (modulateur, liste, CSARR) gardent leurs mots
-   entiers, et fixent ainsi la largeur de leur colonne ; les codes ne se
-   coupent qu'aux points de coupure prévus (`<wbr>`). */
+/* Téléphone : les en-têtes de ligne (modulateur, liste, CSARR) resserrent
+   leurs marges comme les cellules (cf. « Fiche code »), mais gardent leurs
+   mots entiers, et fixent ainsi la largeur de leur colonne. */
 @media (max-width: 600px) {
-  .fiche-smr .codes-liste td,
   .fiche-smr .codes-liste tbody th {
     padding-left: var(--sp-2);
     padding-right: var(--sp-2);
     hyphens: auto;
-  }
-
-  .fiche-smr .codes-liste td {
-    overflow-wrap: anywhere;
-  }
-
-  .fiche-smr .codes-liste .code {
-    overflow-wrap: normal;
   }
 }
 

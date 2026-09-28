@@ -11,9 +11,12 @@ import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
 
 const COLONNES_CHERCHABLES = ["CMD", "Code", "Racines", "Liste", "Libellé code", "_libelleListe"];
 
+/** Les sorties d'un nœud : ses cas, son « sinon » et sa suite. */
+export const sorties = (n) => [...(n.branches ?? []).map((b) => b.vers), n.sinon?.vers, n.suite?.vers].filter(Boolean);
+
 /** Racines de GHM (et groupes d'erreur, renvois) atteignables depuis un
- *  nœud, en suivant toutes ses sorties. */
-export function racinesAtteintes(arbre, depart, memo) {
+ *  nœud, en suivant toutes ses sorties, ou celles que `suivre` retient. */
+export function racinesAtteintes(arbre, depart, memo, suivre = sorties) {
   if (memo.has(depart)) return memo.get(depart);
   memo.set(depart, new Set()); // garde-fou : l'arbre n'a pas de boucle
   const n = arbre.noeuds[depart];
@@ -22,8 +25,7 @@ export function racinesAtteintes(arbre, depart, memo) {
   else if (n.genre === "renvoi") resultat = new Set([`orientation ${n.texte}`]);
   else {
     resultat = new Set();
-    const suites = [...(n.branches ?? []).map((b) => b.vers), n.sinon?.vers, n.suite?.vers].filter(Boolean);
-    for (const s of suites) for (const r of racinesAtteintes(arbre, s, memo)) resultat.add(r);
+    for (const s of suivre(n)) for (const r of racinesAtteintes(arbre, s, memo, suivre)) resultat.add(r);
   }
   memo.set(depart, resultat);
   return resultat;

@@ -81,7 +81,7 @@ export const REGISTRY = [
     module: "fiche",
     cheminCommun: true,
     travaux: true,
-    resume: "Un code CIM-10 ou CCAM : ses tests dans l'arbre, ses racines de GHM, son niveau de CMA et ses exclusions.",
+    resume: "Un code CIM-10 ou CCAM : sa CMD en DP, ses tests dans l'arbre, ses racines de GHM, son niveau de CMA et ses exclusions.",
   },
   {
     champ: "mco",
