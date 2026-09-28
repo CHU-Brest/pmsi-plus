@@ -1,9 +1,9 @@
 // Fiche code — tout ce que la fonction groupage fait d'un code CIM-10 ou
-// CCAM, sur une seule page : en diagnostic principal (listes, étapes de
-// l'arbre qui le testent, racines de GHM possibles et leurs tarifs, codes
-// frontières), en diagnostic associé (niveau de CMA, DP et racines qui
-// l'excluent), ou comme acte (listes, étapes, racines et leurs tarifs, actes
-// frontières).
+// CCAM, sur une seule page : en diagnostic principal (CMD où il oriente le
+// séjour, listes, étapes de l'arbre qui le testent, racines de GHM possibles
+// et leurs tarifs, codes frontières), en diagnostic associé (niveau de CMA,
+// DP et racines qui l'excluent), ou comme acte (listes, étapes, racines et
+// leurs tarifs, actes frontières).
 //
 // Tout est calculé dans le navigateur à partir des référentiels déjà
 // publiés : arbre.json, listes de la fonction groupage, liste des CMA et
@@ -12,7 +12,7 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import { normaliser } from "../recherche.js";
 import { el, fraicheur, nombre } from "../interface.js";
-import { racinesAtteintes, calculer as frontieresDp } from "./frontieres.js";
+import { racinesAtteintes, sorties, calculer as frontieresDp } from "./frontieres.js";
 import { calculer as frontieresActes } from "./actes_frontieres.js";
 import { couvre } from "./cma.js";
 import { codesGhm } from "./arbre.js";
@@ -21,6 +21,12 @@ import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "
 const SUGGESTIONS_MAX = 12;
 const RE_CCAM = /^[A-Z]{4}\d{3}/;
 const RE_RACINE = /^\d{2}[CKMZ]\d{2}$/;
+// Liste de diagnostics d'une CMD : « D-0307 » est une liste de la CMD 03. En
+// DP, un code de l'une d'elles oriente le séjour vers cette CMD.
+const RE_LISTE_CMD = /^D-(\d{2})\d{2}$/;
+
+// Type de racine, 3e caractère de son code.
+const TYPES_RACINE = { C: "chirurgicale", K: "interventionnelle", M: "médicale", Z: "indifférenciée" };
 
 const SYMBOLES = {
   DP: "DP",
@@ -80,17 +86,43 @@ function indexer(arbre) {
       }
     });
   }
-  arbre._fiche = { parListe, memo: new Map() };
+  // Parcours par toutes les sorties de chaque nœud, commun aux fiches ;
+  // celui d'un DP est propre à la fiche de son code (parcoursEnDp).
+  arbre._fiche = { parListe, parcours: { suivre: sorties, memo: new Map() } };
   return arbre._fiche;
 }
 
-function racinesDe(arbre, vers) {
-  return [...racinesAtteintes(arbre, vers, indexer(arbre).memo)].filter((r) => RE_RACINE.test(r)).sort();
+/** Le parcours d'un séjour dont le code est le DP. Un test sur le DP ne
+ *  suit que le premier cas qui contient le code, ou son « sinon » ; un test
+ *  sur l'un des diagnostics du RSS (D, ou DP et DAS sauf DR) que le code
+ *  satisfait ne va pas au-delà de son cas ; l'inversion du DP et du DR n'a
+ *  pas eu lieu, puisque le code est resté le DP. Les autres tests (actes,
+ *  autres diagnostics, âge, durée de séjour…) restent ouverts. */
+function parcoursEnDp(listes) {
+  const contient = (b) => b.listes.some((l) => listes.includes(l));
+  const suivre = (n) => {
+    const branches = n.branches ?? [];
+    if (n.genre === "test" && n.symbole === "DP") {
+      const b = branches.find(contient);
+      return [b ? b.vers : n.sinon?.vers].filter(Boolean);
+    }
+    if (n.genre === "test" && (n.symbole === "D" || n.symbole === "DRbarre")) {
+      const i = branches.findIndex(contient);
+      if (i >= 0) return branches.slice(0, i + 1).map((b) => b.vers);
+    }
+    if (n.genre === "critere" && n.variable === "Inversion DP/DR") return [n.sinon.vers];
+    return sorties(n);
+  };
+  return { suivre, memo: new Map() };
+}
+
+function racinesDe(arbre, vers, parcours = indexer(arbre).parcours) {
+  return [...racinesAtteintes(arbre, vers, parcours.memo, parcours.suivre)].filter((r) => RE_RACINE.test(r)).sort();
 }
 
 /** Les racines que peuvent atteindre les étapes, sans doublon. */
-function racinesDesEtapes(arbre, etapes) {
-  return [...new Set(etapes.flatMap((e) => racinesDe(arbre, e.n.branches[e.i].vers)))].sort();
+function racinesDesEtapes(arbre, etapes, parcours) {
+  return [...new Set(etapes.flatMap((e) => racinesDe(arbre, e.n.branches[e.i].vers, parcours)))].sort();
 }
 
 /** Les GHM d'une racine d'après les cases de l'arbre, y compris ceux que
@@ -246,8 +278,11 @@ async function ficheDiagnostic(arbre, code) {
   const listes = [...new Set(lignes.map((l) => l.Liste))].sort();
   const { parListe } = indexer(arbre);
   const etapes = listes.flatMap((l) => (parListe.get(l) ?? []).map((e) => ({ ...e, liste: l })));
-  const enDp = etapes.filter((e) => e.n.genre === "test" && e.n.symbole === "DP");
-  const autres = etapes.filter((e) => !(e.n.genre === "test" && e.n.symbole === "DP"));
+  const surLeDp = (e) => e.n.genre === "test" && e.n.symbole === "DP";
+  const cmds = listes.map((l) => etapeCmd(arbre, l)).filter(Boolean);
+  const parcours = parcoursEnDp(listes);
+  const enDp = [...cmds, ...marquerAtteintes(arbre, etapes.filter(surLeDp), cmds, parcours)];
+  const autres = etapes.filter((e) => !surLeDp(e));
 
   if (!arbre._frontieresDp) arbre._frontieresDp = frontieresDp(arbre, diagnostics.lignes);
   const frontiere = arbre._frontieresDp.filter((f) => f.Code === code);
@@ -259,13 +294,25 @@ async function ficheDiagnostic(arbre, code) {
 
   return [
     el("h2", { tabindex: "-1" }, `${code} — ${libelle}`),
-    resume(enDp, frontiere, exclusions, code),
+    resume(cmds, enDp, frontiere, exclusions, code),
     el("h3", {}, "En diagnostic principal"),
+    cmds.length
+      ? null
+      : el(
+          "p",
+          { class: "message-info" },
+          `${code} ne figure dans aucune liste de diagnostics propre à une CMD, numérotée d'après elle (D-0307 pour la CMD 03) : la CMD où il oriente le séjour en DP n'est pas calculée ici.`
+        ),
+    enDp.length ? tableEtapes(arbre, enDp, parcours) : null,
     enDp.length
-      ? tableEtapes(arbre, enDp)
-      : el("p", { class: "message-info" }, "Aucune étape de l'arbre ne teste ce code en DP : la CMD que détermine ce DP le classe par ses autres tests."),
+      ? el(
+          "p",
+          { class: "fiche-note" },
+          "Racines possibles : celles que le séjour peut atteindre depuis l'étape avec ce DP, selon ses actes, ses autres diagnostics, l'âge ou la durée de séjour."
+        )
+      : null,
     frontiere.length ? blocFrontiere(code, frontiere, voisins) : null,
-    ...blocTarifs(arbre, tarifs, racinesDesEtapes(arbre, enDp)),
+    ...blocTarifs(arbre, tarifs, racinesDesEtapes(arbre, enDp.filter((e) => !e.nonAtteinte), parcours)),
     el("h3", {}, "En diagnostic associé : CMA"),
     blocCma(exclusions, code),
     autres.length ? el("h3", {}, "Autres tests de l'arbre sur ce diagnostic") : null,
@@ -281,11 +328,48 @@ async function ficheDiagnostic(arbre, code) {
   ];
 }
 
+/** L'étape qui oriente le séjour en DP vers la CMD d'une liste : pour
+ *  « D-0307 », la racine de l'arbre de la CMD 03 (« DP : CMD 03 »). Null
+ *  pour une liste qui n'est pas propre à une CMD. Un code des appareils
+ *  génitaux est dans deux de ces listes, CMD 12 et 13, selon le sexe. */
+function etapeCmd(arbre, liste) {
+  const m = RE_LISTE_CMD.exec(liste);
+  const cmd = m && arbre.cmd.find((c) => c.cmd === m[1]);
+  if (!cmd) return null;
+  return { id: cmd.racine, n: arbre.noeuds[cmd.racine], i: 0, liste, libelle: `CMD ${cmd.cmd} ${cmd.titre} (${liste})` };
+}
+
+/** Marque `nonAtteinte` les étapes sur le DP dont le séjour ne prend pas le
+ *  cas avec ce DP. L'orientation (séances, transplantation, traumatismes
+ *  multiples, VIH, nouveau-nés) précède la CMD du DP ; hors d'elle, une
+ *  étape n'est atteinte que depuis cette CMD. Sans CMD connue, rien n'est
+ *  marqué. */
+function marquerAtteintes(arbre, etapes, cmds, parcours) {
+  if (!cmds.length) return etapes;
+  const orientation = new Set(arbre.orientation.map((o) => o.cmd));
+  const atteints = new Set();
+  const pile = cmds.map((e) => e.n.branches[e.i].vers);
+  while (pile.length) {
+    const id = pile.pop();
+    if (atteints.has(id)) continue;
+    atteints.add(id);
+    pile.push(...parcours.suivre(arbre.noeuds[id]));
+  }
+  const prise = (e) => atteints.has(e.id) && parcours.suivre(e.n).includes(e.n.branches[e.i].vers);
+  return etapes.map((e) => (orientation.has(e.n.cmd) || prise(e) ? e : { ...e, nonAtteinte: true }));
+}
+
 /** Trois pastilles pour lire la fiche d'un coup d'œil. */
-function resume(enDp, frontiere, exclusions, code) {
+function resume(cmds, enDp, frontiere, exclusions, code) {
   const fiche = exclusions.cma.find((c) => c[0] === code);
+  const etapes = `testé à ${enDp.length} étape${enDp.length > 1 ? "s" : ""}`;
+  const dp = cmds.length
+    ? `DP : CMD ${cmds.map((e) => e.n.cmd).join(" ou ")}, ${etapes}`
+    : enDp.length
+      ? `DP : ${etapes}`
+      : "DP : pas de test spécifique";
   const pastilles = [
-    el("span", { class: "pastille" }, enDp.length ? `DP : testé à ${enDp.length} étape${enDp.length > 1 ? "s" : ""}` : "DP : pas de test spécifique"),
+    el("span", { class: "pastille" }, dp),
     frontiere.length ? el("span", { class: "pastille attention" }, "Code frontière en DP") : null,
     el("span", { class: fiche ? "pastille cma" : "pastille" }, fiche ? `CMA de niveau ${fiche[1]}` : "Pas une CMA"),
   ];
@@ -297,14 +381,29 @@ function lienArbre(e) {
   return el("a", { href: `#/mco/arbre/${e.n.cmd}/${e.id}${cas}` }, `CMD ${e.n.cmd} · p. ${e.n.page}`);
 }
 
+// Au-delà, les racines d'une étape se replient : depuis la CMD du DP, elles
+// sont souvent plusieurs dizaines.
+const RACINES_EN_CELLULE_MAX = 6;
+
 function celluleRacines(racines) {
   if (!racines.length) return ["—"];
-  return racines.map((r) =>
+  const lignes = racines.map((r) =>
     el("span", { class: "racine-libellee" }, el("strong", { class: "code" }, r), libelleRacine(r) ? ` ${libelleRacine(r)}` : "")
   );
+  if (racines.length <= RACINES_EN_CELLULE_MAX) return lignes;
+  return [el("details", {}, el("summary", {}, decompte(racines)), ...lignes)];
 }
 
-function tableEtapes(arbre, etapes) {
+/** « 27 racines : 22 chirurgicales, 3 interventionnelles, 2 médicales ». */
+function decompte(racines) {
+  const parType = Object.entries(TYPES_RACINE).flatMap(([type, nom]) => {
+    const n = racines.filter((r) => r[2] === type).length;
+    return n ? [`${n} ${nom}${n > 1 ? "s" : ""}`] : [];
+  });
+  return `${racines.length} racines : ${parType.join(", ")}`;
+}
+
+function tableEtapes(arbre, etapes, parcours) {
   return el(
     "div",
     { class: "codes-liste" },
@@ -326,8 +425,14 @@ function tableEtapes(arbre, etapes) {
             "tr",
             {},
             el("td", { class: "code" }, lienArbre(e)),
-            el("td", {}, `${symbole} : ${b.libelle}`),
-            el("td", { class: "racines" }, ...celluleRacines(racinesDe(arbre, b.vers)))
+            el("td", {}, `${symbole} : ${e.libelle ?? b.libelle}`),
+            e.nonAtteinte
+              ? el(
+                  "td",
+                  { class: "racines non-atteinte" },
+                  "Non atteinte avec ce DP : un test précédent classe le séjour ailleurs, ou l'étape suit une inversion du DP et du DR."
+                )
+              : el("td", { class: "racines" }, ...celluleRacines(racinesDe(arbre, b.vers, parcours)))
           );
         })
       )
