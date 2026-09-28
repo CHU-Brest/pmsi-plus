@@ -1,281 +1,535 @@
-// Algorithme de la fonction groupage SMR — le volume 1 du Manuel des GME, de
-// la catégorie majeure (CM) au groupe médico-économique (GME). Présenté en
-// tableaux plutôt qu'en arbre dessiné : l'ATIH livre les tests d'entrée en
-// GN, les types de réadaptation et leurs seuils, les règles de lourdeur en
-// tables (GN_liste_tests, GR_infos, GL_infos), que build_smr.py reprend
-// telles quelles dans classification.json.
+// Algorithme de la fonction groupage SMR — les arbres de décision du volume
+// 1 du Manuel des GME, dessinés comme ceux du volume 3 du Manuel des GHM :
+// le dessin est celui de arbre_vue.js, commun avec l'algorithme MCO.
 //
-// Les règles qui relient ces tables sont celles du volume 1 du Manuel des
-// GME, présentées étape par étape dans l'ordre du groupage : orientation en
-// CM (2.2.1), tests d'entrée en GN (2.2.2), type de réadaptation (3.4),
-// lourdeur (4.2), sévérité (5.2). Une règle qui change dans une nouvelle
-// version du manuel se reporte ici.
+// Le manuel décrit l'orientation en CM (2.2.1, figure 4), les tests
+// d'entrée en GN de chaque CM (2.2.2, annexe 7.2), puis, dans chaque GN, le
+// type de réadaptation (3.4, figures 6 et 7, annexes 7.3 et 7.4), le niveau
+// de lourdeur (4.2, figure 8, annexe 7.5) et le niveau de sévérité (5.2.3,
+// figure 9). L'ATIH livre les tables de ces arbres (GN_liste_tests,
+// GR_infos, GL_infos), que build_smr.py reprend telles quelles dans
+// classification.json, avec la page de l'annexe où se lit chaque ligne ;
+// les règles qui les enchaînent sont celles du volume 1, et c'est
+// `construire` qui en fait des nœuds : une règle qui change dans une
+// nouvelle version du manuel se reporte là.
 //
-// Adresses : #/smr/arbre (vue d'ensemble et orientation en CM),
-// #/smr/arbre/<CM> (tests d'entrée en GN de la CM), #/smr/arbre/<GN> (le GN
-// ouvert dans sa CM) et, depuis la recherche, #/smr/arbre/<GR|GL|GME> (le GN
-// ouvert sur ce groupe). L'adresse suit la sélection sans entrée
-// d'historique, comme l'algorithme MCO.
+// Adresses : #/smr/arbre/orientation, #/smr/arbre/<CM> et
+// #/smr/arbre/<GN>, suivies d'un nœud le cas échéant ; #/smr/arbre/<GR, GL
+// ou GME> ouvre l'arbre du GN sur ce groupe (liens des autres thèmes).
 
-import * as recherche from "../../recherche.js";
-import { el, fraicheur, champMotsClefs, nombre } from "../../interface.js";
-import { chargerActesSpe, chargerClassification, chargerTarifsSmr, libelleGroupe, TYPES_READAPTATION } from "../../smr.js";
-import { groupeLibelle, lienCode, lienTarifs, noteTarifsSmr, sourceFg, tableTarifsGme } from "../../smr_interface.js";
+import { el, fraicheur, nombre } from "../../interface.js";
+import { dessinerArbre } from "../../arbre_vue.js";
+import {
+  chargerClassification,
+  chargerDiagnostics,
+  chargerTarifsSmr,
+  cle,
+  libelleGroupe,
+  TYPES_READAPTATION,
+} from "../../smr.js";
+import { lienCode, lienTarifs, noteTarifsSmr, sourceFg, tableTarifsGme } from "../../smr_interface.js";
 
-// Au-delà, la liste de résultats demande d'affiner la recherche plutôt que
-// de dérouler des centaines de groupes (« 01 » en ramène plus de 400).
-const RESULTATS_MAX = 40;
-// CM 90 « Erreurs et recueils inclassables » : aucune liste n'y oriente,
-// aucun test d'entrée en GN ; elle n'a rien à montrer dans le sélecteur.
+const ORIENTATION = "orientation";
+// CM 90 « Erreurs et recueils inclassables » : aucune liste n'y oriente,
+// aucun test d'entrée en GN ; elle n'est que l'issue de l'orientation.
 const CM_ERREURS = "90";
-const NIVEAUX = ["CM", "GN", "GR", "GL", "GME"];
-// Types de réadaptation dans l'ordre où le manuel les teste (3.4) :
-// pédiatrique d'abord, puis du plus au moins spécialisé ou intense.
+// Figure 4 : schéma de groupage en CM.
+const PAGE_ORIENTATION = 19;
 const TYPES_HC = ["P", "S", "T", "U"];
-const TYPES_HTP = ["H", "I", "J", "K", "L"];
-// Code de groupe saisi, entier ou en partie : « 01 », « 0147 », « 0147S »,
-// « 0147SC », « 0147SC2 ». Comparé au début des codes, jamais aux libellés.
-const RE_CODE_GROUPE = /^\d{2}(?:\d{2}(?:[A-Z](?:[A-Z]\d?)?)?)?$/;
-// GR, GL ou GME dans l'adresse : le GN s'ouvre, placé sur ce groupe.
-const RE_GROUPE_ADRESSE = /^\d{4}[A-Z](?:[A-Z]\d?)?$/;
-const ANCRE = "smr-arbre-";
 
-const POSITIONS = {
-  MMP: "manifestation morbide principale",
-  AE: "affection étiologique",
-  DAS: "diagnostic associé significatif",
+// Positions des tests d'entrée en GN (annexe 7.2), en cercle comme celles
+// du volume 3 du Manuel des GHM.
+const SYMBOLES = {
+  MMP: { texte: "MMP", titre: "La manifestation morbide principale (MMP) du RHS", variante: "serre" },
+  AE: { texte: "AE", titre: "L'affection étiologique (AE) du RHS" },
+  MMPAE: { texte: "MMP ou AE", lignes: ["MMP", "AE"], titre: "La MMP ou l'AE du RHS", variante: "empile" },
+  DAS: { texte: "DAS", titre: "L'un au moins des diagnostics associés significatifs (DAS) du RHS", variante: "serre" },
+};
+
+const VARIABLES = {
+  Âge: "âge du patient, au premier RHS du séjour en HC, à chaque RHS en HTP (1.2.3.5)",
+  "Score R spécialisé":
+    "score de réadaptation spécialisée : pondérations des actes de la liste d'actes spécialisés du GN, par séjour et par jour (3.3.2.1)",
+  "Score R global":
+    "score de réadaptation globale : pondérations des actes CSARR, codés ou transcodés du CSAR, et CCAM de réadaptation, par séjour et par jour (3.3.2.1)",
+  "Score R global par jour": "score de réadaptation globale de la semaine, par jour de présence (3.3.2.2)",
+  "Niveau C si": "le patient a-t-il une de ses caractéristiques en niveau C ? (4.2.1, figure 8)",
+  "Niveau B si": "le patient a-t-il une de ses caractéristiques en niveau B ? (4.2.1, figure 8)",
 };
 
 // Conditions du seul test écrit en toutes lettres (GN 0871, fractures
 // multiples), telles que les donne GN_liste_tests.xlsx ; build_smr.py les
 // réduit à ces deux mots-clefs.
 const CONDITIONS = {
-  mmpPrioritaire: "Si la MMP et l'AE sont classantes, seul le code en MMP est retenu comme classant.",
+  mmpPrioritaire: "si la MMP et l'AE sont classantes, seul le code en MMP est retenu comme classant",
   quatreCaracteresDifferents:
-    "Les 4 premiers caractères du code classant en DAS doivent être différents des 4 premiers caractères du code classant en MMP ou AE.",
+    "les 4 premiers caractères du code classant en DAS doivent différer de ceux du code classant en MMP ou AE",
 };
 
-// Score que teste chaque type d'HC (3.4.1.1) : les autres se décident sur
-// l'âge (P) ou à défaut (U).
-const SCORES_HC = { S: "spécialisé", T: "global" };
+// Variables de GL_infos, dans l'ordre du fichier et de l'annexe 7.5, et
+// leurs classes : bornes des scores de dépendance (1.2.3.6, 1.2.3.7),
+// intervention remontant à plus ou moins de 90 jours (1.2.3.8). Les
+// classes d'âge sont celles du fichier (classification.classesAge).
+const LOURDEUR = [
+  { cle: "age", nom: "âge" },
+  { cle: "cog", nom: "dépendance cognitive", classes: [[2, 6], [7, 8]] },
+  { cle: "phy", nom: "dépendance physique", classes: [[4, 8], [9, 12], [13, 16]] },
+  { cle: "chir", nom: "statut post-chirurgical", classes: ["non", "oui"] },
+];
 
-// ==== Index ====
+// ==== Textes ====
 
-/** Index construits une fois par chargement de la classification, gardés
- *  sur elle (partagée par les thèmes SMR, d'où le préfixe) : rangs de
- *  chaque GN dans les tests de sa CM, groupes fils de chaque groupe, texte
- *  de recherche des CM, GN, GR, GL et GME. */
-function preparer(k) {
-  if (k._arbre) return k._arbre;
-  const rangs = new Map();
-  for (const t of k.tests) {
-    if (!rangs.has(t.gn)) rangs.set(t.gn, []);
-    rangs.get(t.gn).push(t.ordre);
-  }
-  for (const liste of rangs.values()) liste.sort((a, b) => a - b);
-  // Chaque groupe prolonge d'un caractère son parent (GR = GN + type, GL =
-  // GR + lourdeur, GME = GL + sévérité), ce que build_smr.py vérifie.
-  const fils = new Map();
-  for (const niveau of ["GR", "GL", "GME"]) {
-    for (const code of Object.keys(k.groupes[niveau]).sort()) {
-      const parent = code.slice(0, -1);
-      if (!fils.has(parent)) fils.set(parent, []);
-      fils.get(parent).push(code);
-    }
-  }
-  const entrees = [];
-  for (const niveau of NIVEAUX) {
-    for (const code of Object.keys(k.groupes[niveau]).sort()) {
-      if (niveau === "CM" && code === CM_ERREURS) continue;
-      const [court, long] = k.groupes[niveau][code];
-      entrees.push({ niveau, code, long, _recherche: recherche.normaliser(`${code} ${court} ${long}`) });
-    }
-  }
-  const cms = Object.keys(k.groupes.CM)
-    .filter((c) => c !== CM_ERREURS)
-    .sort();
-  // GN dont aucun GL d'HC n'a de niveau de sévérité 2 (le 2303, soins
-  // palliatifs, en 2026) : lu dans les groupes plutôt qu'écrit en dur.
-  const sansSeverite2 = new Set(
-    Object.keys(k.groupes.GL)
-      .filter((gl) => TYPES_HC.includes(gl[4]) && !k.groupes.GME[gl + "2"])
-      .map((gl) => gl.slice(0, 4))
-  );
-  k._arbre = { rangs, fils, entrees, cms, sansSeverite2 };
-  return k._arbre;
-}
-
-/** Nombre d'actes de chaque liste d'actes spécialisés, compté une fois par
- *  jeu chargé. */
-function actesParListe(jeu) {
-  if (!jeu._arbreCompte) {
-    const codes = new Map();
-    for (const l of jeu.lignes) {
-      if (!codes.has(l.Liste)) codes.set(l.Liste, new Set());
-      codes.get(l.Liste).add(l.Code);
-    }
-    jeu._arbreCompte = new Map([...codes].map(([liste, s]) => [liste, s.size]));
-  }
-  return jeu._arbreCompte;
-}
-
-// ==== Petits composants ====
-
-const code = (texte) => el("span", { class: "code" }, texte);
-const note = (...enfants) => el("p", { class: "note" }, ...enfants);
-const entete = (texte, titre) => el("th", { scope: "col", title: titre }, texte);
-const fleche = () => el("span", { class: "fleche", "aria-hidden": "true" }, "→");
-
-/** Tableau à la manière des autres thèmes SMR : en-têtes, puis un ou
- *  plusieurs <tbody>. */
-function table(entetes, corps, classe = "") {
-  return el(
-    "div",
-    { class: `codes-liste ${classe}`.trim() },
-    el("table", {}, el("thead", {}, el("tr", {}, ...entetes)), ...corps)
-  );
-}
-
-/** « 4 », « 4 et 9 », « 4, 7 et 9 ». */
-function enumeration(elements) {
+/** « 4 », « 4 et 9 », « 4, 7 et 9 » ; `mot` lie les deux derniers. */
+function enumeration(elements, mot = "et") {
   if (elements.length < 2) return elements.join("");
-  return `${elements.slice(0, -1).join(", ")} et ${elements.at(-1)}`;
+  return `${elements.slice(0, -1).join(", ")} ${mot} ${elements.at(-1)}`;
 }
 
-/** « 0_3 » → « 0 à 3 ans », « 86_plus » → « 86 ans et plus ». */
-function libelleClasseAge(classe) {
-  const [min, max] = classe.split("_");
-  return max === "plus" ? `${min} ans et plus` : `${min} à ${max} ans`;
+/** « page 52 », « pages 50 à 52 ». */
+function pages(numeros) {
+  const [premiere, derniere] = [Math.min(...numeros), Math.max(...numeros)];
+  return premiere === derniere ? `page ${premiere}` : `pages ${premiere} à ${derniere}`;
 }
 
-/** Une tranche d'âge d'une règle combinée : « de 18 à 70 ans »,
- *  « jusqu'à 80 ans », « à partir de 71 ans ». */
+/** Une tranche d'âge d'une règle combinée : « de 18 à 70 ans »,
+ *  « jusqu'à 80 ans », « à partir de 71 ans ». */
 function libelleTranche([min, max]) {
   if (max == null) return `à partir de ${min} ans`;
   if (min === 0) return `jusqu'à ${max} ans`;
   return `de ${min} à ${max} ans`;
 }
 
-/** Les positions d'un test : « MMP ou AE », chaque sigle développé en
- *  infobulle. */
-function positions(test) {
-  return test.positions.flatMap((p, i) => {
-    const sigle = el("abbr", { title: POSITIONS[p] }, p);
-    return i ? [" ou ", sigle] : [sigle];
-  });
-}
-
-/** « – » d'une case sans objet, dit en toutes lettres aux lecteurs
- *  d'écran. */
-function sansObjet(texte) {
-  return [el("span", { "aria-hidden": "true" }, "–"), el("span", { class: "visuellement-cache" }, texte)];
-}
-
 /** Libellé de la liste d'un test : celui que porte le test dans
- *  GN_liste_tests (« MMP ou AE D-0103 - États… »), à défaut celui de la
+ *  GN_liste_tests (« MMP ou AE D-0103 - États… »), à défaut celui de la
  *  liste dans CIM_infos_SMR. */
 function libelleListe(k, test) {
   const lu = test.texte.replace(/^.*?D-\d{4}\s*-?\s*/, "").trim();
   return lu || k.listes[test.liste] || "";
 }
 
-/** « réadaptation très intense » → « très intense » : dans la colonne
- *  « Type » d'un tableau de GR, le mot se répète sans rien dire, et
- *  élargit la colonne sur téléphone. */
-function sansMotReadaptation(type) {
-  return type.replace(/^réadaptation /, "");
-}
-
-// ==== Règles du type de réadaptation (volume 1, 3.4) ====
-
-/** Condition d'un test sur un couple de seuils [séjour, jour] (tableau 5
- *  du manuel) : positive quand les deux scores atteignent leur seuil ; un
- *  seuil absent de GR_infos ne s'oppose pas au test. */
-function conditionSeuils(score, [sejour, jour]) {
+/** Condition d'un test sur un couple de seuils [séjour, jour] (tableau 5) :
+ *  positive quand les deux scores atteignent leur seuil ; un seuil absent
+ *  de GR_infos ne s'y oppose pas. */
+function conditionSeuils([sejour, jour]) {
   const parties = [];
   if (sejour != null) parties.push(`≥ ${nombre(sejour)} par séjour`);
   if (jour != null) parties.push(`≥ ${nombre(jour)} par jour`);
+  if (!parties.length) return "sans seuil dans GR_infos";
   const absent = sejour == null ? "par séjour" : jour == null ? "par jour" : null;
-  return `Score ${score} ${parties.join(" et ")}${absent ? ` — pas de seuil ${absent} dans GR_infos, qui ne s'y oppose donc pas` : ""}`;
+  return `${parties.join(" et ")}${absent ? ` (pas de seuil ${absent})` : ""}`;
 }
 
-/** Les tests du type de réadaptation en HC, dans l'ordre et avec les
- *  branches du manuel (3.4.1) : { si, type, precision }. */
-function etapesHc(e) {
-  const etapes = [];
-  if (e.hc.includes("P")) {
-    etapes.push({ si: "Moins de 18 ans", type: "P" });
-  } else {
-    const type = e.hc.includes("S") ? "S" : e.hc.includes("T") ? "T" : "U";
-    etapes.push({ si: "Moins de 18 ans, le GN n'ayant pas de type pédiatrique", type, precision: "sans test sur les scores (3.4.1.2)" });
-  }
-  const adultes = e.hc.replace("P", "");
-  if (adultes.length === 1) {
-    etapes.push({
-      si: "18 ans et plus",
-      type: adultes,
-      precision: "GN non subdivisé sur la réadaptation : type unique, sans test sur les scores (3.4.1.2)",
-    });
-    return etapes;
-  }
-  if (adultes.includes("S")) etapes.push({ si: conditionSeuils("spécialisé", e.spe), type: "S" });
-  if (adultes.includes("T")) etapes.push({ si: conditionSeuils("global", e.glob), type: "T" });
-  etapes.push({ si: "Aucun des tests sur les scores n'est positif", type: "U" });
-  return etapes;
+/** « 0_3 » → [0, 3], « 86_plus » → [86, null]. */
+function bornesAge(classe) {
+  const [min, max] = classe.split("_");
+  return [Number(min), max === "plus" ? null : Number(max)];
 }
 
-/** Les tests du type de réadaptation en HTP, dans l'ordre du manuel
- *  (3.4.2). */
-function etapesHtp(e) {
-  const etapes = [];
-  if (e.htp.includes("H")) {
-    etapes.push({ si: "Moins de 18 ans", type: "H" });
-  } else {
-    etapes.push({
-      si: "Moins de 18 ans, le GN n'ayant pas de type pédiatrique",
-      type: e.htp.includes("I") ? "I" : "L",
-      precision: "sans test sur le score (3.4.2.2)",
+/** Des classes voisines d'une variable de lourdeur, de `de` à `a` :
+ *  « âge de 0 à 3 ans », « âge ≥ 76 ans », « dépendance physique de 9 à
+ *  16 », « statut post-chirurgical ». */
+function libelleClasses(v, de, a) {
+  if (v.cle === "chir") {
+    if (de !== a) return "tout statut post-chirurgical";
+    return de === "oui" ? "statut post-chirurgical" : "statut non post-chirurgical";
+  }
+  const [min, max] = [de[0], a[1]];
+  if (v.cle === "age") return max == null ? `âge ≥ ${min} ans` : `âge de ${min} à ${max} ans`;
+  return `${v.nom} de ${min} à ${max}`;
+}
+
+// ==== Lourdeur (volume 1, 4.2) ====
+
+/** Les caractéristiques qui mettent un séjour du GR en niveau C, puis en
+ *  niveau B (4.2.1, figure 8) ; `plancher` : le niveau que tout séjour du
+ *  GR atteint, celui du GL quand aucune ne joue. Chaque variable donne un
+ *  niveau à chacune de ses classes (GL_infos), par tranche d'âge pour une
+ *  règle combinée (4.2.2.1) ; des classes voisines de même niveau se lisent
+ *  d'un tenant (« dépendance physique de 9 à 16 »). Les classes d'âge de
+ *  moins de 18 ans portent les règles pédiatriques (4.2.2.2). */
+function casDeLourdeur(k, gr) {
+  const regles = k.gl[gr];
+  const conditions = { B: [], C: [] };
+  let plancher = "A";
+  for (const v of LOURDEUR) {
+    const classes = v.cle === "age" ? k.classesAge.map(bornesAge) : v.classes;
+    let minimum = "C";
+    let courant = null;
+    const clore = () => {
+      if (courant && courant.niveau in conditions) conditions[courant.niveau].push(libelleClasses(v, courant.de, courant.a));
+      courant = null;
+    };
+    regles[v.cle].forEach((valeur, i) => {
+      // Sans objet : âge adulte d'un GR pédiatrique, ou l'inverse.
+      if (valeur == null) return clore();
+      if (Array.isArray(valeur)) {
+        clore();
+        for (const [min, max, niveau] of valeur) {
+          if (niveau < minimum) minimum = niveau;
+          if (niveau in conditions) {
+            conditions[niveau].push(`${libelleClasses(v, classes[i], classes[i])} et âge ${libelleTranche([min, max])}`);
+          }
+        }
+        return undefined;
+      }
+      if (valeur < minimum) minimum = valeur;
+      if (courant?.niveau === valeur) courant.a = classes[i];
+      else {
+        clore();
+        courant = { niveau: valeur, de: classes[i], a: classes[i] };
+      }
+      return undefined;
+    });
+    clore();
+    if (minimum > plancher) plancher = minimum;
+  }
+  // Une caractéristique qui ne dépasse pas le plancher ne change rien.
+  const niveaux = ["C", "B"]
+    .filter((n) => n > plancher && conditions[n].length)
+    .map((n) => ({ niveau: n, conditions: conditions[n] }));
+  return { plancher, niveaux };
+}
+
+// ==== Graphe ====
+
+/** Les arbres du volume 1 en nœuds de arbre_vue.js, construits une fois par
+ *  chargement de la classification et gardés sur elle : orientation en CM,
+ *  tests d'entrée en GN de chaque CM, arbre de chaque GN. */
+function construire(k) {
+  if (k._arbreSmr) return k._arbreSmr;
+  const noeuds = {};
+  const ajouter = (id, noeud) => {
+    noeuds[id] = noeud;
+    return id;
+  };
+  const gmesParGl = new Map();
+  for (const gme of Object.keys(k.groupes.GME).sort()) {
+    const gl = gme.slice(0, 6);
+    if (!gmesParGl.has(gl)) gmesParGl.set(gl, []);
+    gmesParGl.get(gl).push(gme);
+  }
+  const cms = Object.keys(k.groupes.CM)
+    .filter((cm) => cm !== CM_ERREURS && k._testsParCm.has(cm))
+    .sort();
+
+  // ---- Orientation en CM (2.2.1, figure 4) ----
+  const o = { cmd: ORIENTATION, page: PAGE_ORIENTATION };
+  const oriente = "Oriente dans une CM";
+  ajouter("o-mmp-2e", {
+    ...o,
+    genre: "test",
+    symbole: "MMP",
+    branches: [{ libelle: "Code orientant en deuxième intention", listes: [], vers: "o-ae-2e" }],
+    sinon: { vers: "o-mmp" },
+  });
+  // Deuxième intention : l'AE testée d'abord, sinon retour à la MMP.
+  ajouter("o-ae-2e", {
+    ...o,
+    genre: "test",
+    symbole: "AE",
+    branches: [{ libelle: oriente, listes: [], vers: "o-cm-ae" }],
+    sinon: { vers: "o-mmp", rejoint: true },
+  });
+  ajouter("o-mmp", {
+    ...o,
+    genre: "test",
+    symbole: "MMP",
+    branches: [{ libelle: oriente, listes: [], vers: "o-cm-mmp" }],
+    sinon: { vers: "o-ae" },
+  });
+  ajouter("o-ae", {
+    ...o,
+    genre: "test",
+    symbole: "AE",
+    branches: [{ libelle: oriente, listes: [], vers: "o-cm-ae" }],
+    sinon: { vers: "o-cm-90" },
+  });
+  ajouter("o-cm-mmp", { ...o, genre: "grille", texte: "CM de la MMP" });
+  ajouter("o-cm-ae", { ...o, genre: "renvoi", texte: "CM de l'AE" });
+  const e300 = k._erreurs.get(300);
+  ajouter("o-cm-90", {
+    ...o,
+    genre: "erreur",
+    etiquette: `CM ${CM_ERREURS}`,
+    titre: `${libelleGroupe(k, CM_ERREURS)}, erreur 300${e300 ? ` « ${e300.libelle} »` : ""}`,
+    erreur: 300,
+  });
+
+  // ---- Tests d'entrée en GN (2.2.2, annexe 7.2) ----
+  // Un nœud à deux tests se dessine en deux étapes : le second test ne se
+  // fait que si le premier est positif, et son « non » rejoint le nœud
+  // suivant.
+  const symbole = (test) => (test.positions.length === 2 ? "MMPAE" : test.positions[0]);
+  const branche = (test, vers) => ({
+    libelle: `${libelleListe(k, test)} (D-${test.liste})`,
+    listes: [`D-${test.liste}`],
+    vers,
+  });
+  for (const cm of cms) {
+    const tests = k._testsParCm.get(cm);
+    const erreur = k.erreurs.find(([, libelle]) => libelle.endsWith(`dans la CM ${cm}`));
+    const idErreur = ajouter(`${cm}-erreur`, {
+      genre: "erreur",
+      cmd: cm,
+      page: k.pages.noeuds[`${cm}-${tests.at(-1).ordre}`],
+      etiquette: erreur ? `Erreur ${erreur[0]}` : "Non groupé",
+      titre: erreur ? erreur[1] : `aucun code erreur de FG_erreurs ne nomme la CM ${cm}`,
+      erreur: erreur?.[0] ?? null,
+    });
+    tests.forEach((t, j) => {
+      const id = `${cm}-${t.ordre}`;
+      const suivant = j + 1 < tests.length ? `${cm}-${tests[j + 1].ordre}` : idErreur;
+      const base = { genre: "test", cmd: cm, page: k.pages.noeuds[id] };
+      // Une feuille prend la page du premier test qui y mène.
+      const gn = noeuds[t.gn] ? t.gn : ajouter(t.gn, { genre: "gn", cmd: cm, page: base.page, code: t.gn });
+      const [t1, t2] = t.tests;
+      ajouter(id, {
+        ...base,
+        symbole: symbole(t1),
+        branches: [branche(t1, t2 ? `${id}-2` : gn)],
+        sinon: { vers: suivant },
+        conditions: t.conditions ?? [],
+      });
+      if (t2) {
+        ajouter(`${id}-2`, {
+          ...base,
+          symbole: symbole(t2),
+          branches: [branche(t2, gn)],
+          sinon: { vers: suivant, rejoint: suivant !== idErreur },
+        });
+      }
     });
   }
-  if (e.htp.includes("I")) {
-    const [bas, haut] = e.htpSeuils;
-    etapes.push({ si: `Score global par jour ≥ ${nombre(haut)} (seuil très intense)`, type: "I" });
-    etapes.push({ si: `Score global par jour ≥ ${nombre(bas)} (seuil intense)`, type: "J" });
-    etapes.push({ si: `Score global par jour < ${nombre(bas)}`, type: "K" });
-  } else {
-    etapes.push({ si: "18 ans et plus", type: "L", precision: "GN non subdivisé en intensités (3.4.2.2)" });
+
+  // ---- Arbre de chaque GN (3.4, 4.2, 5.2.3) ----
+  const departs = new Map();
+  for (const gn of Object.keys(k.groupes.GN).sort()) {
+    const e = k.gr[gn];
+    const cmd = gn;
+    const [pageHc, pageHtp] = [k.pages.grHc[gn], k.pages.grHtp[gn]];
+    const critere = (id, variable, libelle, vers, sinon, page, extra = {}) =>
+      ajouter(id, {
+        genre: "critere",
+        cmd,
+        page,
+        variable,
+        branches: [{ libelle, listes: [], vers, ...(extra.rejoint ? { rejoint: true } : {}) }],
+        sinon: { vers: sinon },
+        ...(extra.listeSpe ? { listeSpe: extra.listeSpe } : {}),
+      });
+    // Un GL d'HC se lit à la page de son GR dans l'annexe 7.5, un GL d'HTP
+    // à celle de son GN dans l'annexe 7.4.
+    const feuilleGl = (gl) =>
+      noeuds[gl]
+        ? gl
+        : ajouter(gl, {
+            genre: "gl",
+            cmd,
+            page: k.pages.gl[gl.slice(0, 5)] ?? pageHtp,
+            code: gl,
+            gmes: gmesParGl.get(gl) ?? [],
+          });
+
+    // HC : pédiatrique, spécialisée, globale, autre (3.4.1, figure 6).
+    const adultes = TYPES_HC.filter((t) => t !== "P" && e.hc.includes(t));
+    const etapeGr = (type) => {
+      const gr = gn + type;
+      if (noeuds[gr]) return gr;
+      // Lourdeur : niveau C, puis B, sinon le plancher (4.2.1, figure 8).
+      const { plancher, niveaux } = casDeLourdeur(k, gr);
+      let suite = feuilleGl(gr + plancher);
+      for (const { niveau, conditions } of [...niveaux].reverse()) {
+        suite = critere(`${gr}-${niveau}`, `Niveau ${niveau} si`, enumeration(conditions, "ou"), feuilleGl(gr + niveau), suite, k.pages.gl[gr]);
+      }
+      ajouter(gr, { genre: "gr", cmd, page: pageHc, code: gr, suite: { vers: suite }, unique: type !== "P" && adultes.length === 1 });
+      return gr;
+    };
+    let suiteAdultes;
+    if (adultes.length === 1) {
+      // GN non subdivisé sur la réadaptation : type unique (3.4.1.2).
+      suiteAdultes = etapeGr(adultes[0]);
+    } else {
+      suiteAdultes = etapeGr("U");
+      if (adultes.includes("T")) {
+        suiteAdultes = critere(`${gn}-hc-T`, "Score R global", conditionSeuils(e.glob), etapeGr("T"), suiteAdultes, pageHc);
+      }
+      if (adultes.includes("S")) {
+        suiteAdultes = critere(`${gn}-hc-S`, "Score R spécialisé", conditionSeuils(e.spe), etapeGr("S"), suiteAdultes, pageHc, {
+          listeSpe: k.gnListeSpe?.[gn]?.liste,
+        });
+      }
+    }
+    let hc = suiteAdultes;
+    if (e.hc.includes("P")) {
+      hc = critere(`${gn}-hc-age`, "Âge", "< 18 ans", etapeGr("P"), suiteAdultes, pageHc);
+    } else if (adultes.length > 1) {
+      // Sans type pédiatrique, l'enfant va dans le premier type du GN,
+      // sans test sur les scores (3.4.1.2).
+      hc = critere(
+        `${gn}-hc-age`,
+        "Âge",
+        `< 18 ans, le GN n'ayant pas de type pédiatrique : ${TYPES_READAPTATION[adultes[0]]}, sans test sur les scores (3.4.1.2)`,
+        gn + adultes[0],
+        suiteAdultes,
+        pageHc,
+        { rejoint: true }
+      );
+    }
+
+    // HTP : pédiatrique, puis très intense, intense, modérée, ou
+    // indifférenciée (3.4.2, figure 7) ; lourdeur A et sévérité 0.
+    const feuilleHtp = (type) => feuilleGl(`${gn}${type}A`);
+    let suiteHtp = feuilleHtp("L");
+    if (e.htp.includes("I")) {
+      const [intense, tresIntense] = e.htpSeuils;
+      const j = critere(`${gn}-htp-J`, "Score R global par jour", `≥ ${nombre(intense)} (seuil intense)`, feuilleHtp("J"), feuilleHtp("K"), pageHtp);
+      suiteHtp = critere(`${gn}-htp-I`, "Score R global par jour", `≥ ${nombre(tresIntense)} (seuil très intense)`, feuilleHtp("I"), j, pageHtp);
+    }
+    let htp = suiteHtp;
+    if (e.htp.includes("H")) {
+      htp = critere(`${gn}-htp-age`, "Âge", "< 18 ans", feuilleHtp("H"), suiteHtp, pageHtp);
+    } else if (e.htp.includes("I")) {
+      htp = critere(
+        `${gn}-htp-age`,
+        "Âge",
+        "< 18 ans, le GN n'ayant pas de type pédiatrique : réadaptation très intense, sans test sur le score (3.4.2.2)",
+        feuilleHtp("I"),
+        suiteHtp,
+        pageHtp
+      );
+    }
+    departs.set(gn, { hc, htp, adultes });
   }
-  return etapes;
+
+  const listes = Object.fromEntries(
+    Object.entries(k.listes).map(([num, libelle]) => [
+      `D-${num}`,
+      { libelle: libelle || null, nature: "diagnostics", codes: k.effectifsListes?.[num] ?? 0 },
+    ])
+  );
+  const gnsParCm = new Map(cms.map((cm) => [cm, Object.keys(k.groupes.GN).filter((gn) => gn.startsWith(cm)).sort()]));
+  k._arbreSmr = { arbre: { noeuds, listes }, cms, gnsParCm, departs };
+  return k._arbreSmr;
+}
+
+// ==== Pictogrammes ====
+
+function pictogramme(n) {
+  if (n.genre === "test") {
+    const s = SYMBOLES[n.symbole];
+    return el(
+      "span",
+      {
+        class: ["picto", "cercle", s.variante].filter(Boolean).join(" "),
+        role: "img",
+        "aria-label": `${s.texte} : ${s.titre}`,
+        title: s.titre,
+      },
+      el("span", { "aria-hidden": "true" }, ...(s.lignes ? [s.lignes[0], el("br"), s.lignes[1]] : [s.texte]))
+    );
+  }
+  if (n.genre === "critere") {
+    return el("span", {
+      class: "picto losange",
+      role: "img",
+      "aria-label": "Test sur une variable du séjour",
+      title: `Test sur une variable du séjour : ${VARIABLES[n.variable] ?? n.variable}`,
+    });
+  }
+  if (n.genre === "gr") {
+    return el(
+      "span",
+      {
+        class: "picto boite",
+        role: "img",
+        "aria-label": "Groupe de réadaptation",
+        title: "Groupe de réadaptation (GR) : la suite de l'arbre en détermine le niveau de lourdeur",
+      },
+      el("span", { "aria-hidden": "true" }, "GR")
+    );
+  }
+  return null;
+}
+
+// ==== Légende ====
+
+function legende() {
+  const ligne = (picto, texte) => el("li", {}, picto, el("span", {}, texte));
+  const cercle = (symbole) => pictogramme({ genre: "test", symbole });
+  const groupe = (racine, cases, classe = "ghm") =>
+    el(
+      "span",
+      { class: classe },
+      el("span", { class: "ghm-racine" }, racine),
+      cases ? el("span", { class: "ghm-cases" }, el("span", {}, cases[0]), el("span", {}, cases[1])) : null
+    );
+  return el(
+    "details",
+    { class: "legende-arbre" },
+    el("summary", {}, "Légende des symboles"),
+    el(
+      "div",
+      { class: "legende-grille" },
+      el(
+        "div",
+        {},
+        el("p", { class: "legende-titre" }, "Tests d'entrée en GN, sur les diagnostics du RHS"),
+        el(
+          "ul",
+          {},
+          ...["MMP", "AE", "MMPAE", "DAS"].map((s) => ligne(cercle(s), `${SYMBOLES[s].titre} appartient à la liste nommée.`))
+        )
+      ),
+      el(
+        "div",
+        {},
+        el("p", { class: "legende-titre" }, "Tests sur les autres données"),
+        el(
+          "ul",
+          {},
+          ligne(
+            pictogramme({ genre: "critere", variable: "Âge" }),
+            "Variable du séjour ou du RHS : âge, scores de réadaptation, caractéristiques du patient qui font le niveau de lourdeur (âge, dépendances physique et cognitive, statut post-chirurgical)."
+          ),
+          ligne(pictogramme({ genre: "gr" }), "Groupe de réadaptation (GR) retenu ; la suite de l'arbre en détermine le niveau de lourdeur.")
+        ),
+        el("p", { class: "legende-titre" }, "Groupes"),
+        el(
+          "ul",
+          {},
+          ligne(groupe("0147"), "Groupe nosologique (GN) : un clic donne le chemin qui y mène et ouvre son arbre."),
+          ligne(
+            groupe("0147SC", ["2", "1"]),
+            "Groupe de lourdeur (GL). En bas, le niveau de sévérité 1 (0 en HTP) ; en haut, le niveau 2 quand il existe. Le GME est le GL suivi de son niveau de sévérité."
+          ),
+          ligne(groupe("Erreur 301", null, "ghm erreur"), "RHS non groupé : code erreur de la fonction groupage.")
+        )
+      )
+    )
+  );
 }
 
 // ==== Vue ====
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
-  // Tarifs et listes d'actes spécialisés ne servent qu'au panneau d'un GN :
-  // la page s'affiche sans les attendre, et leur absence ne coûte que leur
-  // bloc. diagnostics.json (4 Mo) n'est pas chargé : rien ici n'en dépend.
+  // Les tarifs ne servent qu'à l'ouverture d'une case de GL : l'arbre
+  // s'affiche sans les attendre, et leur absence ne coûte que leur bloc.
+  // diagnostics.json (4 Mo) n'est chargé qu'à la première liste ouverte ou
+  // au premier code cherché.
   const promesseTarifs = chargerTarifsSmr().catch((erreur) => {
     console.error(erreur);
     return null;
   });
-  const promesseActesSpe = chargerActesSpe().catch((erreur) => {
-    console.error(erreur);
-    return null;
-  });
   const k = await chargerClassification();
-  const index = preparer(k);
+  const { arbre, cms, gnsParCm, departs } = construire(k);
 
-  conteneur.innerHTML = "";
-  const etat = { cm: null, gn: null };
-
-  // Le drapeau porte les fichiers de l'ATIH dont la page affiche les
-  // tables ; il prend la date des tarifs quand ils arrivent.
+  // Le drapeau porte les fichiers de l'ATIH d'où viennent les arbres ; il
+  // prend la date des tarifs quand ils arrivent.
   const jeux = [
     ["TOTAL_listes_groupes.xlsx", "libellés des groupes"],
     ["GN_liste_tests.xlsx", "tests d'entrée dans les GN"],
     ["GR_infos.xlsx", "types de réadaptation et seuils"],
     ["GL_infos.xlsx", "règles de lourdeur"],
-    ["ACTES_listes_SPE.xlsx", "listes d'actes spécialisés"],
   ]
     .map(([fichier, libelle]) => ({ libelle, millesime: k.millesimes?.[fichier] }))
     .filter((j) => j.millesime);
@@ -287,785 +541,367 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     drapeau = complet;
   });
 
-  const selecteur = el(
-    "select",
-    { id: "smr_arbre_cm", onchange: (e) => afficherCm(e.target.value || null) },
-    el("option", { value: "" }, "Vue d'ensemble et orientation en CM"),
-    ...index.cms.map((cm) => el("option", { value: cm }, `CM ${cm} — ${libelleGroupe(k, cm)}`))
-  );
-  const blocCm = el(
-    "div",
-    { class: "champ" },
-    el("label", { for: "smr_arbre_cm" }, "Catégorie majeure :"),
-    selecteur,
-    el("p", { class: "champ-aide" }, "Une CM donne ses tests d'entrée en GN, dans l'ordre où la fonction groupage les fait.")
-  );
-  const champ = champMotsClefs({
-    id: "smr_arbre_recherche",
-    libelle: "Rechercher un groupe :",
-    exemple: "ex. : 0147, 0147SC2, hémiplégie",
-    onInput: (valeur) => chercher(valeur),
-  });
+  const note = (...enfants) => el("p", { class: "note" }, ...enfants);
+  const htp = (n) => "HIJKL".includes(n.code?.[4]);
 
-  const zoneRecherche = el("div", { class: "resultats-arbre" });
-  const zoneVue = el("div", { class: "smr-arbre" });
-  // Annonce, pour les lecteurs d'écran, de ce que le sélecteur ou un clic
-  // vient d'afficher plus bas, sans leur faire relire toute la zone.
-  const annonce = el("p", { class: "visuellement-cache", role: "status" });
+  // ---- Feuilles ----
 
-  conteneur.append(
-    el("h1", {}, "Algorithme de la fonction groupage"),
-    sourceFg(),
-    drapeau,
-    el(
-      "p",
-      {},
-      "Le groupage d'un séjour SMR tel que le décrit le volume 1 du Manuel des GME : orientation en catégorie majeure (CM), " +
-        "tests d'entrée dans les groupes nosologiques (GN), type de réadaptation, niveau de lourdeur, niveau de sévérité. " +
-        "Les tables sont celles des fichiers de l'ATIH ; les règles qui les relient, celles du volume 1. " +
-        "Une CM donne ses tests d'entrée en GN ; un GN, ses types de réadaptation et leurs seuils, ses règles de lourdeur, " +
-        "ses GME et leurs tarifs."
-    ),
-    el("div", { class: "barre-outils" }, blocCm, champ),
-    zoneRecherche,
-    zoneVue,
-    annonce
-  );
-
-  // ---- Adresse ----
-
-  /** L'adresse suit la vue, sans entrée d'historique ni passage par le
-   *  routeur (replaceState ne lève pas `hashchange`) ; jamais une fois la
-   *  page quittée, qu'une frappe retardée ou un chargement tardif ne
-   *  réécrive pas l'adresse d'un autre thème. */
-  function majAdresse(segment) {
-    const cible = segment ? `#/smr/arbre/${segment}` : "#/smr/arbre";
-    if (!zoneVue.isConnected || !location.hash.startsWith("#/smr/arbre")) return;
-    if (location.hash !== cible) history.replaceState(null, "", cible);
+  function titreFeuille(n) {
+    if (n.genre === "erreur") return `${n.etiquette} : ${n.titre}`;
+    return `${n.code} ${libelleGroupe(k, n.code)}${n.genre === "gl" ? `\n${n.gmes.join(", ")}` : ""}`;
   }
 
-  function defiler(noeud, bloc, douceur) {
-    const reduit = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    noeud.scrollIntoView({ block: bloc, behavior: douceur && !reduit ? "smooth" : "instant" });
-  }
-
-  // ---- Navigation ----
-
-  /** Affiche la vue d'ensemble (cm nul) ou les tests d'une CM, et, s'il y a
-   *  lieu, ouvre un GN. Rend vrai quand la vue s'est placée d'elle-même. */
-  function afficherCm(cm, { gn = null, cible = null, historique = true, douceur = true } = {}) {
-    if (cm && (!index.cms.includes(cm) || !k._testsParCm.has(cm))) cm = null;
-    etat.cm = cm;
-    etat.gn = null;
-    selecteur.value = cm ?? "";
-    zoneVue.replaceChildren(cm ? vueCm(cm) : vueEnsemble());
-    if (gn) return ouvrirGn(gn, { cible, historique, douceur });
-    if (historique) majAdresse(cm);
-    annonce.textContent = cm
-      ? `CM ${cm} affichée : ${nombre(k._testsParCm.get(cm).length)} tests d'entrée en GN.`
-      : "Vue d'ensemble affichée.";
-    return false;
-  }
-
-  /** Ouvre le panneau d'un GN sous les tests de sa CM (affichée d'abord si
-   *  besoin), placé sur `cible` (GR, GL ou GME) s'il y en a une. */
-  function ouvrirGn(gn, { cible = null, historique = true, douceur = true } = {}) {
-    const cm = gn.slice(0, 2);
-    if (etat.cm !== cm) return afficherCm(cm, { gn, cible, historique, douceur });
-    etat.gn = gn;
-    const zoneGn = zoneVue.querySelector(".zone-gn");
-    const panneau = vueGn(gn);
-    zoneGn.replaceChildren(panneau);
-    marquerGn(gn);
-    if (historique) majAdresse(cible ?? gn);
-    annonce.textContent = `GN ${gn} ouvert : ${libelleGroupe(k, gn)}.`;
-    const titre = panneau.querySelector("h2");
-    const ancre = cible ? panneau.querySelector(`#${ANCRE}${cible}`) : null;
-    if (ancre) {
-      defiler(ancre, "center", douceur);
-      ancre.classList.remove("surbrillance");
-      void ancre.offsetWidth; // relance l'animation d'un groupe montré deux fois
-      ancre.classList.add("surbrillance");
-    } else {
-      defiler(panneau, "start", douceur);
+  /** Un GN (tests d'une CM), un GL et ses niveaux de sévérité (arbre d'un
+   *  GN), un code erreur, ou les CM où mène l'orientation. */
+  function feuille(n, depuis, { afficher, basculerChemin }) {
+    if (n.genre === "renvoi") {
+      return el("span", { class: "renvoi", "data-feuille": n._id, tabindex: "-1" }, n.texte);
     }
-    titre.focus({ preventScroll: true });
-    return true;
-  }
-
-  function fermerGn() {
-    const gn = etat.gn;
-    etat.gn = null;
-    zoneVue.querySelector(".zone-gn")?.replaceChildren();
-    marquerGn(null);
-    majAdresse(etat.cm);
-    annonce.textContent = "GN refermé.";
-    // Le focus revient au GN qui avait ouvert le panneau.
-    zoneVue.querySelector(`button[data-gn="${gn}"]`)?.focus();
-  }
-
-  /** Les lignes du GN ouvert se distinguent dans le tableau des tests : un
-   *  GN peut y être à plusieurs rangs. */
-  function marquerGn(gn) {
-    for (const bouton of zoneVue.querySelectorAll("button[data-gn]")) {
-      const actif = bouton.dataset.gn === gn;
-      bouton.closest("tr").classList.toggle("actif", actif);
-      if (actif) bouton.setAttribute("aria-current", "true");
-      else bouton.removeAttribute("aria-current");
-    }
-  }
-
-  // ---- Vue d'ensemble (1.2.1, 1.2.2, 2.2.1) ----
-
-  function vueEnsemble() {
-    const n = (niveau) => nombre(Object.keys(k.groupes[niveau]).length);
-    const sans2 = [...index.sansSeverite2].sort();
-    // Deux colonnes seulement, le groupe et l'exemple sous le niveau, les
-    // informations mobilisées sous la description : le tableau tient sur
-    // un téléphone sans comprimer ses textes.
-    const niveaux = [
-      ["Catégorie majeure et groupe nosologique", "CM, puis GN = CM + 2 chiffres", "01, 0147", "Le système fonctionnel (CM), puis la pathologie ou la déficience principale (GN)", "MMP, AE et, plus rarement, un DAS"],
-      ["Type de réadaptation", "GR = GN + type", "0147S", "La prise en charge de réadaptation dont a bénéficié le patient", "actes CSARR, codés ou transcodés du CSAR, actes CCAM de réadaptation, âge"],
-      ["Niveau de lourdeur", "GL = GR + A, B ou C", "0147SC", "L'augmentation de la charge économique due aux caractéristiques du patient, hors diagnostics et actes CCAM", "âge, dépendances physique et cognitive, statut post-chirurgical"],
-      ["Niveau de sévérité", "GME = GL + 1 ou 2 en HC, 0 en HTP", "0147SC2", "L'augmentation de la charge économique liée aux diagnostics et aux actes CCAM", "CMA : diagnostics en MMP ou en DAS, actes CCAM"],
-    ];
-    const tableNiveaux = table(
-      [entete("Niveau"), entete("Ce qu'il décrit")],
-      [
-        el(
-          "tbody",
-          {},
-          ...niveaux.map(([niveau, groupe, exemple, decrit, infos]) =>
-            el(
-              "tr",
-              {},
-              el("th", { scope: "row" }, niveau, el("span", { class: "sous-ligne" }, `${groupe} ; ex. `, code(exemple))),
-              el("td", {}, decrit, el("span", { class: "sous-ligne" }, `Informations mobilisées : ${infos}.`))
-            )
-          )
-        ),
-      ],
-      "ensemble"
-    );
-
-    const phases = [
-      [
-        "CM et GN",
-        "Chaque RHS du séjour est groupé en CM puis en GN. Le séjour prend le GN le plus fréquent de ses 10 premiers RHS (de tous s'il en compte moins) ; en cas d'égalité, le premier dans l'ordre chronologique (2.2.2).",
-        "Chaque RHS est groupé en CM puis en GN, sans égard aux autres RHS de la suite (2.2.2).",
-      ],
-      [
-        "Type de réadaptation",
-        "Pédiatrique (P), spécialisée importante (S), globale importante (T) ou autre (U), selon l'âge et les scores de réadaptation spécialisée et globale, par séjour et par jour (3.4.1).",
-        "Pédiatrique (H), très intense (I), intense (J), modérée (K) ou indifférenciée (L), selon l'âge et le score global par jour de la semaine (3.4.2).",
-      ],
-      [
-        "Niveau de lourdeur",
-        "A, B ou C : le plus lourd des niveaux que donnent l'âge, les dépendances physique et cognitive et le statut post-chirurgical (4.2.1).",
-        "A, par convention.",
-      ],
-      [
-        "Niveau de sévérité",
-        `2 si au moins un marqueur de sévérité est retenu et que le niveau 2 existe${sans2.length ? ` (il n'existe pas pour le GN ${enumeration(sans2)})` : ""}, 1 sinon (5.2.3).`,
-        "0, par convention.",
-      ],
-    ];
-    const tablePhases = table(
-      [entete("Étape"), entete("HC : le séjour", "Hospitalisation complète"), entete("HTP : chaque RHS", "Hospitalisation à temps partiel")],
-      [el("tbody", {}, ...phases.map(([etape, hc, htp]) => el("tr", {}, el("th", { scope: "row" }, etape), el("td", {}, hc), el("td", {}, htp))))],
-      "ensemble"
-    );
-
-    // Les étapes d'orientation suivent la figure 4 du manuel branche à branche.
-    const oui = () => el("span", { class: "issue oui" }, "oui");
-    const non = () => el("span", { class: "issue non" }, "non");
-    const etapes = [
-      [
-        el("strong", {}, "La MMP est-elle un code orientant en deuxième intention ?"),
-        " ",
-        oui(),
-        " l'AE est testée d'abord : si elle oriente dans une CM, le RHS va dans cette CM ; sinon, retour à la MMP (étape 2). ",
-        non(),
-        " étape 2.",
-      ],
-      [el("strong", {}, "La MMP oriente-t-elle dans une CM ?"), " ", oui(), " le RHS va dans la CM de la MMP. ", non(), " étape 3."],
-      [el("strong", {}, "L'AE oriente-t-elle dans une CM ?"), " ", oui(), " le RHS va dans la CM de l'AE. ", non(), " étape 4."],
-      [
-        el("strong", {}, "Ni la MMP ni l'AE n'orientent dans une CM :"),
-        ` le RHS va dans la CM ${CM_ERREURS} « ${libelleGroupe(k, CM_ERREURS)} » (erreur 300 « ${k._erreurs.get(300)?.libelle ?? "Aucune CM trouvée"} »).`,
-      ],
-    ];
-    const orientation = el(
-      "ol",
-      { class: "chemin" },
-      ...etapes.map((contenu) => el("li", {}, el("span", { class: "chemin-libelle" }, ...contenu)))
-    );
-
-    const grille = el(
-      "div",
-      { class: "grille-cmd" },
-      ...index.cms.map((cm) =>
-        el(
-          "button",
-          { type: "button", class: "renvoi-cmd", title: libelleGroupe(k, cm), "aria-label": `CM ${cm}, ${libelleGroupe(k, cm)}`, onclick: () => afficherCm(cm) },
-          `CM ${cm}`
-        )
-      )
-    );
-
-    return el(
-      "section",
-      { "aria-labelledby": "smr-arbre-ensemble" },
-      el("h2", { id: "smr-arbre-ensemble" }, "Vue d'ensemble"),
-      el("p", { class: "sous-titre" }, "Volume 1, 1.2.1 et 1.2.2."),
-      el(
-        "p",
-        {},
-        `La classification a quatre niveaux ; chacun classe dans un groupe dont le code prolonge d'un caractère celui du niveau au-dessus. Elle compte ${n("GN")} GN, ${n("GR")} GR, ${n("GL")} GL et ${n("GME")} GME.`
-      ),
-      tableNiveaux,
-      el("h3", {}, "Hospitalisation complète et à temps partiel"),
-      tablePhases,
-      el("h2", {}, "Orientation en catégorie majeure"),
-      el("p", { class: "sous-titre" }, "Volume 1, 2.2.1 et figure 4. Les tests sont faits dans cet ordre, sur chaque RHS."),
-      orientation,
-      note(
-        `Un code oriente dans une CM quand il appartient à une liste d'entrée dans une CM : CIM_infos_SMR lui en donne une, autre que la ${CM_ERREURS}. ` +
-          "La liste des codes orientant en deuxième intention, des symptômes pour la plupart, est dans le même fichier ; " +
-          "la deuxième intention n'existe que pour la MMP. Exemple du manuel : dyspnée (",
-        lienCode("R06.0"),
-        ") en MMP, code orientant en deuxième intention, et insuffisance cardiaque (",
-        lienCode("I50.9"),
-        ") en AE : le RHS va dans la CM 05."
-      ),
-      el("h2", {}, "Tests d'entrée en GN"),
-      el("p", { class: "sous-titre" }, "Volume 1, 2.2.2 et annexe 7.2."),
-      el(
-        "p",
-        {},
-        "Dans la CM, chaque nœud de l'arbre porte un ou deux tests : chacun cherche un code d'une liste aux positions qu'il nomme " +
-          "(MMP ou AE, plus rarement DAS). Le premier nœud dont tous les tests sont positifs donne le GN ; si aucun ne l'est, " +
-          "le RHS n'est pas groupé. Choisir une CM :"
-      ),
-      grille
-    );
-  }
-
-  // ---- Tests d'entrée en GN d'une CM (volume 1, 2.2.2) ----
-
-  function vueCm(cm) {
-    const noeuds = k._testsParCm.get(cm);
-    // L'erreur de FG_erreurs qui nomme la CM (301 à 314).
-    const erreur = k.erreurs.find(([, libelle]) => libelle.endsWith(`dans la CM ${cm}`));
-    const lignes = noeuds.map((noeud) => {
-      const autres = index.rangs.get(noeud.gn).filter((r) => r !== noeud.ordre);
-      const conditions = (noeud.conditions ?? []).map((c) => CONDITIONS[c]).filter(Boolean);
+    if (n.genre === "grille") {
       return el(
-        "tr",
-        {},
-        el("th", { scope: "row", class: "rang" }, String(noeud.ordre)),
-        celluleTests(noeud.tests, conditions),
-        el(
-          "td",
-          {},
+        "span",
+        { class: "grille-cmd", "data-feuille": n._id, tabindex: "-1", role: "group", "aria-label": n.texte },
+        ...cms.map((cm) =>
           el(
             "button",
-            { type: "button", class: "bouton-gn", "data-gn": noeud.gn, onclick: () => ouvrirGn(noeud.gn) },
-            code(noeud.gn),
-            " ",
-            libelleGroupe(k, noeud.gn)
-          ),
-          autres.length
-            ? el("span", { class: "rangs-autres" }, `Aussi au${autres.length > 1 ? "x rangs" : " rang"} ${enumeration(autres.map(String))}.`)
-            : null
+            { type: "button", class: "renvoi-cmd", title: libelleGroupe(k, cm), onclick: () => afficher(cm) },
+            `CM ${cm}`
+          )
         )
       );
-    });
-    return el(
-      "section",
-      { "aria-labelledby": "smr-arbre-cm" },
-      el("h2", { id: "smr-arbre-cm" }, `CM ${cm} — ${libelleGroupe(k, cm)}`),
-      el(
-        "p",
-        { class: "sous-titre" },
-        `Volume 1, 2.2.2 et annexe 7.2 : ${nombre(noeuds.length)} nœud${noeuds.length > 1 ? "s" : ""}, testé${noeuds.length > 1 ? "s" : ""} dans l'ordre ; le premier dont tous les tests sont positifs oriente le RHS dans son GN.`
-      ),
-      table(
-        [
-          entete("Rang", "Ordre du nœud dans la CM (Ordre_intra_CM)"),
-          entete("Tests", "Un nœud à deux tests n'est positif que si les deux le sont"),
-          entete("GN d'arrivée"),
-        ],
-        [el("tbody", {}, ...lignes)],
-        "tests-gn"
-      ),
-      note(
-        "Un test est positif quand l'un des codes aux positions qu'il nomme appartient à sa liste ; chaque liste mène à ses codes. " +
-          "Un GN peut revenir à plusieurs rangs, avec d'autres listes. ",
-        erreur
-          ? `Aucun nœud positif : le RHS n'est pas groupé, erreur ${erreur[0]} « ${erreur[1]} ».`
-          : `Aucun code erreur de FG_erreurs ne nomme la CM ${cm}.`,
-        " Un GN cliqué s'ouvre sous le tableau."
-      ),
-      el("div", { class: "zone-gn" })
+    }
+    const bouton = el(
+      "button",
+      {
+        type: "button",
+        class: n.genre === "erreur" ? "ghm erreur" : "ghm",
+        title: titreFeuille(n),
+        "aria-expanded": "false",
+        "data-feuille": n._id,
+        onclick: () => basculerChemin(bouton, n, depuis),
+      },
+      el("span", { class: "ghm-racine" }, n.etiquette ?? n.code)
     );
-  }
-
-  /** Les tests d'un nœud dans une seule case, numérotés quand il y en a
-   *  deux (le test 2 est rare : une colonne à lui resterait vide presque
-   *  partout, et pousserait le GN d'arrivée hors de l'écran d'un
-   *  téléphone). Chaque test : positions, liste (lien vers ses codes) et
-   *  libellé ; le nœud du GN 0871 porte en plus ses conditions. */
-  function celluleTests(tests, conditions) {
-    const td = el("td", {});
-    tests.forEach((test, i) => {
-      td.append(
+    if (n.genre === "gl") {
+      // En bas, la sévérité 1 (0 en HTP) ; en haut, la 2 quand elle existe.
+      const niveaux = new Set(n.gmes.map((g) => g.at(-1)));
+      bouton.append(
         el(
           "span",
-          { class: "test" },
-          tests.length > 1 ? el("span", { class: "numero-test" }, i ? "et test 2 : " : "Test 1 : ") : null,
-          ...positions(test),
-          " ",
-          el("a", { class: "code", href: `#/smr/groupage/D-${test.liste}`, title: `Codes de la liste D-${test.liste}` }, `D-${test.liste}`),
-          el("span", { class: "test-liste" }, libelleListe(k, test))
-        )
-      );
-    });
-    if (conditions.length) {
-      td.append(
-        el("span", { class: "test-conditions-titre" }, "Conditions supplémentaires :"),
-        el("ul", { class: "test-conditions" }, ...conditions.map((c) => el("li", {}, c)))
-      );
-    }
-    return td;
-  }
-
-  // ---- Panneau d'un GN ----
-
-  function vueGn(gn) {
-    const e = k.gr[gn];
-    const rangs = index.rangs.get(gn) ?? [];
-    const hc = TYPES_HC.filter((t) => e.hc.includes(t)).map((t) => gn + t);
-    const htp = TYPES_HTP.filter((t) => e.htp.includes(t)).map((t) => gn + t);
-    const gmes = [...hc, ...htp].flatMap((gr) => (index.fils.get(gr) ?? []).flatMap((gl) => index.fils.get(gl) ?? []));
-    return el(
-      "section",
-      { class: "smr-gn", id: "smr-gn", "aria-labelledby": "smr-gn-titre" },
-      el(
-        "div",
-        { class: "smr-gn-entete" },
-        el("h2", { id: "smr-gn-titre", tabindex: "-1" }, "GN ", groupeLibelle(k, gn)),
-        el("button", { type: "button", class: "bouton-icone", onclick: fermerGn, "aria-label": `Fermer le GN ${gn}` }, "Fermer")
-      ),
-      el(
-        "p",
-        { class: "sous-titre" },
-        `CM ${gn.slice(0, 2)} — test${rangs.length > 1 ? "s" : ""} d'entrée au${rangs.length > 1 ? "x" : ""} rang${rangs.length > 1 ? "s" : ""} ${enumeration(rangs.map(String))}. ` +
-          `${hc.length} GR d'hospitalisation complète, ${htp.length} d'hospitalisation à temps partiel, ${gmes.length} GME.`
-      ),
-      el("h3", {}, "Type de réadaptation — hospitalisation complète"),
-      ...blocHc(gn, e, hc),
-      el("h3", {}, "Type de réadaptation — hospitalisation à temps partiel"),
-      ...blocHtp(gn, e, htp),
-      el("h3", {}, "Niveau de lourdeur"),
-      ...blocLourdeur(hc),
-      el("h3", {}, "Niveau de sévérité et GME"),
-      ...blocGme(gn, hc, htp),
-      el("h3", {}, "Tarifs des GME"),
-      blocTarifs(gn, gmes)
-    );
-  }
-
-  /** Une étape du type de réadaptation : condition, puis le GR auquel elle
-   *  mène. */
-  function listeEtapes(gn, etapes) {
-    return el(
-      "ol",
-      { class: "chemin" },
-      ...etapes.map(({ si, type, precision }) =>
-        el(
-          "li",
-          {},
-          el("span", { class: "chemin-libelle" }, si, precision ? el("span", { class: "precision" }, ` — ${precision}`) : null),
-          el("span", { class: "etape-gr" }, fleche(), " ", code(gn + type), ` ${TYPES_READAPTATION[type]}`)
-        )
-      )
-    );
-  }
-
-  function blocHc(gn, e, grs) {
-    const adultes = e.hc.replace("P", "");
-    const teste = (t) => adultes.length > 1 && t in SCORES_HC;
-    const seuils = (t) => (t === "S" ? e.spe : e.glob);
-    const seuil = (t, i) => (!teste(t) ? "–" : seuils(t)[i] == null ? "aucun" : `≥ ${nombre(seuils(t)[i])}`);
-    // Le score testé suit le type dans sa case plutôt que d'avoir sa
-    // colonne : sur téléphone, les seuils restent ainsi dans le cadre.
-    const lignes = grs.map((gr) => {
-      const t = gr[4];
-      return el(
-        "tr",
-        { id: ANCRE + gr },
-        el("th", { scope: "row", title: libelleGroupe(k, gr) }, gr),
-        el(
-          "td",
-          {},
-          sansMotReadaptation(TYPES_READAPTATION[t]),
-          t === "P" ? " (moins de 18 ans)" : "",
-          teste(t) ? el("span", { class: "sous-ligne" }, `score ${SCORES_HC[t]}`) : null
+          { class: "ghm-cases", "aria-hidden": "true" },
+          el("span", {}, niveaux.has("2") ? "2" : ""),
+          el("span", {}, niveaux.has("1") ? "1" : niveaux.has("0") ? "0" : "")
         ),
-        el("td", { class: "nombre" }, seuil(t, 0)),
-        el("td", { class: "nombre" }, seuil(t, 1))
-      );
-    });
-    const blocs = [
-      table(
-        [
-          entete("GR"),
-          entete("Type", "Type de réadaptation"),
-          el("th", { scope: "col", class: "nombre" }, "Seuil par séjour"),
-          el("th", { scope: "col", class: "nombre" }, "Seuil par jour"),
-        ],
-        [el("tbody", {}, ...lignes)]
-      ),
-    ];
-    if (adultes.length > 1) {
-      blocs.push(
-        note(
-          "Score spécialisé : somme des pondérations des actes de la liste d'actes spécialisés du GN réalisés pendant le séjour ; " +
-            "score global : de tous les actes CSARR, codés ou transcodés, et CCAM de réadaptation. Par jour : divisé par le nombre " +
-            "de jours de présence du lundi au vendredi, à défaut de week-end (3.3.2.1). Le test est positif quand le score par séjour " +
-            "ET le score par jour atteignent leur seuil (tableau 5)."
-        )
+        el("span", { class: "visuellement-cache" }, ` : GME ${n.gmes.join(", ")}`)
       );
     }
-    blocs.push(
-      el("p", { class: "etapes-titre" }, "Tests, dans l'ordre (3.4.1) : le premier satisfait donne le GR."),
-      listeEtapes(gn, etapesHc(e)),
-      blocListeSpe(gn, e)
-    );
-    return blocs;
+    return bouton;
   }
 
-  /** La liste d'actes spécialisés du GN (ACTES_listes_SPE), ou pourquoi il
-   *  n'en a pas, lu dans les types de GR_infos. */
-  function blocListeSpe(gn, e) {
-    const liste = k.gnListeSpe[gn]?.liste;
-    const adultes = e.hc.replace("P", "");
-    if (!liste) {
-      const raison = !e.hc.includes("S")
-        ? "le GN n'a pas de type « réadaptation spécialisée importante »."
-        : adultes.length === 1
-          ? "le GN n'est pas subdivisé sur la réadaptation ; son unique type, hors pédiatrique, est la réadaptation spécialisée importante (3.4.1.2)."
-          : "aucun acte n'y est spécialisé.";
-      return note("Pas de liste d'actes spécialisés : ", raison);
+  function titreChemin(n) {
+    if (n.genre === "erreur") return [el("strong", {}, n.etiquette), ` — ${n.titre}`];
+    const titre = [el("strong", {}, n.code), ` ${libelleGroupe(k, n.code)}`];
+    if (n.genre === "gl") titre.push(` — GME ${n.gmes.join(", ")}`);
+    return titre;
+  }
+
+  function origineChemin(n) {
+    if (n.cmd === ORIENTATION) return "Chemin depuis le premier test de l'orientation :";
+    if (n.genre !== "gl") return `Chemin depuis la racine de la CM ${n.cmd} :`;
+    if (departs.get(n.cmd).htp === n._id) {
+      return "Le GN n'est pas subdivisé en HTP : chaque RHS d'HTP y va dans ce groupe, sans test (3.4.2.2).";
     }
-    const fiche = k.listesSpe[liste];
-    const voisins = (fiche?.gn ?? []).filter((g) => g !== gn);
-    const compte = el("span", {});
-    promesseActesSpe.then((jeu) => {
-      const n = jeu ? actesParListe(jeu).get(liste) : null;
-      if (n) compte.textContent = `, ${nombre(n)} acte${n > 1 ? "s" : ""}`;
-    });
-    return note(
-      "Liste d'actes spécialisés du GN : ",
-      el("a", { class: "code", href: `#/smr/groupage/${encodeURIComponent(liste)}`, title: "Actes de la liste" }, liste),
-      fiche?.libelle ? ` (« ${fiche.libelle} »)` : "",
-      compte,
-      voisins.length ? ` ; commune aux GN ${enumeration(voisins)}` : "",
-      ". Seuls ses actes entrent dans le score spécialisé (3.3.2.1) ; un acte CSAR y entre par l'acte CSARR que lui donne le transcodage (3.2.3)."
-    );
+    return `Chemin dans l'arbre du GN ${n.cmd}, ${htp(n) ? "hospitalisation à temps partiel" : "hospitalisation complète"} :`;
   }
 
-  function blocHtp(gn, e, grs) {
-    const [bas, haut] = e.htpSeuils;
-    const seuil = { I: `≥ ${nombre(haut ?? 0)}`, J: `≥ ${nombre(bas ?? 0)} et < ${nombre(haut ?? 0)}`, K: `< ${nombre(bas ?? 0)}` };
-    const lignes = grs.map((gr) => {
-      const t = gr[4];
-      return el(
-        "tr",
-        { id: ANCRE + gr },
-        el("th", { scope: "row", title: libelleGroupe(k, gr) }, gr),
-        el("td", {}, sansMotReadaptation(TYPES_READAPTATION[t]), t === "H" ? " (moins de 18 ans)" : ""),
-        el("td", { class: "nombre" }, seuil[t] ?? "–")
-      );
-    });
-    return [
-      table(
-        [entete("GR"), entete("Type", "Type de réadaptation"), el("th", { scope: "col", class: "nombre" }, "Score global par jour")],
-        [el("tbody", {}, ...lignes)]
-      ),
-      e.htp.includes("I")
-        ? note(
-            "Score global par jour : somme des pondérations de tous les actes CSARR, codés ou transcodés, et CCAM de la semaine, " +
-              "divisée par le nombre de jours de présence dans la semaine (3.3.2.2). Chaque RHS est groupé indépendamment des autres."
-          )
-        : null,
-      el("p", { class: "etapes-titre" }, "Tests, dans l'ordre (3.4.2) : le premier satisfait donne le GR."),
-      listeEtapes(gn, etapesHtp(e)),
-    ].filter(Boolean);
-  }
-
-  // ---- Lourdeur (volume 1, 4.2) ----
-
-  function blocLourdeur(grs) {
-    // Les classes de GL_infos : classe d'âge,
-    // dépendance cognitive [2-6] [7-8], physique [4-8] [9-12] [13-16],
-    // statut post-chirurgical sans ou avec.
-    const variables = [
-      { nom: "Âge", cle: "age", classes: k.classesAge.map(libelleClasseAge) },
-      { nom: "Dépendance cognitive", cle: "cog", classes: ["2 à 6", "7 à 8"] },
-      { nom: "Dépendance physique", cle: "phy", classes: ["4 à 8", "9 à 12", "13 à 16"] },
-      { nom: "Statut post-chirurgical", cle: "chir", classes: ["non", "oui"] },
-    ];
-    const regles = grs.map((gr) => k.gl[gr]);
-    const niveaux = el(
-      "tbody",
-      {},
-      el(
-        "tr",
-        {},
-        el("th", { scope: "row", colspan: "2" }, "Niveaux possibles"),
-        ...grs.map((gr) =>
-          el("td", { class: "niveau" }, (index.fils.get(gr) ?? []).map((gl) => gl[5]).join(", "))
-        )
-      )
-    );
-    const corps = variables.map(({ nom, cle, classes }) =>
-      el(
-        "tbody",
-        {},
-        ...classes.map((classe, i) =>
+  function complementChemin(n, { afficher }) {
+    if (n.genre === "gn") {
+      return [
+        el(
+          "p",
+          { class: "compteur" },
           el(
-            "tr",
-            {},
-            i === 0 ? el("th", { scope: "rowgroup", rowspan: String(classes.length) }, nom) : null,
-            el("th", { scope: "row" }, classe),
-            ...regles.map((r) => celluleNiveau(r[cle][i]))
+            "button",
+            { type: "button", class: "renvoi-cmd", onclick: () => afficher(n.code) },
+            `Arbre du GN ${n.code} : type de réadaptation, lourdeur et sévérité`
           )
-        )
-      )
-    );
-    const blocs = [
-      table(
-        [entete("Variable"), entete("Valeur"), ...grs.map((gr) => el("th", { scope: "col", class: "niveau", title: libelleGroupe(k, gr) }, gr))],
-        [niveaux, ...corps],
-        "lourdeur"
-      ),
-      note(
-        "Pour chaque GR d'hospitalisation complète, chaque valeur de chaque variable donne un niveau ; le niveau de lourdeur du " +
-          "séjour est le plus lourd des quatre (C, puis B, puis A), et le GL est le GR suivi de ce niveau (4.2.1). Âge : celui du " +
-          "premier RHS ; dépendances physique et cognitive : le maximum des RHS du séjour ; statut post-chirurgical : intervention " +
-          "datant de 90 jours au plus (1.2.3). Les classes d'âge de moins de 18 ans portent les règles pédiatriques du manuel (4.2.1, 4.2.2.2). " +
-          "En hospitalisation à temps partiel, le niveau est A par convention."
-      ),
-    ];
-    if (regles.some((r) => r.age.includes(null))) {
-      blocs.push(
-        note(
-          "« – » : sans objet. Le type de réadaptation se décide avant la lourdeur : un moins de 18 ans va dans le GR pédiatrique " +
-            "quand le GN en a un, et un patient de 18 ans et plus n'y entre pas."
-        )
-      );
+        ),
+      ];
     }
-    // Règles combinées (4.2.2.1) : le niveau de la dépendance physique
-    // dépend aussi de l'âge, lu par tranches.
-    grs.forEach((gr, j) => {
-      const phy = regles[j].phy;
-      const combinees = phy.map((v, i) => [v, variables[2].classes[i]]).filter(([v]) => Array.isArray(v));
-      if (!combinees.length) return;
-      blocs.push(
-        note(
-          el("strong", {}, `Règle combinée âge × dépendance physique, GR ${gr} (4.2.2.1) : `),
-          combinees
-            .map(([tranches, classe]) => `une dépendance physique de ${classe} donne ${tranches.map(([min, max, niveau]) => `${niveau} ${libelleTranche([min, max])}`).join(", ")}`)
-            .join(" ; "),
-          "."
-        )
-      );
-    });
-    return blocs;
-  }
-
-  function celluleNiveau(valeur) {
-    if (valeur == null) return el("td", { class: "niveau sans-objet", title: "Sans objet" }, ...sansObjet("sans objet"));
-    if (Array.isArray(valeur)) {
-      return el(
-        "td",
-        { class: "niveau combinee", title: "Règle combinée âge × dépendance physique (4.2.2.1)" },
-        valeur.map(([min, max, niveau]) => `${niveau} ${libelleTranche([min, max])}`).join(" ; ")
-      );
-    }
-    return el("td", { class: "niveau" }, valeur);
-  }
-
-  // ---- Sévérité et GME (volume 1, 5.2) ----
-
-  function blocGme(gn, hc, htp) {
-    const corps = [...hc, ...htp].flatMap((gr) =>
-      (index.fils.get(gr) ?? []).map((gl) => {
-        const gmes = index.fils.get(gl) ?? [];
-        return el(
-          "tbody",
-          {},
-          ...gmes.map((gme, i) =>
+    if (n.genre === "erreur") {
+      return n.erreur == null
+        ? []
+        : [
             el(
-              "tr",
-              { id: ANCRE + gme },
-              i === 0 ? el("th", { scope: "rowgroup", rowspan: String(gmes.length), id: ANCRE + gl, title: libelleGroupe(k, gl) }, gl) : null,
-              el("td", { class: "niveau" }, gme.at(-1)),
-              el("td", {}, groupeLibelle(k, gme))
-            )
-          )
-        );
-      })
-    );
-    return [
-      note(
-        "Hospitalisation complète : sévérité 2 quand au moins un marqueur de sévérité est retenu — un code CIM-10 CMA en MMP ou en " +
-          "DAS d'un RHS, qu'aucun des codes ayant orienté un RHS du séjour dans ce GN n'exclut, ou un acte CCAM CMA — et que le " +
-          "niveau 2 existe ; 1 sinon (5.2.3). ",
-        index.sansSeverite2.has(gn)
-          ? el("strong", {}, `Le GN ${gn} n'a pas de niveau de sévérité 2 : tout séjour d'HC y est en sévérité 1. `)
-          : null,
-        "Hospitalisation à temps partiel : lourdeur A et sévérité 0, par convention (4.1, 5.1)."
-      ),
-      table([entete("GL"), el("th", { scope: "col", class: "niveau" }, "Sévérité"), entete("GME")], corps, "gme"),
-    ];
-  }
-
-  /** Les GMT des GME du GN, rempli dès que les tarifs sont là. */
-  function blocTarifs(gn, gmes) {
+              "p",
+              { class: "compteur" },
+              el("a", { class: "lien-texte", href: `#/smr/erreurs/${n.erreur}` }, `L'erreur ${n.erreur} dans les erreurs de la fonction groupage`)
+            ),
+          ];
+    }
+    if (n.genre !== "gl") return [];
+    // Les GMT des GME de la case, remplis dès que les tarifs sont là.
     const zone = el("div", {}, el("p", { class: "compteur" }, "Chargement des tarifs…"));
     promesseTarifs.then((tarifs) => {
       zone.replaceChildren(
         ...(tarifs
-          ? [tableTarifsGme(tarifs, gmes), noteTarifsSmr(lienTarifs(gn))]
+          ? [el("p", { class: "compteur" }, "Tarifs des GME :"), tableTarifsGme(tarifs, n.gmes), noteTarifsSmr(lienTarifs(n.cmd))]
           : [el("p", { class: "message-avertissement" }, "Tarifs des GME indisponibles pour le moment.")])
       );
     });
-    return zone;
+    return [zone];
   }
 
-  // ---- Recherche ----
+  // ---- Listes et codes ----
 
-  function chercher(valeur) {
-    zoneRecherche.innerHTML = "";
-    const requete = valeur.trim();
-    if (!requete) return;
-    const compact = requete.toUpperCase().replace(/\s+/g, "");
-    // Un numéro de liste (« D-0112 », « d0112 ») : les nœuds dont un test
-    // l'emploie, comparés liste pour liste.
-    const liste = compact.match(/^D-?(\d{4})$/)?.[1];
-    if (liste) {
-      afficherResultats(noeudsDeListe(liste), `D-${liste}`);
-      return;
-    }
-    // Un code se compare au début des codes : « 0147 » ne ramène pas les
-    // GME dont le libellé porterait ces chiffres.
-    const trouves = RE_CODE_GROUPE.test(compact)
-      ? index.entrees.filter((e) => e.code.startsWith(compact))
-      : index.entrees.filter(recherche.filtre(requete));
-    afficherResultats(trouves, null);
-    // Un code CIM-10 ou un acte n'est pas un groupe : la fiche code dit dans
-    // quelle CM et quelles listes il entre, sans charger ici les 43 000
-    // codes de la fonction groupage.
-    if (!trouves.length && /^[A-Z]\d{2}[0-9.+]*$|^[A-Z]{3}\+?\d{3}$|^[A-Z]{4}\d{3}$|^\d{2}[A-Z]\d{2}$/.test(compact)) {
-      zoneRecherche.append(
-        el(
-          "p",
-          { class: "message-info" },
-          "Ce n'est pas un code de groupe. La fiche code dit dans quelle CM et dans quelles listes entre un code, et quels tests d'entrée en GN les emploient : ",
-          lienCode(compact),
-          "."
-        )
-      );
-    }
+  async function codesDeListe(code) {
+    const { lignes } = await chargerDiagnostics();
+    const num = code.slice(2);
+    return lignes.filter((l) => l.Listes.includes(num)).map((l) => ({ Code: l.Code, "Libellé code": l.Libellé }));
   }
 
-  /** Les nœuds dont un test emploie la liste D-`liste`, en entrées de GN
-   *  qui disent où : « CM 01, rang 6, test 2 ». */
-  function noeudsDeListe(liste) {
-    return k.tests.flatMap((noeud) =>
-      noeud.tests
-        .map((t, i) => [t, i])
-        .filter(([t]) => t.liste === liste)
-        .map(([, i]) => ({
-          niveau: "GN",
-          code: noeud.gn,
-          long: `${libelleGroupe(k, noeud.gn)} — CM ${noeud.cm}, rang ${noeud.ordre}${noeud.tests.length > 1 ? `, test ${i + 1}` : ""}`,
-        }))
+  /** Les listes d'entrée en GN des codes CIM-10 qui commencent par la
+   *  requête. */
+  async function listesDuCode(requete) {
+    const { lignes } = await chargerDiagnostics();
+    const debut = cle(requete);
+    const parCode = new Map();
+    for (const l of lignes) {
+      if (!l.Listes.length || !cle(l.Code).startsWith(debut)) continue;
+      parCode.set(l.Code, { libelle: l.Libellé, listes: new Set(l.Listes.map((num) => `D-${num}`)) });
+    }
+    return parCode;
+  }
+
+  // ---- Catégories ----
+
+  const noteOrientation = () =>
+    note(
+      `Un code oriente dans une CM quand il appartient à une liste d'entrée dans une CM : CIM_infos_SMR lui en donne une, autre que la ${CM_ERREURS}. ` +
+        "La liste des codes orientant en deuxième intention, des symptômes pour la plupart, est dans le même fichier ; " +
+        "la deuxième intention n'existe que pour la MMP. Exemple du manuel : dyspnée (",
+      lienCode("R06.0"),
+      ") en MMP, code orientant en deuxième intention, et insuffisance cardiaque (",
+      lienCode("I50.9"),
+      ") en AE : le RHS va dans la CM 05."
     );
+
+  const noteCm = () =>
+    note(
+      "Un test est positif quand l'un des codes aux positions qu'il nomme appartient à sa liste ; un nœud à deux tests ne l'est que si " +
+        "les deux le sont. Un GN peut revenir à plusieurs rangs, avec d'autres listes ou d'autres positions. En HC, le séjour prend ensuite " +
+        "le GN le plus fréquent de ses 10 premiers RHS (de tous s'il en compte moins), le premier dans l'ordre chronologique en cas " +
+        "d'égalité ; en HTP, chaque RHS garde le sien (2.2.2)."
+    );
+
+  function sousTitreGn(gn, { afficher }) {
+    const cm = gn.slice(0, 2);
+    const rangs = k.tests.filter((t) => t.gn === gn).map((t) => String(t.ordre));
+    const pluriel = rangs.length > 1;
+    return [
+      `Test${pluriel ? "s" : ""} d'entrée au${pluriel ? "x" : ""} rang${pluriel ? "s" : ""} ${enumeration(rangs)} de la `,
+      el("button", { type: "button", class: "renvoi-cmd", onclick: () => afficher(cm) }, `CM ${cm}`),
+      `. Volume 1 : type de réadaptation, 3.4 et annexes 7.3 (page ${k.pages.grHc[gn]}) et 7.4 (page ${k.pages.grHtp[gn]}) ; ` +
+        "lourdeur, 4.2 et annexe 7.5 ; sévérité, 5.2.3.",
+    ];
   }
 
-  /** Compteur et liste des groupes trouvés ; `liste` : le numéro de liste
-   *  cherché, le cas échéant. */
-  function afficherResultats(trouves, liste) {
-    if (!trouves.length) {
-      zoneRecherche.append(
-        el(
-          "p",
-          { class: "message-info", role: "status" },
-          ...(liste
-            ? [`Aucun test d'entrée en GN n'emploie la liste ${liste}. `, el("a", { class: "lien-texte", href: `#/smr/groupage/${liste}` }, "Voir la liste"), "."]
-            : ["Aucune CM, aucun GN, GR, GL ni GME pour cette recherche."])
+  function notesGn(gn) {
+    const { adultes } = departs.get(gn);
+    const e = k.gr[gn];
+    const notes = [];
+    if (adultes.length > 1) {
+      const scores = [];
+      if (adultes.includes("S")) {
+        scores.push("score spécialisé : somme des pondérations des actes de la liste d'actes spécialisés du GN réalisés pendant le séjour");
+      }
+      if (adultes.includes("T")) {
+        scores.push("score global : de tous les actes CSARR, codés ou transcodés du CSAR, et CCAM de réadaptation");
+      }
+      const seuilManquant = [e.spe, e.glob].some(([sejour, jour]) => (sejour == null) !== (jour == null));
+      notes.push(
+        note(
+          `Scores de réadaptation en HC — ${scores.join(" ; ")}. Par jour : divisé par le nombre de jours de présence du lundi au ` +
+            "vendredi, à défaut de week-end (3.3.2.1). Un test est positif quand le score par séjour et le score par jour atteignent " +
+            `leur seuil (tableau 5)${seuilManquant ? " ; un seuil absent de GR_infos ne s'y oppose pas" : ""}.`
         )
       );
-      return;
     }
-    const parNiveau = NIVEAUX.map((n) => [n, trouves.filter((e) => e.niveau === n).length]).filter(([, c]) => c);
-    const affiches = trouves.slice(0, RESULTATS_MAX);
-    zoneRecherche.append(
-      el(
-        "p",
-        { class: "compteur", role: "status" },
-        el("strong", {}, nombre(trouves.length)),
-        liste
-          ? ` test${trouves.length > 1 ? "s" : ""} d'entrée en GN emploi${trouves.length > 1 ? "ent" : "e"} la liste ${liste}`
-          : ` groupe${trouves.length > 1 ? "s" : ""} (${parNiveau.map(([n, c]) => `${nombre(c)} ${n}`).join(", ")})`,
-        trouves.length > affiches.length ? ` — les ${RESULTATS_MAX} premiers ; précisez la recherche pour les autres` : ""
-      ),
-      el(
-        "ol",
-        { class: "liste-resultats" },
-        ...affiches.map((e) =>
-          el(
-            "li",
-            {},
-            el(
-              "button",
-              { type: "button", onclick: () => allerA(e) },
-              el("span", { class: "resultat-cmd" }, e.code),
-              el("span", { class: "resultat-niveau" }, e.niveau),
-              el("span", { class: "resultat-libelle" }, e.long)
-            )
-          )
-        )
+    const combinees = [...adultes, ...(e.hc.includes("P") ? ["P"] : [])]
+      .map((t) => gn + t)
+      .filter((gr) => Object.values(k.gl[gr] ?? {}).some((valeurs) => valeurs.some(Array.isArray)));
+    notes.push(
+      note(
+        "Lourdeur, en HC : le niveau du séjour est le plus lourd de ceux que donnent ses caractéristiques (4.2.1), d'où les tests du " +
+          "niveau C, puis du niveau B. Âge au premier RHS ; dépendances physique et cognitive : le maximum des RHS du séjour ; statut " +
+          "post-chirurgical : intervention datée dans le premier RHS, de 90 jours au plus — plus ancienne ou absente, le séjour n'est " +
+          "pas post-chirurgical (1.2.3.5 à 1.2.3.8). Les niveaux de chaque caractéristique sont ceux de GL_infos (annexe 7.5) ; les " +
+          `classes d'âge de moins de 18 ans y portent les règles pédiatriques (4.2.2.2).${
+            combinees.length ? ` Règle combinant l'âge et la dépendance physique (4.2.2.1) : GR ${enumeration(combinees)}.` : ""
+          }`
       )
     );
-  }
-
-  function allerA({ niveau, code: c }) {
-    if (niveau === "CM") {
-      afficherCm(c);
-      defiler(zoneVue, "start", true);
-      zoneVue.querySelector("h2")?.setAttribute("tabindex", "-1");
-      zoneVue.querySelector("h2")?.focus({ preventScroll: true });
-      return;
+    const sans2 = Object.keys(k.groupes.GL).some((gl) => gl.startsWith(gn) && TYPES_HC.includes(gl[4])) &&
+      !Object.keys(k.groupes.GME).some((gme) => gme.startsWith(gn) && gme.endsWith("2"));
+    notes.push(
+      note(
+        "Sévérité, en HC : le GME est le GL suivi du niveau 2 quand au moins un marqueur de sévérité est retenu — un code CIM-10 CMA " +
+          "en MMP ou en DAS d'un RHS, qu'aucun des codes ayant orienté un RHS du séjour dans ce GN n'exclut, ou un acte CCAM CMA — et " +
+          "que le niveau 2 existe ; du niveau 1 sinon (5.2.3). ",
+        sans2 ? el("strong", {}, `Le GN ${gn} n'a pas de niveau de sévérité 2 : tout séjour d'HC y est en sévérité 1. `) : null,
+        "En HTP, lourdeur A et sévérité 0, par convention (4.1, 5.1)."
+      )
+    );
+    if (e.htp.includes("I")) {
+      notes.push(
+        note(
+          "Score global par jour, en HTP : somme des pondérations de tous les actes CSARR, codés ou transcodés, et CCAM de la semaine, " +
+            "divisée par le nombre de jours de présence dans la semaine (3.3.2.2)."
+        )
+      );
     }
-    const gn = c.slice(0, 4);
-    ouvrirGn(gn, { cible: niveau === "GN" ? null : c });
+    return notes;
   }
 
-  // ---- Premier affichage ----
-
-  // Rendu vrai quand la vue s'est placée d'elle-même sur un GN (lien
-  // profond) : le routeur ne la ramène alors pas en haut de page. Une
-  // adresse illisible retombe sur la vue d'ensemble, adresse corrigée.
-  const demande = String(chemin[0] ?? "").toUpperCase();
-  if (/^\d{2}$/.test(demande) && index.cms.includes(demande)) return afficherCm(demande);
-  if (/^\d{4}$/.test(demande) && k.gr[demande]) return afficherCm(demande.slice(0, 2), { gn: demande, douceur: false });
-  if (RE_GROUPE_ADRESSE.test(demande) && k.groupes[{ 5: "GR", 6: "GL", 7: "GME" }[demande.length]]?.[demande]) {
-    return afficherCm(demande.slice(0, 2), { gn: demande.slice(0, 4), cible: demande, douceur: false });
+  const categories = [
+    {
+      id: ORIENTATION,
+      option: "Orientation en CM",
+      etiquette: "Orientation",
+      titre: "Orientation en catégorie majeure",
+      sousTitre: `Volume 1, 2.2.1 et figure 4, page ${PAGE_ORIENTATION}. Les tests sont faits dans cet ordre, sur chaque RHS.`,
+      racines: [{ depart: "o-mmp-2e" }],
+      notes: () => [noteOrientation()],
+    },
+  ];
+  for (const cm of cms) {
+    const groupe = `CM ${cm} — ${libelleGroupe(k, cm)}`;
+    const tests = k._testsParCm.get(cm);
+    categories.push({
+      id: cm,
+      groupe,
+      option: `CM ${cm} — tests d'entrée en GN`,
+      etiquette: `CM ${cm}`,
+      titre: groupe,
+      sousTitre:
+        `Volume 1, 2.2.2 et annexe 7.2, ${pages(tests.map((t) => k.pages.noeuds[`${cm}-${t.ordre}`]))}. ` +
+        `${nombre(tests.length)} nœud${tests.length > 1 ? "s" : ""}, testé${tests.length > 1 ? "s" : ""} dans l'ordre sur chaque RHS ; le premier dont tous les tests sont positifs donne le GN.`,
+      racines: [{ depart: `${cm}-${tests[0].ordre}` }],
+      notes: () => [noteCm()],
+    });
+    for (const gn of gnsParCm.get(cm)) {
+      categories.push({
+        id: gn,
+        groupe,
+        option: `GN ${gn} — ${libelleGroupe(k, gn)}`,
+        etiquette: `GN ${gn}`,
+        titre: `GN ${gn} — ${libelleGroupe(k, gn)}`,
+        sousTitre: (outils) => sousTitreGn(gn, outils),
+        racines: [
+          {
+            titre: "Hospitalisation complète",
+            note: "Le séjour, dans le GN le plus fréquent de ses 10 premiers RHS (2.2.2). Type de réadaptation : figure 6 ; lourdeur : figure 8 ; sévérité : figure 9.",
+            depart: departs.get(gn).hc,
+          },
+          {
+            titre: "Hospitalisation à temps partiel",
+            note: "Chaque RHS, groupé sans égard aux autres RHS de la suite (2.2.2). Type de réadaptation : figure 7 ; lourdeur A et sévérité 0, par convention.",
+            depart: departs.get(gn).htp,
+          },
+        ],
+        notes: () => notesGn(gn),
+      });
+    }
   }
-  return afficherCm(null, { historique: chemin.length > 0 });
+  const ids = new Set(categories.map((c) => c.id));
+
+  /** L'adresse : une catégorie et, le cas échéant, un nœud ; ou un code de
+   *  GR, de GL ou de GME, qui ouvre son GN sur l'étape du GR ou la case du
+   *  GL. Une adresse illisible retombe sur l'orientation. */
+  function resoudre([premier, noeud, cas]) {
+    const brut = String(premier ?? "");
+    if (!brut) return {};
+    if (ids.has(brut)) return { cmd: brut, noeud, cas: cas != null && /^\d+$/.test(cas) ? Number(cas) : null };
+    const code = brut.toUpperCase();
+    if (/^\d{4}[A-Z]{1,2}\d?$/.test(code) && ids.has(code.slice(0, 4))) {
+      const cible = code.length === 5 ? (arbre.noeuds[code] ? code : `${code}A`) : code.slice(0, 6);
+      return { cmd: code.slice(0, 4), noeud: arbre.noeuds[cible] ? cible : undefined };
+    }
+    return { cmd: brut };
+  }
+
+  return dessinerArbre(
+    conteneur,
+    {
+      champ: "smr",
+      arbre,
+      parDefaut: ORIENTATION,
+      categories,
+      resoudre,
+      entete: [
+        el("h1", {}, "Algorithme de la fonction groupage"),
+        sourceFg(),
+        drapeau,
+        el(
+          "p",
+          {},
+          "Les arbres de décision de la classification en GME, tels que les décrit le volume 1 du ",
+          el("strong", {}, "Manuel des GME 2026"),
+          " (ATIH, version provisoire) : orientation en CM, tests d'entrée en GN de chaque CM, puis, pour chaque GN, type de réadaptation, niveau de lourdeur et niveau de sévérité. Chaque test s'enchaîne sous le précédent quand sa condition n'est pas satisfaite, et ouvre en retrait ce qui suit quand elle l'est. Un clic sur un code de liste en montre les codes ; un clic sur un GN donne le chemin qui y mène et ouvre son arbre ; un clic sur une case de GL donne le chemin qui y mène et les tarifs de ses GME."
+        ),
+        legende(),
+      ],
+      selecteur: {
+        id: "smr_arbre_cm",
+        libelle: "Catégorie majeure ou GN :",
+        aide: "Dans l'ordre du manuel : l'orientation d'abord, puis chaque CM et ses GN.",
+      },
+      recherche: { id: "smr_arbre_recherche", exemple: "ex. : 0147SC, D-0112, I63.4, hémiplégies" },
+      titrePage: "Page du volume 1 du Manuel des GME",
+      symboles: SYMBOLES,
+      variables: VARIABLES,
+      special: {
+        gr: {
+          court: (n) => `GR ${n.code}`,
+          intitule: (n) => [
+            el("strong", {}, n.code),
+            ` ${TYPES_READAPTATION[n.code[4]]}`,
+            n.unique ? el("span", { class: "etape-precision" }, " — GN non subdivisé sur la réadaptation (3.4.1.2)") : null,
+          ],
+        },
+      },
+      note: (n) => {
+        if (n.conditions?.length) {
+          return [`Conditions supplémentaires : ${n.conditions.map((c) => CONDITIONS[c]).filter(Boolean).join(" ; ")}.`];
+        }
+        if (n.listeSpe) {
+          const fiche = k.listesSpe?.[n.listeSpe];
+          return [
+            "Actes de la liste d'actes spécialisés du GN : ",
+            el("a", { class: "code", href: `#/smr/groupage/${encodeURIComponent(n.listeSpe)}`, title: "Actes de la liste" }, n.listeSpe),
+            fiche?.libelle ? ` (« ${fiche.libelle} »)` : "",
+            ".",
+          ];
+        }
+        return null;
+      },
+      pictogramme,
+      feuilles: new Set(["gn", "gl", "erreur", "renvoi", "grille"]),
+      feuille,
+      texteFeuille: (n) => n.code ?? n.etiquette ?? n.texte,
+      codesNoeud: (n) => (n.genre === "gl" ? [n.code, ...n.gmes] : n.genre === "gn" || n.genre === "gr" ? [n.code] : []),
+      nomFeuille: ["groupe", "groupes"],
+      titreChemin,
+      origineChemin,
+      complementChemin,
+      codesDeListe,
+      // Un code de groupe, entier ou en partie : « 01 », « 0147 »,
+      // « 0147S », « 0147SC », « 0147SC2 ».
+      groupeDeRequete: (compact) => (/^\d{2}(?:\d{2}(?:[a-z](?:[a-z]\d?)?)?)?$/.test(compact) ? compact : null),
+      natureDeCode: (requete) =>
+        /^[A-Z]\d{2}(\.?\d*)?[+]?\d*$/.test(requete.trim().toUpperCase().replace(/\s+/g, "")) ? "diagnostics" : null,
+      listesDuCode,
+    },
+    chemin
+  );
 }

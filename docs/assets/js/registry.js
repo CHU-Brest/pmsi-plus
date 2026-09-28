@@ -161,7 +161,7 @@ export const REGISTRY = [
     slug: "arbre",
     titre: "Algorithme de la fonction groupage",
     module: "smr/arbre",
-    resume: "De la CM au GME : tests d'entrée dans les GN, types de réadaptation et seuils, règles de lourdeur, sévérité.",
+    resume: "Arbres de décision du Manuel des GME, de l'orientation en CM au GME : tests d'entrée en GN, type de réadaptation, lourdeur, sévérité.",
   },
   {
     champ: "smr",

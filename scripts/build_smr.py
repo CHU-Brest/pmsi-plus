@@ -28,7 +28,8 @@ Cibles, dans docs/assets/data/smr/, avec le même découpage :
   CMA et ses listes d'entrée dans les GN ;
 - groupage/classification.json : libellés des groupes, tests d'entrée dans
   les GN, types de réadaptation et seuils, règles de lourdeur, actes CCAM
-  CMA, erreurs ;
+  CMA, erreurs, nombre de codes de chaque liste, et la page des annexes 7.2
+  à 7.5 du volume 1 où se lit chaque nœud, chaque GN et chaque GR ;
 - groupage/exclusions.json : les listes d'exclusion des CMA, en plages de
   codes ;
 - groupage/tarifs.json : tarifs des GMT de l'annexe I de l'arrêté tarifaire ;
@@ -40,8 +41,8 @@ Cibles, dans docs/assets/data/smr/, avec le même découpage :
 
 Les règles de l'algorithme (ordre des tests, seuils « par jour ET par
 séjour », pondération des actes CSAR…) ne sont pas dans ces fichiers mais
-dans le volume 1 du Manuel des GME (data/smr/groupage/manuel_gme_volume_1.pdf) : elles
-sont présentées par l'algorithme du site (docs/assets/js/themes/smr/arbre.js).
+dans le volume 1 du Manuel des GME (data/smr/groupage/manuel_gme_volume_1.pdf) : c'est
+l'algorithme du site (docs/assets/js/themes/smr/arbre.js) qui en fait des arbres.
 
 Comme les autres scripts, celui-ci s'arrête plutôt que de deviner : un
 en-tête qui change, un test d'entrée en GN illisible, une liste citée mais
@@ -71,6 +72,7 @@ SECTIONS = {
     "groupage": (
         "CIM_infos_SMR.xlsx", "GN_liste_tests.xlsx", "GR_infos.xlsx", "GL_infos.xlsx",
         "TOTAL_listes_groupes.xlsx", "CMA_exclusion.xlsx", "CMA_CCAM.xlsx", "FG_erreurs.TXT", "tarifs.xlsx",
+        "manuel_gme_volume_1.pdf",
     ),
     "readaptation": (
         "ACTES_ponderations.xlsx", "ACTES_listes_SPE.xlsx", "CSAR_infos.xlsx",
@@ -274,6 +276,17 @@ def lire_diagnostics(cm_connues: set[str]):
             [code_cim(code), texte(lib), cm, profil, drapeau(deuxieme, ou), drapeau(cma, ou), nums]
         )
     return diagnostics, listes
+
+
+
+def effectifs_listes(diagnostics) -> dict[str, int]:
+    """Nombre de codes de chaque liste d'entrée dans les GN, pour la puce
+    qui la nomme dans l'algorithme sans charger les 43 000 codes."""
+    effectifs: dict[str, int] = defaultdict(int)
+    for *_, nums in diagnostics:
+        for num in nums:
+            effectifs[num] += 1
+    return dict(sorted(effectifs.items()))
 
 
 # ==== Tests d'entrée dans les GN ====
@@ -908,6 +921,93 @@ def lire_tarifs(groupes):
     return annee, tarifs
 
 
+# ==== Pages du manuel ====
+
+# Titres des annexes du volume 1 du Manuel des GME, dans l'ordre : l'annexe
+# court jusqu'au titre de la suivante.
+ANNEXES = {
+    "7.2": "ARBRE GN",
+    "7.3": "GROUPES DE READAPTATION HC",
+    "7.4": "GROUPES DE READAPTATION HTP",
+    "7.5": "GROUPES DE LOURDEUR",
+    "7.6": "CMA",
+}
+# Bord droit de la première colonne des tableaux des annexes (CM, GN ou GR),
+# et de la deuxième (rang du nœud dans la CM), en points.
+COLONNE_1, COLONNE_2 = 80, 130
+
+
+def lire_pages_manuel(groupes, tests, gl):
+    """Page de l'annexe du volume 1 où se lit chaque nœud de test (7.2),
+    chaque GN (7.3 en HC, 7.4 en HTP) et chaque GR d'HC (7.5) : l'algorithme
+    la donne à chaque étape, comme l'algorithme MCO donne celle du volume 3
+    du Manuel des GHM. Lue dans le PDF, colonne par colonne : un tableau qui
+    change de mise en page arrête la conversion plutôt que de laisser une
+    étape sans page."""
+    import pymupdf  # comme build_arbre.py ; seul ce passage en dépend
+
+    fichier = "manuel_gme_volume_1.pdf"
+    doc = pymupdf.open(source(fichier))
+    debut = {}
+    for i, page in enumerate(doc, start=1):
+        t = page.get_text()
+        if "....." in t:  # sommaire
+            continue
+        for num, titre in ANNEXES.items():
+            if num not in debut and re.search(rf"^{re.escape(num)}\s+{titre}", t, re.M):
+                debut[num] = i
+    if list(debut) != list(ANNEXES):
+        raise ErreurDonnees(f"{fichier} : annexes introuvables ou dans le désordre ({debut})")
+    bornes = dict(zip(ANNEXES, list(debut.values())[1:]))
+
+    def mots(numero):
+        """Les mots de la première colonne de chaque page de l'annexe, dans
+        l'ordre de lecture, avec leur ordonnée et les mots de leur ligne."""
+        for p in range(debut[numero], bornes[numero]):
+            tous = sorted(doc[p - 1].get_text("words"), key=lambda w: (w[5], w[6], w[7]))
+            for w in tous:
+                if w[0] < COLONNE_1:
+                    yield p, w, tous
+
+    # 7.2 : la CM est centrée dans la hauteur de sa ligne, le rang calé en
+    # haut : le rang d'une CM est le dernier écrit au-dessus d'elle.
+    noeuds = {}
+    for p, w, tous in mots("7.2"):
+        if w[4] not in groupes["CM"]:
+            continue
+        rangs = [v for v in tous if COLONNE_1 <= v[0] < COLONNE_2 and v[4].isdigit() and v[1] <= w[1] + 3]
+        if rangs:
+            noeuds.setdefault(f"{w[4]}-{max(rangs, key=lambda v: v[1])[4]}", p)
+    manquants = [f"{t['cm']}-{t['ordre']}" for t in tests if f"{t['cm']}-{t['ordre']}" not in noeuds]
+    if manquants:
+        raise ErreurDonnees(f"{fichier}, annexe 7.2 : nœuds introuvables {manquants}")
+
+    def par_gn(numero):
+        pages = {}
+        for p, w, _ in mots(numero):
+            if w[4] in groupes["GN"]:
+                pages.setdefault(w[4], p)
+        if set(pages) != set(groupes["GN"]):
+            raise ErreurDonnees(f"{fichier}, annexe {numero} : GN introuvables {sorted(set(groupes['GN']) - set(pages))}")
+        return pages
+
+    # 7.5 : un code de GR trop large pour sa colonne passe à la ligne
+    # (« 014 », puis « 7S »).
+    pages_gr, attente = {}, None
+    for p, w, _ in mots("7.5"):
+        t = w[4]
+        if attente and re.fullmatch(r"\d[A-Z]", t):
+            pages_gr.setdefault(attente[0] + t, attente[1])
+        elif re.fullmatch(r"\d{4}[A-Z]", t):
+            pages_gr.setdefault(t, p)
+        attente = (t, p) if re.fullmatch(r"\d{3}", t) else None
+    if set(pages_gr) != set(gl):
+        raise ErreurDonnees(
+            f"{fichier}, annexe 7.5 : GR introuvables {sorted(set(gl) - set(pages_gr))}, en trop {sorted(set(pages_gr) - set(gl))}"
+        )
+    return {"noeuds": noeuds, "grHc": par_gn("7.3"), "grHtp": par_gn("7.4"), "gl": pages_gr}
+
+
 # ==== Écriture ====
 
 
@@ -942,6 +1042,7 @@ def main() -> None:
         transcodage, transposition, temps, lieu_csar, modulables = lire_csar(ponderations, intervenants)
         erreurs, actes_erreurs = lire_erreurs()
         campagne, tarifs = lire_tarifs(groupes)
+        pages = lire_pages_manuel(groupes, tests, gl)
     except ErreurDonnees as e:
         sys.exit(f"Conversion impossible : {e}")
 
@@ -965,6 +1066,7 @@ def main() -> None:
             },
             "groupes": groupes,
             "listes": listes,
+            "effectifsListes": effectifs_listes(diagnostics),
             "tests": tests,
             "gr": gr,
             "gl": gl,
@@ -972,6 +1074,7 @@ def main() -> None:
             "cmaCcam": cma_ccam,
             "erreurs": erreurs,
             "actesErreurs": actes_erreurs,
+            "pages": pages,
         },
     )
     ecrire(

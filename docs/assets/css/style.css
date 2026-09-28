@@ -2448,305 +2448,42 @@ ol.chemin > li::before {
 }
 
 /* ==== SMR — Algorithme de la fonction groupage ==== */
-/* Les tables du Manuel des GME (tests d'entrée en GN, types de
-   réadaptation, règles de lourdeur, GME) se lisent en entier : pas de
-   hauteur bornée comme une liste de codes. Elles défilent en largeur dans
-   leur cadre sur téléphone, jamais la page. Les tarifs, eux, gardent la
-   hauteur bornée des autres thèmes (une trentaine de GME, trois GMT
-   chacun). */
-.smr-arbre {
-  max-width: 1100px;
+/* L'arbre est celui de l'algorithme MCO (cf. « Arbre ») ; restent les
+   pictogrammes et intertitres propres au Manuel des GME. */
+
+/* Sigles de trois lettres (MMP, DAS) resserrés pour tenir dans le cercle ;
+   test sur la MMP ou l'AE : les deux sigles l'un sous l'autre. */
+.picto.cercle.serre,
+.picto.cercle.empile {
+  font-size: var(--picto-texte-mini);
+  letter-spacing: -0.02em;
 }
 
-.smr-arbre .codes-liste:not(.tarifs-ghs) {
-  max-height: none;
-}
-
-/* Le texte réservé aux lecteurs d'écran d'une case « – » est positionné
-   en absolu : sans ancêtre positionné, il échapperait au défilement du
-   cadre et élargirait la page sur téléphone. */
-.smr-arbre .codes-liste {
-  position: relative;
-}
-
-.smr-arbre .note + .codes-liste {
-  margin-top: var(--sp-3);
-}
-
-/* Le dernier groupe de lignes d'un tableau perd le filet de ses en-têtes
-   de ligne (règle commune des listes de codes, faite pour l'en-tête de
-   groupe qui descend jusqu'au cadre) : on le rend à ceux qui ne sont pas
-   sur la dernière ligne. */
-.smr-arbre .codes-liste tbody:last-child tr:not(:last-child) th[scope="row"] {
-  border-bottom: var(--bw-hair) solid var(--slate-200);
-}
-
-/* Vue d'ensemble : l'intitulé d'un niveau passe à la ligne plutôt que de
-   comprimer les colonnes voisines. */
-.smr-arbre .codes-liste.ensemble tbody th {
-  width: 30%;
-  white-space: normal;
-}
-
-/* Tarifs : assez de largeur pour lire la nature d'un GMT sur deux ou trois
-   lignes, quitte à faire défiler le tableau dans son cadre. */
-.smr-arbre .tarifs-ghs table {
-  min-width: 62rem;
-}
-
-.smr-arbre > section > h2:first-child {
-  margin-top: var(--sp-6);
-}
-
-.smr-arbre h3 {
-  font: var(--text-eyebrow);
-  letter-spacing: var(--ls-eyebrow);
-  text-transform: uppercase;
-  color: var(--text-eyebrow-color);
-  margin: var(--sp-7) 0 var(--sp-3);
-}
-
-.smr-arbre > section > p:not(.sous-titre),
-.smr-arbre .note,
-.smr-arbre .etapes-titre {
-  max-width: var(--largeur-lecture);
-}
-
-/* Source, définitions et précisions sous un tableau : plus discrètes que
-   le texte courant. */
-.smr-arbre .note {
-  margin: var(--sp-2) 0 0;
-  font: var(--text-body-sm);
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-}
-
-.smr-arbre .etapes-titre {
-  margin: var(--sp-4) 0 0;
-  font: var(--text-body-sm);
-  color: var(--text-primary);
-}
-
-/* Codes de groupe et numéros de liste : chiffres tabulaires, comme les
-   colonnes de codes ; un numéro de liste reste un lien. */
-.smr-arbre .code {
-  font: var(--text-data);
-  font-feature-settings: var(--num-tabular);
-  color: var(--text-primary);
-}
-
-.smr-arbre a.code {
-  color: var(--text-link);
-  white-space: nowrap;
-}
-
-.smr-arbre .codes-liste th.rang {
-  text-align: right;
-}
-
-/* Les tests d'un nœud, l'un sous l'autre ; le libellé de la liste sous
-   ses positions et son numéro. */
-.smr-arbre .test,
-.smr-arbre .test-liste {
-  display: block;
-}
-
-.smr-arbre .test + .test {
-  margin-top: var(--sp-2);
-}
-
-.smr-arbre .numero-test {
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-}
-
-.smr-arbre .test-conditions-titre {
-  display: block;
-  margin-top: var(--sp-2);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-}
-
-.smr-arbre .test-conditions {
-  margin: var(--sp-1) 0 0;
-  padding-left: var(--sp-5);
-}
-
-/* Précision sous le contenu d'une case : score testé d'un type, groupe et
-   exemple d'un niveau, informations qu'il mobilise. */
-.smr-arbre .sous-ligne {
-  display: block;
-  margin-top: var(--sp-1);
-  font: var(--text-body-sm);
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-}
-
-.smr-arbre .rangs-autres {
-  display: block;
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-}
-
-/* GN d'arrivée : un bouton qui se lit comme un lien, qui ouvre le GN sous
-   le tableau. */
-.smr-arbre .bouton-gn {
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: var(--text-link);
-  text-align: left;
-  cursor: pointer;
-}
-
-.smr-arbre .bouton-gn:hover {
-  text-decoration: underline;
-}
-
-.smr-arbre .bouton-gn .code {
-  color: inherit;
-  font-weight: var(--fw-semibold);
-}
-
-/* Le GN ouvert, à chacun de ses rangs. */
-.smr-arbre .codes-liste tr.actif > * {
-  background: var(--blue-050);
-}
-
-.smr-arbre tr.surbrillance > *,
-.smr-arbre th.surbrillance {
-  animation: surbrillance 2.4s var(--ease-standard);
-}
-
-/* Niveaux de lourdeur et de sévérité : une lettre ou un chiffre par case,
-   centrés pour se comparer d'une colonne de GR à l'autre ; une règle
-   combinée s'écrit en toutes lettres. */
-.smr-arbre .codes-liste th.niveau,
-.smr-arbre .codes-liste td.niveau {
+.picto.cercle.empile {
+  line-height: 1.1;
   text-align: center;
 }
 
-.smr-arbre .codes-liste td.niveau {
-  font: var(--text-data);
-  font-feature-settings: var(--num-tabular);
-  color: var(--text-primary);
-  white-space: nowrap;
+/* Hospitalisation complète et à temps partiel : deux arbres par GN, chacun
+   sous son intertitre. */
+.arbre > .arbre-racine {
+  margin: var(--sp-7) 0 var(--sp-1);
 }
 
-.smr-arbre .codes-liste td.niveau.sans-objet {
-  color: var(--text-muted);
+.arbre > .arbre-racine + .sous-titre {
+  margin: 0 0 var(--sp-4);
 }
 
-.smr-arbre .codes-liste td.niveau.combinee {
-  min-width: 14ch;
-  text-align: left;
-  white-space: normal;
-  font: var(--text-body-sm);
-  font-size: var(--fs-xs);
+/* Règles du GN, sous ses arbres. */
+.arbre > .note {
+  max-width: 72ch;
+  margin: var(--sp-4) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
 }
 
-/* Étapes du type de réadaptation : la condition, puis le GR. */
-.smr-arbre ol.chemin {
-  max-width: 880px;
-}
-
-.smr-arbre .precision {
-  color: var(--text-muted);
-}
-
-/* Largeur commune aux GR d'une liste d'étapes : les flèches s'alignent. */
-.smr-arbre .etape-gr {
-  flex-shrink: 0;
-  min-width: min(42ch, 100%);
-  color: var(--text-primary);
-}
-
-/* Panneau d'un GN, sous les tests de sa CM. */
-.smr-gn {
-  margin: var(--sp-6) 0 0;
-  padding: var(--pad-card);
-  background: var(--surface-card);
-  border: var(--bw-hair) solid var(--border-default);
-  border-top: var(--border-accent-w) solid var(--brand);
-  box-shadow: var(--shadow-sm);
-  scroll-margin-top: var(--sp-10);
-}
-
-.smr-gn [id] {
-  scroll-margin-top: var(--sp-10);
-}
-
-.smr-gn-entete {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--sp-3);
-}
-
-.contenu .smr-gn-entete h2 {
-  margin: 0;
-  outline: none;
-}
-
-.smr-gn-entete h2 .code {
-  font: inherit;
-  font-feature-settings: var(--num-tabular);
-}
-
-.smr-gn-entete .bouton-icone {
-  flex-shrink: 0;
-}
-
-.smr-gn > .sous-titre {
+.arbre > .note + .note {
   margin-top: var(--sp-2);
-}
-
-.smr-gn > h3:first-of-type {
-  margin-top: var(--sp-5);
-}
-
-/* Niveau du groupe trouvé (GN, GR, GL, GME), entre son code et son
-   libellé. */
-.resultat-niveau {
-  flex-shrink: 0;
-  min-width: 4ch;
-  font: var(--text-eyebrow);
-  font-size: var(--fs-3xs);
-  letter-spacing: var(--ls-eyebrow);
-  color: var(--text-muted);
-}
-
-@media (max-width: 860px) {
-  .smr-gn {
-    padding: var(--sp-3);
-  }
-
-  /* Intitulés de variable sur deux lignes : les colonnes de GR gagnent la
-     place. */
-  .smr-arbre .codes-liste.lourdeur tbody th[scope="rowgroup"] {
-    white-space: normal;
-  }
-
-  /* Cases resserrées : les colonnes de seuils tiennent dans le cadre. */
-  .smr-arbre .codes-liste th,
-  .smr-arbre .codes-liste td {
-    padding-left: var(--sp-2);
-    padding-right: var(--sp-2);
-  }
-
-  /* La sévérité se lit au dernier chiffre du GME et dans son libellé : sa
-     colonne cède la place au libellé. */
-  .smr-arbre .codes-liste.gme .niveau {
-    display: none;
-  }
-
-  /* Le GR d'une étape passe sous sa condition, aligné sur elle. */
-  .smr-arbre .etape-gr {
-    flex-basis: 100%;
-    min-width: 0;
-    padding-left: calc(2ch + var(--sp-3));
-  }
 }
 
 /* ==== SMR — Transcodage CSAR ↔ CSARR ==== */

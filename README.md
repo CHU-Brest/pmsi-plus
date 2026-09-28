@@ -24,7 +24,7 @@ individuelle — sont repris ici :
 | MCO | Groupage (depuis la fiche) | Codes frontières en DP | catégories CIM-10 dont les codes, en DP, mènent à des racines de GHM différentes (calculé dans le navigateur depuis l'arbre et les listes) |
 | SMR | Groupage | Fiche code | un code CIM-10, CSARR, CCAM ou CSAR sur une page : CM, positions permises, orientation en deuxième intention, listes et tests d'entrée en GN, CMA et exclusions ; pondérations, actes spécialisés, transcodage CSAR |
 | SMR | Groupage | Listes de la fonction groupage | listes de diagnostics d'entrée dans les GN, listes d'actes spécialisés |
-| SMR | Groupage | Algorithme de la fonction groupage | Manuel des GME, volume 1 : orientation en CM, tests d'entrée dans les GN, types de réadaptation et seuils, règles de lourdeur, sévérité ; GME et tarifs de chaque GN |
+| SMR | Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GME (volume 1), dessinés comme ceux du MCO : orientation en CM, tests d'entrée en GN de chaque CM, puis type de réadaptation, lourdeur et sévérité de chaque GN ; chemin et tarifs de chaque case de GL |
 | SMR | Groupage | Tarifs des GME | arrêté tarifaire SMR, annexe I (établissements des a, b et c de l'article L. 162-22 du CSS) : GMT de chaque GME |
 | SMR | Groupage | Erreurs de la fonction groupage | codes erreur de la fonction groupage SMR |
 | SMR | Groupage (depuis la fiche) | CMA et exclusions | CMA SMR (diagnostics et actes CCAM) et vérificateur d'exclusion par les codes orientant dans le GN |
@@ -77,7 +77,7 @@ scripts/
   build_data.py               xlsx (et cma.csv) → JSON, seule dépendance : openpyxl
   build_arbre.py              PDF du manuel → arbre.json, seule dépendance : pymupdf
   build_cma.py                annexes 4 et 5 du volume 1 → cma_exclusions.json (pymupdf)
-  build_smr.py                data/smr/<section>/ → docs/assets/data/smr/<section>/*.json (openpyxl)
+  build_smr.py                data/smr/<section>/ → docs/assets/data/smr/<section>/*.json (openpyxl ; pymupdf pour les pages du manuel)
   millesime.py                date du drapeau de fraîcheur, commune aux deux scripts
   requirements.txt
 
@@ -92,6 +92,7 @@ docs/                         racine servie par GitHub Pages
       interface.js             drapeau de fraîcheur, champ de recherche, tableau
       donnees.js               chargement JSON avec cache mémoire
       tarifs.js                tarifs des GHS : index par GHM, table compacte (thème, fiche code, algorithme)
+      arbre_vue.js             dessin d'un arbre de décision, commun aux algorithmes MCO et SMR
       smr.js                   fonction groupage SMR : chargement des jeux, positions permises, exclusions des CMA, actes spécialisés, sans DOM
       smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tarifs d'un GME)
       themes/<module>.js       une vue par thème (`module` de registry.js)
@@ -247,8 +248,9 @@ de la barre latérale.
 Les tables du groupage SMR viennent des fichiers associés au Manuel des GME, que l'ATIH
 publie à chaque version de la fonction groupage ; les règles qui les relient (ordre des
 tests, seuils « par jour ET par séjour », pondération des actes CSAR, exclusions des CMA…)
-viennent du volume 1 du manuel : l'algorithme (`themes/smr/arbre.js`) les présente étape
-par étape, en citant le paragraphe de chacune.
+viennent du volume 1 du manuel : l'algorithme (`themes/smr/arbre.js`) en fait des arbres
+de décision, dessinés par le même module que ceux du MCO (`arbre_vue.js`), chaque étape
+renvoyant à la page de l'annexe où elle se lit.
 
 1. Remplacer les fichiers de `data/smr/groupage/` et `data/smr/readaptation/` par ceux de
    la nouvelle version, sous les mêmes noms (ceux de l'ATIH ; `tarifs.xlsx` pour les
@@ -258,7 +260,9 @@ par étape, en citant le paragraphe de chacune.
    par un test d'entrée en GN existe, que les GN, GR, GL et GME concordent d'un fichier à
    l'autre, que les règles de lourdeur se lisent et ne donnent que des niveaux connus, que
    chaque acte des listes spécialisées et du transcodage CSAR a une pondération, et que
-   chaque GME a un tarif. Il s'arrête plutôt que de deviner. L'arrêté tarifaire suit la
+   chaque GME a un tarif. Il relit aussi dans le volume 1 (pymupdf) la page des annexes 7.2
+   à 7.5 où se lit chaque nœud, chaque GN et chaque GR, et s'arrête si l'une manque. Il
+   s'arrête plutôt que de deviner. L'arrêté tarifaire suit la
    règle du MCO : sa campagne est déclarée dans `CAMPAGNE_TARIFS`, avec l'empreinte que
    donne le message d'arrêt.
 3. Relire le volume 1 de la nouvelle version : une règle qui change se reporte dans
