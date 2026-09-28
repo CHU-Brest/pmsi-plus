@@ -289,6 +289,9 @@ function construire(k) {
         branches: [branche(t1, t2 ? `${id}-2` : gn)],
         sinon: { vers: suivant },
         conditions: t.conditions ?? [],
+        // L'annexe 7.2 et GN_liste_tests.xlsx n'écrivent pas toujours le
+        // nœud de même (build_smr.py) : l'arbre suit le fichier.
+        ecart: k.ecartsAnnexe?.[id] ?? null,
       });
       if (t2) {
         ajouter(`${id}-2`, {
@@ -871,6 +874,12 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         },
       },
       note: (n) => {
+        if (n.ecart) {
+          return [
+            `Écart entre les sources de l'ATIH : l'annexe 7.2 du manuel (page ${n.page}) écrit ce nœud « ${n.ecart.annexe} », ` +
+              `GN_liste_tests.xlsx, que suit l'arbre, « ${n.ecart.fichier} ».`,
+          ];
+        }
         if (n.conditions?.length) {
           return [`Conditions supplémentaires : ${n.conditions.map((c) => CONDITIONS[c]).filter(Boolean).join(" ; ")}.`];
         }

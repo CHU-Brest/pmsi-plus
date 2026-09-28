@@ -52,7 +52,9 @@ qui ne se lit pas ou un tarif sans GME arrêtent la conversion.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import json
 import re
 import sys
@@ -943,7 +945,11 @@ def lire_pages_manuel(groupes, tests, gl):
     la donne à chaque étape, comme l'algorithme MCO donne celle du volume 3
     du Manuel des GHM. Lue dans le PDF, colonne par colonne : un tableau qui
     change de mise en page arrête la conversion plutôt que de laisser une
-    étape sans page."""
+    étape sans page.
+
+    Rend aussi les nœuds dont l'annexe 7.2 n'écrit pas les tests comme
+    GN_liste_tests.xlsx : les deux viennent de l'ATIH, l'algorithme suit le
+    fichier et signale l'écart sur le nœud."""
     import pymupdf  # comme build_arbre.py ; seul ce passage en dépend
 
     fichier = "manuel_gme_volume_1.pdf"
@@ -1005,7 +1011,35 @@ def lire_pages_manuel(groupes, tests, gl):
         raise ErreurDonnees(
             f"{fichier}, annexe 7.5 : GR introuvables {sorted(set(gl) - set(pages_gr))}, en trop {sorted(set(pages_gr) - set(gl))}"
         )
-    return {"noeuds": noeuds, "grHc": par_gn("7.3"), "grHtp": par_gn("7.4"), "gl": pages_gr}
+    pages = {"noeuds": noeuds, "grHc": par_gn("7.3"), "grHtp": par_gn("7.4"), "gl": pages_gr}
+
+    # 7.2 : les tests de chaque nœud, lus dans les tableaux de l'annexe
+    # (première cellule : la CM, deuxième : le rang, dernière : le GN).
+    ecrits = {}
+    with contextlib.redirect_stdout(io.StringIO()):  # conseil de pymupdf sur pymupdf_layout
+        tableaux = [t.extract() for p in range(debut["7.2"], bornes["7.2"]) for t in doc[p - 1].find_tables().tables]
+    for lignes in tableaux:
+        for r in lignes:
+            cm, rang = texte(r[0]), texte(r[1])
+            if not (re.fullmatch(r"\d{2}", cm) and rang.isdigit()):
+                continue
+            lus = []
+            for cellule in r[2:-1]:
+                m = RE_TEST.match(texte(cellule))
+                if m and (m.group(1), m.group(2)) not in lus:
+                    lus.append((m.group(1), m.group(2)))
+            ecrits[f"{cm}-{rang}"] = lus
+    ecarts = {}
+    for t in tests:
+        cle = f"{t['cm']}-{t['ordre']}"
+        if cle not in ecrits:
+            raise ErreurDonnees(f"{fichier}, annexe 7.2 : nœud {cle} introuvable dans les tableaux")
+        du_fichier = [(" ou ".join(x["positions"]), x["liste"]) for x in t["tests"]]
+        if ecrits[cle] != du_fichier:
+            ecrit = lambda tests_: " et ".join(f"{positions} D-{liste}" for positions, liste in tests_)
+            ecarts[cle] = {"annexe": ecrit(ecrits[cle]), "fichier": ecrit(du_fichier)}
+            print(f"Écart, nœud {cle} : annexe 7.2 « {ecarts[cle]['annexe']} », GN_liste_tests.xlsx « {ecarts[cle]['fichier']} »")
+    return pages, ecarts
 
 
 # ==== Écriture ====
@@ -1042,7 +1076,7 @@ def main() -> None:
         transcodage, transposition, temps, lieu_csar, modulables = lire_csar(ponderations, intervenants)
         erreurs, actes_erreurs = lire_erreurs()
         campagne, tarifs = lire_tarifs(groupes)
-        pages = lire_pages_manuel(groupes, tests, gl)
+        pages, ecarts_annexe = lire_pages_manuel(groupes, tests, gl)
     except ErreurDonnees as e:
         sys.exit(f"Conversion impossible : {e}")
 
@@ -1075,6 +1109,7 @@ def main() -> None:
             "erreurs": erreurs,
             "actesErreurs": actes_erreurs,
             "pages": pages,
+            "ecartsAnnexe": ecarts_annexe,
         },
     )
     ecrire(
