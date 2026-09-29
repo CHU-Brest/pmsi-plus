@@ -189,7 +189,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
             { class: "etape-tete" },
             picto,
             el("span", { class: "etape-intitule" }, ...intitule),
-            el("span", { class: "etape-page" }, "p. 9")
+            el("span", { class: "etape-page" }, `p. ${arbre.page_orientation}`)
           ),
           el(
             "div",
@@ -213,7 +213,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       el(
         "p",
         { class: "sous-titre" },
-        "Volume 3, page 9. Les tests sont faits dans cet ordre ; le premier satisfait oriente le séjour, et le DP détermine la CMD en dernier recours."
+        `Volume 3, page ${arbre.page_orientation}. Les tests sont faits dans cet ordre ; le premier satisfait oriente le séjour, et le DP détermine la CMD en dernier recours.`
       ),
       ol
     );
