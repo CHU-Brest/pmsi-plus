@@ -5,6 +5,7 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
+import { couvreRacine, exclusionParDp, ligneCma } from "../groupage_mco.js";
 
 const NIVEAUX = [2, 3, 4];
 
@@ -16,38 +17,11 @@ function graphie(saisie) {
   return c.length <= 3 ? c : `${c.slice(0, 3)}.${c.slice(3)}`;
 }
 
-const cle = (code) => code.replace(/\./g, "");
-
-/** Un élément de liste de DP de l'annexe 5 couvre-t-il `code` ? « A00 »
- *  vaut A00 et toutes ses extensions ; « R05-R07 », tous les codes compris
- *  entre les deux dans l'ordre alphabétique, extensions de R07 comprises ;
- *  l'étoile (« M62.89* ») écarte l'extension 0 que le manuel en exclut. */
-export function couvre(element, code) {
-  const c = cle(code);
-  const dedans = (borne) => {
-    const etoile = borne.endsWith("*");
-    const b = cle(borne.replace("*", ""));
-    return c.startsWith(b) && !(etoile && c === `${b}0`);
-  };
-  if (!element.includes("-")) return dedans(element);
-  const [debut, fin] = element.split("-");
-  return c >= cle(debut.replace("*", "")) && (c <= cle(fin.replace("*", "")) || dedans(fin));
-}
-
-/** Un élément de liste de racines couvre-t-il la racine `r` (« 01C03 ») ? */
-export function couvreRacine(element, r) {
-  let m;
-  if ((m = element.match(/^CMD(\d{2})$/))) return r.slice(0, 2) === m[1];
-  if ((m = element.match(/^Racines_en_([CKMZ])$/))) return r[2] === m[1];
-  if ((m = element.match(/^Sous_CMD(\d{2})_([CKMZ])$/))) return r.slice(0, 2) === m[1] && r[2] === m[2];
-  return element === r;
-}
-
 function verifierCma(exclusions, das, dp, racine) {
-  const fiche = exclusions.parCode.get(das);
+  const fiche = ligneCma(exclusions, das);
   if (!fiche) return { cma: false };
   const [, niveau, listeDp, listeRacine] = fiche;
-  const parDp = dp && listeDp != null ? exclusions.dp[listeDp].find((e) => couvre(e, dp)) : null;
+  const parDp = dp ? exclusionParDp(exclusions, das, dp) : null;
   const parRacine =
     racine && listeRacine != null ? exclusions.racines[listeRacine].find((e) => couvreRacine(e, racine)) : null;
   return { cma: true, niveau, listeDp, listeRacine, parDp, parRacine };
@@ -58,7 +32,6 @@ export async function rendre(conteneur) {
     chargerJeu("groupage", "cma", "liste des CMA de la fonction groupage"),
     chargerJson("groupage", "cma_exclusions"),
   ]);
-  if (!exclusions.parCode) exclusions.parCode = new Map(exclusions.cma.map((c) => [c[0], c]));
   if (!jeu._indexe) {
     recherche.indexer(jeu.lignes, ["Code", "Libellé"]);
     jeu._indexe = true;

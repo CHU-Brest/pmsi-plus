@@ -8,86 +8,18 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
+import { frontieresDp } from "../groupage_mco.js";
 
 const COLONNES_CHERCHABLES = ["CMD", "Code", "Racines", "Liste", "Libellé code", "_libelleListe"];
-
-/** Les sorties d'un nœud : ses cas, son « sinon » et sa suite. */
-export const sorties = (n) => [...(n.branches ?? []).map((b) => b.vers), n.sinon?.vers, n.suite?.vers].filter(Boolean);
-
-/** Racines de GHM (et groupes d'erreur, renvois) atteignables depuis un
- *  nœud, en suivant toutes ses sorties, ou celles que `suivre` retient. */
-export function racinesAtteintes(arbre, depart, memo, suivre = sorties) {
-  if (memo.has(depart)) return memo.get(depart);
-  memo.set(depart, new Set()); // garde-fou : l'arbre n'a pas de boucle
-  const n = arbre.noeuds[depart];
-  let resultat;
-  if (n.genre === "ghm" || n.genre === "erreur") resultat = new Set([n.racine]);
-  else if (n.genre === "renvoi") resultat = new Set([`orientation ${n.texte}`]);
-  else {
-    resultat = new Set();
-    for (const s of suivre(n)) for (const r of racinesAtteintes(arbre, s, memo, suivre)) resultat.add(r);
-  }
-  memo.set(depart, resultat);
-  return resultat;
-}
-
-export function calculer(arbre, diagnostics) {
-  const codesDeListe = new Map();
-  const libelleCode = new Map();
-  for (const l of diagnostics) {
-    if (!codesDeListe.has(l.Liste)) codesDeListe.set(l.Liste, new Set());
-    codesDeListe.get(l.Liste).add(l.Code);
-    libelleCode.set(l.Code, l["Libellé code"]);
-  }
-  const memo = new Map();
-  const lignes = [];
-  for (const [id, n] of Object.entries(arbre.noeuds)) {
-    if (n.genre !== "test" || n.symbole !== "DP" || n.branches.length < 2) continue;
-    // Pour chaque code : le premier cas de la colonne qui le contient.
-    const casDuCode = new Map();
-    n.branches.forEach((b, i) => {
-      for (const liste of b.listes) {
-        for (const code of codesDeListe.get(liste) ?? []) {
-          if (!casDuCode.has(code)) casDuCode.set(code, { i, liste });
-        }
-      }
-    });
-    const parCategorie = new Map();
-    for (const [code, cas] of casDuCode) {
-      const cat = code.slice(0, 3);
-      if (!parCategorie.has(cat)) parCategorie.set(cat, []);
-      parCategorie.get(cat).push({ code, ...cas });
-    }
-    for (const [cat, codes] of parCategorie) {
-      if (new Set(codes.map((c) => c.i)).size < 2) continue;
-      for (const c of codes.sort((a, b) => a.code.localeCompare(b.code))) {
-        const racines = [...racinesAtteintes(arbre, n.branches[c.i].vers, memo)].sort();
-        lignes.push({
-          CMD: n.cmd,
-          Code: c.code,
-          Racines: racines.join(", "),
-          Liste: c.liste,
-          "Libellé code": libelleCode.get(c.code) ?? "",
-          _categorie: cat,
-          _libelleListe: arbre.listes[c.liste]?.libelle ?? "",
-          _noeud: id,
-        });
-      }
-    }
-  }
-  lignes.sort((a, b) => a.CMD.localeCompare(b.CMD) || a._categorie.localeCompare(b._categorie) || a.Code.localeCompare(b.Code));
-  return lignes;
-}
 
 export async function rendre(conteneur) {
   const [arbre, diagnostics] = await Promise.all([
     chargerJson("groupage", "arbre"),
     chargerJeu("groupage", "diagnostics", "listes de diagnostics de la fonction groupage"),
   ]);
-  if (!arbre._frontieres) {
-    arbre._frontieres = recherche.indexer(calculer(arbre, diagnostics.lignes), COLONNES_CHERCHABLES);
-  }
-  const lignes = arbre._frontieres;
+  // Lignes calculées une fois (groupage_mco.js), partagées avec la fiche
+  // code ; les indexer à chaque visite ne prend qu'une quinzaine de ms.
+  const lignes = recherche.indexer(frontieresDp(arbre, diagnostics.lignes), COLONNES_CHERCHABLES);
   const categories = new Set(lignes.map((l) => `${l.CMD}/${l._categorie}`)).size;
 
   conteneur.innerHTML = "";

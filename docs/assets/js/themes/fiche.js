@@ -13,10 +13,7 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import { normaliser } from "../recherche.js";
 import { el, fraicheur, nombre } from "../interface.js";
-import { racinesAtteintes, sorties, calculer as frontieresDp } from "./frontieres.js";
-import { calculer as frontieresActes } from "./actes_frontieres.js";
-import { couvre } from "./cma.js";
-import { codesGhm } from "./arbre.js";
+import { codesGhm, exclusionParDp, frontieresActes, frontieresDp, ligneCma, racinesAtteintes, racinesDepuis, sorties } from "../groupage_mco.js";
 import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
 
 const SUGGESTIONS_MAX = 12;
@@ -49,18 +46,28 @@ const jeux = {
   racines: () => chargerJeu("groupage", "racines", "libellés des racines de GHM"),
 };
 
-// Libellé de chaque racine de GHM, chargé à l'ouverture de la page : il
-// permet au codeur de vérifier d'un coup d'œil la cohérence du classement.
-let libellesRacines = new Map();
-const libelleRacine = (r) => libellesRacines.get(r) ?? "";
+// Libellés normalisés de chaque jeu, calculés une fois : les recalculer à
+// chaque frappe, sur les 74 000 lignes des quatre jeux, prenait 100 à 250 ms.
+const normalisesParJeu = new WeakMap();
+function libellesNormalises(jeu) {
+  if (!normalisesParJeu.has(jeu)) {
+    normalisesParJeu.set(jeu, jeu.lignes.map((l) => normaliser(l["Libellé code"] ?? l["Libellé"])));
+  }
+  return normalisesParJeu.get(jeu);
+}
+
+// Libellés des racines de GHM (racine → libellé), chargés à l'ouverture de
+// la page et passés aux fonctions qui les affichent : ils permettent au
+// codeur de vérifier d'un coup d'œil la cohérence du classement.
+const libelleRacine = (libelles, r) => libelles.get(r) ?? "";
 
 /** « 06M10 Ulcères gastroduodénaux compliqués » pour une liste de racines
  *  séparées par des virgules. */
-const racinesEnClair = (racines) =>
+const racinesEnClair = (libelles, racines) =>
   racines
     .split(", ")
     .filter(Boolean)
-    .map((r) => (libelleRacine(r) ? `${r} ${libelleRacine(r)}` : r))
+    .map((r) => (libelleRacine(libelles, r) ? `${r} ${libelleRacine(libelles, r)}` : r))
     .join(" ; ");
 
 /** « g409 », « G40.9 » → « G40.9 » ; « aafa001 » → « AAFA001 ». */
@@ -85,9 +92,7 @@ function indexer(arbre) {
       }
     });
   }
-  // Parcours par toutes les sorties de chaque nœud, commun aux fiches ;
-  // celui d'un DP est propre à la fiche de son code (parcoursEnDp).
-  arbre._fiche = { parListe, parcours: { suivre: sorties, memo: new Map() } };
+  arbre._fiche = { parListe };
   return arbre._fiche;
 }
 
@@ -115,8 +120,11 @@ function parcoursEnDp(listes) {
   return { suivre, memo: new Map() };
 }
 
-function racinesDe(arbre, vers, parcours = indexer(arbre).parcours) {
-  return [...racinesAtteintes(arbre, vers, parcours.memo, parcours.suivre)].filter((r) => RE_RACINE.test(r)).sort();
+/** Les racines de GHM que le séjour peut atteindre depuis `vers` : par
+ *  toutes les sorties, ou selon le parcours d'un DP (parcoursEnDp). */
+function racinesDe(arbre, vers, parcours) {
+  const atteintes = parcours ? racinesAtteintes(arbre, vers, parcours.memo, parcours.suivre) : racinesDepuis(arbre, vers);
+  return [...atteintes].filter((r) => RE_RACINE.test(r)).sort();
 }
 
 /** Les racines que peuvent atteindre les étapes, sans doublon. */
@@ -144,7 +152,7 @@ function ghmDeRacineDansArbre(arbre, racine) {
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
   const [arbre, racines] = await Promise.all([chargerJson("groupage", "arbre"), jeux.racines().catch(() => null)]);
-  if (racines) libellesRacines = new Map(racines.lignes.map((l) => [l.ListeRacineGHM, l["Libellé liste"]]));
+  const libelles = new Map((racines?.lignes ?? []).map((l) => [l.ListeRacineGHM, l["Libellé liste"]]));
   conteneur.innerHTML = "";
 
   const saisie = el("input", {
@@ -215,16 +223,18 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         : ["diagnostics", "cma", "entrees", "actes"];
     const trouves = new Map();
     const mots = normaliser(q).split(/\s+/).filter(Boolean);
+    const prefixe = code.replace(/\./g, "");
     for (const nom of aChercher) {
-      const { lignes } = await jeux[nom]();
+      if (trouves.size >= SUGGESTIONS_MAX) break;
+      const jeu = await jeux[nom]();
       if (monJeton !== jeton) return;
-      for (const l of lignes) {
+      const normalises = libellesNormalises(jeu);
+      for (const [i, l] of jeu.lignes.entries()) {
         const c = nom === "actes" ? codeCcam(l.Code) : l.Code;
         if (trouves.has(c)) continue;
-        const libelle = l["Libellé code"] ?? l["Libellé"];
-        const parCode = c.replace(/\./g, "").startsWith(code.replace(/\./g, ""));
-        const parTexte = !parCode && mots.length && mots.every((m) => normaliser(libelle).includes(m));
-        if (parCode || (parTexte && q.length >= 3)) trouves.set(c, libelle);
+        const parCode = c.replace(/\./g, "").startsWith(prefixe);
+        const parTexte = !parCode && q.length >= 3 && mots.length && mots.every((m) => normalises[i].includes(m));
+        if (parCode || parTexte) trouves.set(c, l["Libellé code"] ?? l["Libellé"]);
         if (trouves.size >= SUGGESTIONS_MAX) break;
       }
     }
@@ -247,13 +257,25 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 
   // ---- Fiche ----
 
+  let ouverture = 0;
   async function ouvrir(code, { historique = true } = {}) {
+    const monOuverture = ++ouverture;
     zoneSuggestions.innerHTML = "";
     saisie.value = code;
-    if (historique && location.hash !== `#/mco/fiche/${code}`) history.replaceState(null, "", `#/mco/fiche/${code}`);
+    if (historique && zoneFiche.isConnected && location.hash !== `#/mco/fiche/${code}`) {
+      history.replaceState(null, "", `#/mco/fiche/${code}`);
+    }
     zoneFiche.innerHTML = "";
     zoneFiche.append(el("p", { class: "compteur", role: "status" }, "Chargement…"));
-    const contenu = RE_CCAM.test(code) ? await ficheActe(arbre, code) : await ficheDiagnostic(arbre, code);
+    let contenu;
+    try {
+      contenu = RE_CCAM.test(code) ? await ficheActe(arbre, code, libelles) : await ficheDiagnostic(arbre, code, libelles);
+    } catch (erreur) {
+      console.error(erreur);
+      contenu = [el("p", { class: "message-erreur" }, `Fiche indisponible pour le moment : ${erreur?.message ?? erreur}`)];
+    }
+    // Une autre fiche a été demandée entre-temps : c'est elle qui s'affiche.
+    if (monOuverture !== ouverture) return;
     zoneFiche.innerHTML = "";
     zoneFiche.append(...contenu.filter(Boolean));
     zoneFiche.querySelector("h2")?.focus?.();
@@ -266,7 +288,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 
 // ==== Fiche d'un diagnostic ====
 
-async function ficheDiagnostic(arbre, code) {
+async function ficheDiagnostic(arbre, code, libelles) {
   const [diagnostics, cma, entrees, exclusions, tarifs] = await Promise.all([
     jeux.diagnostics(),
     jeux.cma(),
@@ -296,10 +318,10 @@ async function ficheDiagnostic(arbre, code) {
   const enDp = [...cmds, ...marquerAtteintes(arbre, etapes.filter(surLeDp), cmds, parcours)];
   const autres = etapes.filter((e) => !surLeDp(e));
 
-  if (!arbre._frontieresDp) arbre._frontieresDp = frontieresDp(arbre, diagnostics.lignes);
-  const frontiere = arbre._frontieresDp.filter((f) => f.Code === code);
+  const frontieres = frontieresDp(arbre, diagnostics.lignes);
+  const frontiere = frontieres.filter((f) => f.Code === code);
   const voisins = frontiere.length
-    ? arbre._frontieresDp.filter(
+    ? frontieres.filter(
         (f) => f._categorie === code.slice(0, 3) && frontiere.some((x) => x.CMD === f.CMD) && f.Code !== code
       )
     : [];
@@ -315,7 +337,7 @@ async function ficheDiagnostic(arbre, code) {
           { class: "message-info" },
           `${code} n'est un diagnostic d'entrée d'aucune CMD (volume 2 du Manuel des GHM) : en DP, il n'oriente le séjour vers aucune CMD.`
         ),
-    enDp.length ? tableEtapes(arbre, enDp, parcours) : null,
+    enDp.length ? tableEtapes(arbre, libelles, enDp, parcours) : null,
     enDp.length
       ? el(
           "p",
@@ -323,12 +345,12 @@ async function ficheDiagnostic(arbre, code) {
           "Racines possibles : celles que le séjour peut atteindre depuis l'étape avec ce DP, selon ses actes, ses autres diagnostics, l'âge ou la durée de séjour."
         )
       : null,
-    frontiere.length ? blocFrontiere(code, frontiere, voisins) : null,
-    ...blocTarifs(arbre, tarifs, racinesDesEtapes(arbre, enDp.filter((e) => !e.nonAtteinte), parcours)),
+    frontiere.length ? blocFrontiere(libelles, code, frontiere, voisins) : null,
+    ...blocTarifs(arbre, libelles, tarifs, racinesDesEtapes(arbre, enDp.filter((e) => !e.nonAtteinte), parcours)),
     el("h3", {}, "En diagnostic associé : CMA"),
-    blocCma(exclusions, code),
+    blocCma(libelles, exclusions, code),
     autres.length ? el("h3", {}, "Autres tests de l'arbre sur ce diagnostic") : null,
-    autres.length ? tableEtapes(arbre, autres) : null,
+    autres.length ? tableEtapes(arbre, libelles, autres) : null,
     el("h3", {}, "Listes de la fonction groupage"),
     listes.length
       ? el(
@@ -371,7 +393,7 @@ function marquerAtteintes(arbre, etapes, cmds, parcours) {
 
 /** Trois pastilles pour lire la fiche d'un coup d'œil. */
 function resume(cmds, enDp, frontiere, exclusions, code) {
-  const fiche = exclusions.cma.find((c) => c[0] === code);
+  const fiche = ligneCma(exclusions, code);
   const etapes = `testé à ${enDp.length} étape${enDp.length > 1 ? "s" : ""}`;
   const dp = cmds.length
     ? `DP : CMD ${cmds.map((e) => e.n.cmd).join(" ou ")}, ${etapes}`
@@ -395,10 +417,10 @@ function lienArbre(e) {
 // sont souvent plusieurs dizaines.
 const RACINES_EN_CELLULE_MAX = 6;
 
-function celluleRacines(racines) {
+function celluleRacines(libelles, racines) {
   if (!racines.length) return ["—"];
   const lignes = racines.map((r) =>
-    el("span", { class: "racine-libellee" }, el("strong", { class: "code" }, r), libelleRacine(r) ? ` ${libelleRacine(r)}` : "")
+    el("span", { class: "racine-libellee" }, el("strong", { class: "code" }, r), libelleRacine(libelles, r) ? ` ${libelleRacine(libelles, r)}` : "")
   );
   if (racines.length <= RACINES_EN_CELLULE_MAX) return lignes;
   return [el("details", {}, el("summary", {}, decompte(racines)), ...lignes)];
@@ -413,7 +435,7 @@ function decompte(racines) {
   return `${racines.length} racines : ${parType.join(", ")}`;
 }
 
-function tableEtapes(arbre, etapes, parcours) {
+function tableEtapes(arbre, libelles, etapes, parcours) {
   return el(
     "div",
     { class: "codes-liste" },
@@ -442,7 +464,7 @@ function tableEtapes(arbre, etapes, parcours) {
                   { class: "racines non-atteinte" },
                   "Non atteinte avec ce DP : un test précédent classe le séjour ailleurs, ou l'étape suit une inversion du DP et du DR."
                 )
-              : el("td", { class: "racines" }, ...celluleRacines(racinesDe(arbre, b.vers, parcours)))
+              : el("td", { class: "racines" }, ...celluleRacines(libelles, racinesDe(arbre, b.vers, parcours)))
           );
         })
       )
@@ -455,7 +477,7 @@ function tableEtapes(arbre, etapes, parcours) {
 const RACINES_DEPLIEES_MAX = 3;
 
 /** Les GHS de chaque racine possible, une racine par encadré à déplier. */
-function blocTarifs(arbre, tarifs, racines) {
+function blocTarifs(arbre, libelles, tarifs, racines) {
   if (!racines.length) return [];
   const titre = el("h3", {}, "Tarifs des racines possibles");
   if (!tarifs) return [titre, el("p", { class: "message-avertissement" }, "Tarifs des GHS indisponibles pour le moment.")];
@@ -475,7 +497,7 @@ function blocTarifs(arbre, tarifs, racines) {
           "summary",
           {},
           el("strong", { class: "code" }, r),
-          libelleRacine(r) ? ` ${libelleRacine(r)}` : "",
+          libelleRacine(libelles, r) ? ` ${libelleRacine(libelles, r)}` : "",
           el("span", { class: "compte" }, n ? ` · ${n} GHS` : " · pas de tarif")
         ),
         n
@@ -486,7 +508,7 @@ function blocTarifs(arbre, tarifs, racines) {
   ];
 }
 
-function blocFrontiere(code, frontiere, voisins) {
+function blocFrontiere(libelles, code, frontiere, voisins) {
   const racinesDuCode = new Set(frontiere.flatMap((f) => f.Racines.split(", ")));
   const ailleurs = voisins.filter((v) => v.Racines.split(", ").some((r) => !racinesDuCode.has(r)));
   return el(
@@ -498,15 +520,15 @@ function blocFrontiere(code, frontiere, voisins) {
       "ul",
       {},
       ...ailleurs.slice(0, 15).map((v) =>
-        el("li", {}, el("a", { href: `#/mco/fiche/${v.Code}` }, v.Code), ` ${v["Libellé code"]} → ${racinesEnClair(v.Racines)}`)
+        el("li", {}, el("a", { href: `#/mco/fiche/${v.Code}` }, v.Code), ` ${v["Libellé code"]} → ${racinesEnClair(libelles, v.Racines)}`)
       ),
       ailleurs.length > 15 ? el("li", {}, `… et ${ailleurs.length - 15} autres (voir les codes frontières en DP).`) : null
     )
   );
 }
 
-function blocCma(exclusions, code) {
-  const fiche = exclusions.cma.find((c) => c[0] === code);
+function blocCma(libelles, exclusions, code) {
+  const fiche = ligneCma(exclusions, code);
   if (!fiche) return el("p", { class: "message-info" }, `${code} n'est pas une CMA : en DAS, il ne modifie pas le niveau de sévérité.`);
   const [, niveau, listeDp, listeRacine] = fiche;
   const verdict = el("p", { class: "fiche-verdict", role: "status" });
@@ -520,7 +542,7 @@ function blocCma(exclusions, code) {
       verdict.innerHTML = "";
       verdict.className = "fiche-verdict";
       if (!dp) return;
-      const element = listeDp != null ? exclusions.dp[listeDp].find((e) => couvre(e, dp)) : null;
+      const element = exclusionParDp(exclusions, code, dp);
       verdict.classList.add(element ? "message-avertissement" : "message-succes");
       verdict.append(element ? `Exclue avec le DP ${dp} (élément « ${element} » de la liste ${listeDp}).` : `Retenue avec le DP ${dp}.`);
     },
@@ -550,7 +572,7 @@ function blocCma(exclusions, code) {
       listeRacine != null ? `Racines de GHM où elle est exclue (liste ${listeRacine}) :` : "Aucune racine de GHM ne l'exclut."
     ),
     elementsRacines.length ? el("p", { class: "puces-exclusion" }, ...elementsRacines.map((e) =>
-          el("span", { class: "puce-exclusion", title: libelleRacine(e) || undefined }, libelleRacine(e) ? `${e} ${libelleRacine(e)}` : e.replace(/_/g, " "))
+          el("span", { class: "puce-exclusion", title: libelleRacine(libelles, e) || undefined }, libelleRacine(libelles, e) ? `${e} ${libelleRacine(libelles, e)}` : e.replace(/_/g, " "))
         )) : null,
     el(
       "p",
@@ -570,7 +592,7 @@ function titreElement(e) {
 
 // ==== Fiche d'un acte ====
 
-async function ficheActe(arbre, code) {
+async function ficheActe(arbre, code, libelles) {
   const [actes, tarifs] = await Promise.all([jeux.actes(), chargerTarifs().catch(() => null)]);
   const lignes = actes.lignes.filter((l) => codeCcam(l.Code) === code);
   if (!lignes.length) {
@@ -580,9 +602,9 @@ async function ficheActe(arbre, code) {
   const listes = [...new Set(lignes.map((l) => l.Liste))].sort();
   const { parListe } = indexer(arbre);
   const etapes = listes.flatMap((l) => (parListe.get(l) ?? []).map((e) => ({ ...e, liste: l })));
-  if (!arbre._frontieresActes) arbre._frontieresActes = frontieresActes(arbre, actes.lignes);
-  const moi = arbre._frontieresActes.filter((f) => codeCcam(f.Code) === code);
-  const voisins = arbre._frontieresActes.filter(
+  const frontieres = frontieresActes(arbre, actes.lignes);
+  const moi = frontieres.filter((f) => codeCcam(f.Code) === code);
+  const voisins = frontieres.filter(
     (f) => moi.some((m) => m.CMD === f.CMD && m._famille === f._famille && m.Racines !== f.Racines) && codeCcam(f.Code) !== code
   );
   return [
@@ -594,7 +616,7 @@ async function ficheActe(arbre, code) {
       moi.length ? el("span", { class: "pastille attention" }, moi.some((m) => m._typeChange) ? "Acte frontière (le type de GHM change)" : "Acte frontière") : null
     ),
     el("h3", {}, "Étapes de l'arbre qui testent cet acte"),
-    etapes.length ? tableEtapes(arbre, etapes) : el("p", { class: "compteur" }, "Aucune."),
+    etapes.length ? tableEtapes(arbre, libelles, etapes) : el("p", { class: "compteur" }, "Aucune."),
     voisins.length
       ? el(
           "div",
@@ -605,12 +627,12 @@ async function ficheActe(arbre, code) {
             "ul",
             {},
             ...voisins.slice(0, 15).map((v) =>
-              el("li", {}, el("a", { href: `#/mco/fiche/${codeCcam(v.Code)}` }, codeCcam(v.Code)), ` ${v["Libellé code"]} → ${racinesEnClair(v.Racines)} (CMD ${v.CMD})`)
+              el("li", {}, el("a", { href: `#/mco/fiche/${codeCcam(v.Code)}` }, codeCcam(v.Code)), ` ${v["Libellé code"]} → ${racinesEnClair(libelles, v.Racines)} (CMD ${v.CMD})`)
             )
           )
         )
       : null,
-    ...blocTarifs(arbre, tarifs, racinesDesEtapes(arbre, etapes)),
+    ...blocTarifs(arbre, libelles, tarifs, racinesDesEtapes(arbre, etapes)),
     el("h3", {}, "Listes de la fonction groupage"),
     el(
       "ul",

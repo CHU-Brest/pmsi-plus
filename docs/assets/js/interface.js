@@ -20,7 +20,6 @@ function el(tag, attrs = {}, ...enfants) {
   for (const [cle, valeur] of Object.entries(attrs)) {
     if (valeur == null) continue;
     if (cle === "class") noeud.className = valeur;
-    else if (cle === "html") noeud.innerHTML = valeur;
     else if (cle.startsWith("on")) noeud.addEventListener(cle.slice(2), valeur);
     else noeud.setAttribute(cle, valeur);
   }
@@ -79,12 +78,19 @@ function teinte(iso, aujourdhui) {
   return "";
 }
 
-/** Un seul drapeau, portant le millésime le plus ancien des jeux passés.
- *  `jeux` : [{ libelle, millesime }] — `millesime` au format ISO `AAAA-MM-JJ`. */
-export function fraicheur(jeux) {
-  if (!jeux.length) return null;
+const MILLESIME_ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-  const dates = jeux.map((j) => j.millesime);
+/** Un seul drapeau, portant le millésime le plus ancien des jeux passés.
+ *  `jeux` : [{ libelle, millesime }] — `millesime` au format ISO `AAAA-MM-JJ`.
+ *  Un jeu sans millésime valide est ignoré. S'il n'en reste aucun, rend un
+ *  nœud texte vide plutôt que null : les appelants l'insèrent tel quel
+ *  (conteneur.append écrirait « null ») et les arbres le remplacent quand
+ *  les tarifs arrivent. */
+export function fraicheur(jeux) {
+  const valides = jeux.filter((j) => MILLESIME_ISO.test(j.millesime ?? ""));
+  if (!valides.length) return document.createTextNode("");
+
+  const dates = valides.map((j) => j.millesime);
   const plusAncien = dates.reduce((a, b) => (a < b ? a : b));
   const aujourdhui = new Date();
   aujourdhui.setHours(0, 0, 0, 0);
@@ -93,7 +99,7 @@ export function fraicheur(jeux) {
   const detailNecessaire = new Set(dates).size > 1;
   const infobulle = detailNecessaire
     ? "Le drapeau porte le millésime le plus ancien de la page.\n" +
-      jeux.map((j) => `${j.libelle} : ${jour(j.millesime)}`).join("\n")
+      valides.map((j) => `${j.libelle} : ${jour(j.millesime)}`).join("\n")
     : null;
 
   const classes = ["drapeau", teinte(plusAncien, aujourdhui)].filter(Boolean);
@@ -111,18 +117,20 @@ export function fraicheur(jeux) {
 // d'une même saisie ne sert à rien : on laisse retomber la frappe.
 const DELAI_FRAPPE = 120;
 
-// « / » ramène au premier champ de recherche de la page, sauf si l'on est
-// déjà en train de saisir quelque part. L'écouteur est posé une seule fois
-// pour tout le site : un thème rendu deux fois ne doit pas en empiler deux.
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
-  const cible = e.target;
-  if (cible instanceof HTMLInputElement || cible instanceof HTMLTextAreaElement) return;
-  const champ = document.querySelector("#contenu input[type='search']");
-  if (!champ) return;
-  e.preventDefault();
-  champ.focus();
-});
+/** « / » ramène au premier champ de recherche de la page, sauf si l'on est
+ *  déjà en train de saisir quelque part. À poser une seule fois pour tout le
+ *  site (main.js) : un thème rendu deux fois ne doit pas en empiler deux. */
+export function installerRaccourciRecherche() {
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+    const cible = e.target;
+    if (cible instanceof HTMLInputElement || cible instanceof HTMLTextAreaElement) return;
+    const champ = document.querySelector("#contenu input[type='search']");
+    if (!champ) return;
+    e.preventDefault();
+    champ.focus();
+  });
+}
 
 /** Champ de recherche : loupe, bouton d'effacement, raccourci clavier « / »
  *  pour y revenir sans la souris. Un champ secondaire de la page (filtre
@@ -347,7 +355,10 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible, fo
 /** Tableau simple, colonnes triables au clic ou au clavier, et paginé.
  *  `formats` associe à une colonne la fonction qui met sa valeur en forme
  *  (montant en euros, durée…) ; le tri se fait toujours sur la valeur. */
-export function tableau(conteneur, lignes, { formats = {} } = {}) {
+// Ordre du dictionnaire : « Éther » avec les E, pas après « z ».
+const ORDRE_TEXTE = new Intl.Collator("fr");
+
+function tableau(conteneur, lignes, { formats = {} } = {}) {
   conteneur.innerHTML = "";
   const colonnes = colonnesVisibles(lignes);
   if (!colonnes.length) return;
@@ -461,8 +472,12 @@ export function tableau(conteneur, lignes, { formats = {} } = {}) {
     lignesTriees = [...lignes].sort((a, b) => {
       const va = a[colonne];
       const vb = b[colonne];
-      if (va === vb) return 0;
-      const sens = va > vb ? 1 : -1;
+      // Cellules vides en dernier, dans les deux sens.
+      const videA = va == null || va === "";
+      const videB = vb == null || vb === "";
+      if (videA || videB) return videA - videB;
+      const sens =
+        typeof va === "string" || typeof vb === "string" ? ORDRE_TEXTE.compare(String(va), String(vb)) : va - vb;
       return triAsc ? sens : -sens;
     });
     page = 0;

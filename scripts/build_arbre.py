@@ -907,15 +907,10 @@ def vocabulaire_de(doc: pymupdf.Document) -> Vocabulaire:
     return Vocabulaire(manuel | listes, listes)
 
 
-def construire(doc: pymupdf.Document) -> dict:
+def lire_pages(doc: pymupdf.Document, vocabulaire: Vocabulaire) -> tuple[list[PageLue], dict[str, str]]:
+    """Les pages d'arbre, rattachées à leur CMD (celle du dernier titre
+    rencontré), et le sous-titre de chaque CMD."""
     cache: dict[int, str] = {}
-    vocabulaire = vocabulaire_de(doc)
-    version = next(
-        (m.group(0) for m in [re.search(r"Manuel des GHM Version \d{4}", doc[PAGE_ORIENTATION - 1].get_text())] if m),
-        None,
-    )
-
-    # -- Lecture des pages, rattachées à leur CMD --
     pages: list[PageLue] = []
     cmd_courante = None
     titres: dict[str, str] = {}
@@ -931,14 +926,16 @@ def construire(doc: pymupdf.Document) -> dict:
             raise ErreurExtraction(f"page {numero} : arbre avant tout titre de CMD")
         lue.cmd = cmd_courante
         pages.append(lue)
+    return pages, titres
 
-    objets: dict[str, Objet] = {oid: o for p in pages for oid, o in p.objets.items()}
-    cmd_de = {oid: p.cmd for p in pages for oid in p.objets}
-    sorties = {cle: b for p in pages for cle, b in p.sorties.items()}
 
-    # -- Renvois de page : un sablier numéroté en bas d'une page (entrée par
-    # le haut) reprend sur le sablier de même numéro de la page suivante de
-    # la même CMD (sortie par le bas). --
+def entrees_de_page(
+    objets: dict[str, Objet], cmd_de: dict[str, str], sorties: dict[tuple[str, str], list[Branche]]
+) -> dict[tuple[str, int, str], str]:
+    """Renvois de page : un sablier numéroté en bas d'une page (entrée par
+    le haut) reprend sur le sablier de même numéro de la page suivante de
+    la même CMD (sortie par le bas). Rend les sabliers d'arrivée, par
+    (cmd, page, numéro)."""
     entrees_page: dict[tuple[str, int, str], str] = {}  # (cmd, page, numéro) → objet
     sorties_page: dict[tuple[str, int, str], str] = {}
     for oid, o in objets.items():
@@ -953,29 +950,16 @@ def construire(doc: pymupdf.Document) -> dict:
                 f"{oid} et {registre[cle]} : deux renvois « {o.texte()} » dans le même sens page {o.page}"
             )
         registre[cle] = oid
+    return entrees_page
 
-    def entree_de_page(oid: str) -> str:
-        o = objets[oid]
-        numero = o.texte()
-        candidates = sorted(
-            (page, eid)
-            for (cmd, page, n), eid in entrees_page.items()
-            if cmd == cmd_de[oid] and n == numero and page > o.page
-        )
-        if not candidates:
-            raise ErreurExtraction(f"{oid} : renvoi de page « {numero} » sans suite")
-        return candidates[0][1]
 
-    def suite_de_page(oid: str) -> Branche:
-        eid = entree_de_page(oid)
-        cible = sorties[(eid, "bas")]
-        if len(cible) != 1:
-            raise ErreurExtraction(f"{eid} : un renvoi de page doit mener à un seul symbole")
-        return cible[0]
-
-    # -- Renvois vers une CM/CMD : celui qui nomme une entrée de la même
-    # CMD (CM15 en bas de la page 15, CM15 en tête de la page 16) s'y
-    # raccorde ; les autres sont des sorties vers une autre CMD. --
+def entrees_de_cmd(
+    objets: dict[str, Objet], cmd_de: dict[str, str], sorties: dict[tuple[str, str], list[Branche]]
+) -> dict[tuple[str, str], str]:
+    """Renvois vers une CM/CMD : celui qui nomme une entrée de la même
+    CMD (CM15 en bas de la page 15, CM15 en tête de la page 16) s'y
+    raccorde ; les autres sont des sorties vers une autre CMD. Rend les
+    entrées, par (cmd, texte)."""
     entrees_cmd: dict[tuple[str, str], str] = {}
     for oid, o in objets.items():
         if o.genre != "renvoi_cmd":
@@ -987,14 +971,46 @@ def construire(doc: pymupdf.Document) -> dict:
             if cle in entrees_cmd:
                 raise ErreurExtraction(f"{oid} et {entrees_cmd[cle]} : deux entrées « {o.texte()} » dans la CMD {cle[0]}")
             entrees_cmd[cle] = oid
+    return entrees_cmd
 
-    def sortie_unique(oid: str) -> Branche:
-        cibles = [b for c in sorted(SORTIES[objets[oid].genre]) for b in sorties.get((oid, c), [])]
+
+@dataclass
+class Renvois:
+    """Les symboles de toutes les pages et leurs renvois, de quoi suivre un
+    trait par-delà les sabliers de page et les renvois internes de CMD."""
+
+    objets: dict[str, Objet]
+    cmd_de: dict[str, str]  # objet → CMD de sa page
+    sorties: dict[tuple[str, str], list[Branche]]  # (objet, côté) → cibles
+    entrees_page: dict[tuple[str, int, str], str]  # voir entrees_de_page
+    entrees_cmd: dict[tuple[str, str], str]  # voir entrees_de_cmd
+
+    def entree_de_page(self, oid: str) -> str:
+        o = self.objets[oid]
+        numero = o.texte()
+        candidates = sorted(
+            (page, eid)
+            for (cmd, page, n), eid in self.entrees_page.items()
+            if cmd == self.cmd_de[oid] and n == numero and page > o.page
+        )
+        if not candidates:
+            raise ErreurExtraction(f"{oid} : renvoi de page « {numero} » sans suite")
+        return candidates[0][1]
+
+    def suite_de_page(self, oid: str) -> Branche:
+        eid = self.entree_de_page(oid)
+        cible = self.sorties[(eid, "bas")]
+        if len(cible) != 1:
+            raise ErreurExtraction(f"{eid} : un renvoi de page doit mener à un seul symbole")
+        return cible[0]
+
+    def sortie_unique(self, oid: str) -> Branche:
+        cibles = [b for c in sorted(SORTIES[self.objets[oid].genre]) for b in self.sorties.get((oid, c), [])]
         if len(cibles) != 1:
             raise ErreurExtraction(f"{oid} : une seule sortie attendue, {len(cibles)} trouvée(s)")
         return cibles[0]
 
-    def resoudre(b: Branche) -> Branche:
+    def resoudre(self, b: Branche) -> Branche:
         """Suit les renvois jusqu'au symbole qui porte vraiment la suite. La
         branche rendue garde le libellé d'origine, mais arrive comme le
         dernier trait suivi."""
@@ -1005,16 +1021,16 @@ def construire(doc: pymupdf.Document) -> dict:
             if oid in vus:
                 raise ErreurExtraction(f"{oid} : boucle de renvois")
             vus.add(oid)
-            o = objets[oid]
-            cle = (cmd_de[oid], o.texte())
-            if o.genre == "renvoi_page" and (oid, "bas") not in sorties:
-                suite = suite_de_page(oid)
+            o = self.objets[oid]
+            cle = (self.cmd_de[oid], o.texte())
+            if o.genre == "renvoi_page" and (oid, "bas") not in self.sorties:
+                suite = self.suite_de_page(oid)
             elif o.genre == "renvoi_page":
-                suite = sortie_unique(oid)
-            elif o.genre == "renvoi_cmd" and cle in entrees_cmd and oid != entrees_cmd[cle]:
-                suite = sortie_unique(entrees_cmd[cle])
-            elif o.genre == "renvoi_cmd" and oid in entrees_cmd.values():
-                suite = sortie_unique(oid)
+                suite = self.sortie_unique(oid)
+            elif o.genre == "renvoi_cmd" and cle in self.entrees_cmd and oid != self.entrees_cmd[cle]:
+                suite = self.sortie_unique(self.entrees_cmd[cle])
+            elif o.genre == "renvoi_cmd" and oid in self.entrees_cmd.values():
+                suite = self.sortie_unique(oid)
             else:
                 return Branche(b.libelle, oid, fleche, b.y, b.arrivee)
             if suite.libelle:
@@ -1025,25 +1041,32 @@ def construire(doc: pymupdf.Document) -> dict:
             fleche = fleche or suite.fleche
             b = Branche(b.libelle, suite.vers, fleche, suite.y, suite.arrivee)
 
-    def colonne(branches: list[Branche]) -> tuple[list[Branche], Branche | None]:
-        restes = [b for b in branches if b.arrivee == "haut" and not b.libelle]
-        if len(restes) != 1:
-            return branches, None
-        return [b for b in branches if b is not restes[0]], restes[0]
 
-    # -- Nœuds de l'arbre publié --
+def colonne(branches: list[Branche]) -> tuple[list[Branche], Branche | None]:
+    """Sépare d'une colonne de cas le trait nu qui la poursuit vers le bas,
+    s'il est seul : c'est le cas « aucun »."""
+    restes = [b for b in branches if b.arrivee == "haut" and not b.libelle]
+    if len(restes) != 1:
+        return branches, None
+    return [b for b in branches if b is not restes[0]], restes[0]
+
+
+def arete_vers(renvois: Renvois, de: str, b: Branche, role: str, publie: dict | None = None) -> Arete:
+    """L'arête de `de` vers la cible de `b`, renvois suivis. Le lien publié
+    est écrit dans `publie` (créé au besoin) : c'est ce dictionnaire-là, et
+    non une copie, que l'arête garde pour y poser « rejoint »."""
+    arrivee = renvois.resoudre(b)
+    publie = {} if publie is None else publie
+    publie["vers"] = arrivee.vers
+    return Arete(de, arrivee.vers, arrivee.fleche, role, arrivee.arrivee, publie)
+
+
+def noeuds_publies(renvois: Renvois) -> tuple[dict[str, dict], list[Arete]]:
+    """Les nœuds de l'arbre publié, un par symbole qui n'est pas un simple
+    renvoi, et les arêtes qui les relient."""
+    objets, cmd_de, sorties, entrees_cmd = renvois.objets, renvois.cmd_de, renvois.sorties, renvois.entrees_cmd
     noeuds: dict[str, dict] = {}
     aretes: list[Arete] = []
-
-    def lien(de: str, b: Branche, role: str, publie: dict | None = None) -> dict:
-        """Le lien publié vers la cible de `b`, écrit dans `publie` (créé au
-        besoin) : c'est ce dictionnaire-là, et non une copie, que l'arête
-        garde pour y poser « rejoint »."""
-        arrivee = resoudre(b)
-        publie = {} if publie is None else publie
-        publie["vers"] = arrivee.vers
-        aretes.append(Arete(de, arrivee.vers, arrivee.fleche, role, arrivee.arrivee, publie))
-        return publie
 
     for oid, o in objets.items():
         if o.genre in ("renvoi_page",) or oid in entrees_cmd.values():
@@ -1068,7 +1091,9 @@ def construire(doc: pymupdf.Document) -> dict:
             noeud = {"genre": o.genre, **base}
             if cibles[0].libelle:
                 noeud["libelle"] = cibles[0].libelle
-            noeud["suite"] = lien(oid, cibles[0], "suite")
+            arete = arete_vers(renvois, oid, cibles[0], "suite")
+            aretes.append(arete)
+            noeud["suite"] = arete.lien
             noeuds[oid] = noeud
         elif o.genre in ("test", "critere"):
             oui = sorties.get((oid, "droite"), [])
@@ -1084,7 +1109,9 @@ def construire(doc: pymupdf.Document) -> dict:
             if not oui and o.code == "DRDP" and sinon:
                 # Inversion DP/DR sans sortie à droite (page 14) : l'inversion
                 # s'applique s'il y a lieu, et le parcours continue dessous.
-                noeuds[oid] = {"genre": "inversion", **base, "suite": lien(oid, sinon, "suite")}
+                arete = arete_vers(renvois, oid, sinon, "suite")
+                aretes.append(arete)
+                noeuds[oid] = {"genre": "inversion", **base, "suite": arete.lien}
                 continue
             if not oui:
                 raise ErreurExtraction(f"{oid} ({o.code}) : aucune sortie « oui » en {o.rect.arrondi()}")
@@ -1103,9 +1130,9 @@ def construire(doc: pymupdf.Document) -> dict:
                     sinon is not None
                     and objets[sinon.vers].genre == "renvoi_page"
                     and (sinon.vers, "bas") not in sorties
-                    and any(b.libelle for b in sorties[(entree_de_page(sinon.vers), "bas")])
+                    and any(b.libelle for b in sorties[(renvois.entree_de_page(sinon.vers), "bas")])
                 ):
-                    suite, sinon = colonne(sorties[(entree_de_page(sinon.vers), "bas")])
+                    suite, sinon = colonne(sorties[(renvois.entree_de_page(sinon.vers), "bas")])
                     oui = oui + suite
             sans_libelle = [b for b in oui if not b.libelle]
             if len(oui) > 1 and sans_libelle:
@@ -1120,18 +1147,62 @@ def construire(doc: pymupdf.Document) -> dict:
                 noeud["variable"] = (
                     "Inversion DP/DR" if o.code == "Inversion" else VARIABLES.get(o.texte(), o.texte())
                 )
-            noeud["branches"] = [
-                lien(oid, b, "oui", {"libelle": b.libelle, "listes": listes_de(b.libelle)}) for b in oui
+            aretes_oui = [
+                arete_vers(renvois, oid, b, "oui", {"libelle": b.libelle, "listes": listes_de(b.libelle)}) for b in oui
             ]
-            noeud["sinon"] = lien(oid, sinon, "non") if sinon else None
+            aretes.extend(aretes_oui)
+            noeud["branches"] = [a.lien for a in aretes_oui]
+            if sinon:
+                arete_non = arete_vers(renvois, oid, sinon, "non")
+                aretes.append(arete_non)
+                noeud["sinon"] = arete_non.lien
+            else:
+                noeud["sinon"] = None
             noeuds[oid] = noeud
         else:
             raise ErreurExtraction(f"{oid} : genre {o.genre} non géré")
+    return noeuds, aretes
 
+
+def construire(doc: pymupdf.Document) -> dict:
+    vocabulaire = vocabulaire_de(doc)
+    version = next(
+        (m.group(0) for m in [re.search(r"Manuel des GHM Version \d{4}", doc[PAGE_ORIENTATION - 1].get_text())] if m),
+        None,
+    )
+
+    pages, titres = lire_pages(doc, vocabulaire)
+
+    objets: dict[str, Objet] = {oid: o for p in pages for oid, o in p.objets.items()}
+    cmd_de = {oid: p.cmd for p in pages for oid in p.objets}
+    sorties = {cle: b for p in pages for cle, b in p.sorties.items()}
+
+    entrees_page = entrees_de_page(objets, cmd_de, sorties)
+    entrees_cmd = entrees_de_cmd(objets, cmd_de, sorties)
+    renvois = Renvois(objets, cmd_de, sorties, entrees_page, entrees_cmd)
+
+    noeuds, aretes = noeuds_publies(renvois)
     verifier_sans_boucle(noeuds)
 
-    # -- Racine de chaque CMD : le seul nœud de sa première page que rien
-    # n'atteint. --
+    cmds = decrire_cmd(pages, titres, noeuds, aretes)
+    marquer_rejoints(noeuds, aretes, [c["racine"] for c in cmds])
+
+    return {
+        "millesime": millesime(SOURCE),
+        "version": version,
+        "pageOrientation": PAGE_ORIENTATION,
+        "orientation": lire_orientation(doc),
+        "cmd": cmds,
+        "listes": decrire_listes(noeuds),
+        "noeuds": noeuds,
+    }
+
+
+def decrire_cmd(
+    pages: list[PageLue], titres: dict[str, str], noeuds: dict[str, dict], aretes: list[Arete]
+) -> list[dict]:
+    """Chaque CMD, avec son titre, ses pages et sa racine : le seul nœud de
+    sa première page que rien n'atteint."""
     atteints = {a.vers for a in aretes}
     cmds = []
     for cmd in dict.fromkeys(p.cmd for p in pages):
@@ -1149,15 +1220,19 @@ def construire(doc: pymupdf.Document) -> dict:
         if orphelins:
             raise ErreurExtraction(f"CMD {cmd} : nœud(s) que rien n'atteint {orphelins}")
         cmds.append({"cmd": cmd, "titre": titres.get(cmd), "pages": ses_pages, "racine": racines[0]})
+    return cmds
 
-    # -- Renvois internes : un nœud atteint par plusieurs traits n'est
-    # dessiné qu'à un endroit ; les autres traits le « rejoignent ». Le
-    # trait qui le porte est, dans l'ordre : celui qui n'arrive pas par une
-    # pointe de flèche, celui qui arrive par le haut (la colonne qui
-    # descend), puis le premier rencontré en descendant l'arbre. Les
-    # feuilles (GHM, erreurs, renvois) n'ont pas de suite : elles sont
-    # simplement répétées. --
-    ordre = ordre_de_parcours(noeuds, [c["racine"] for c in cmds])
+
+def marquer_rejoints(noeuds: dict[str, dict], aretes: list[Arete], racines: list[str]) -> None:
+    """Renvois internes : un nœud atteint par plusieurs traits n'est
+    dessiné qu'à un endroit ; les autres traits le « rejoignent » —
+    « rejoint » est posé sur leur lien publié (Arete.lien). Le trait qui le
+    porte est, dans l'ordre : celui qui n'arrive pas par une pointe de
+    flèche, celui qui arrive par le haut (la colonne qui descend), puis le
+    premier rencontré en descendant l'arbre depuis les `racines`. Les
+    feuilles (GHM, erreurs, renvois) n'ont pas de suite : elles sont
+    simplement répétées."""
+    ordre = ordre_de_parcours(noeuds, racines)
     entrants: dict[str, list[Arete]] = defaultdict(list)
     for a in aretes:
         entrants[a.vers].append(a)
@@ -1172,15 +1247,6 @@ def construire(doc: pymupdf.Document) -> dict:
         if noeuds[nid]["genre"] not in ("ghm", "erreur", "renvoi"):
             if sum(1 for a in liste if not a.lien.get("rejoint")) != 1:
                 raise ErreurExtraction(f"{nid} : aucun trait, ou plusieurs, pour porter cette étape")
-
-    return {
-        "millesime": millesime(SOURCE),
-        "version": version,
-        "orientation": lire_orientation(doc),
-        "cmd": cmds,
-        "listes": decrire_listes(noeuds),
-        "noeuds": noeuds,
-    }
 
 
 def decrire_listes(noeuds: dict[str, dict]) -> dict[str, dict]:

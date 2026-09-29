@@ -22,6 +22,10 @@ def millesime(chemin: Path) -> str:
     fichier diffère de ce qui est committé : c'est alors la mise à jour en
     cours (fichier remplacé, pas encore committé), datée du jour. Même repli
     si le fichier n'est pas encore suivi par git ou si git est indisponible.
+
+    Sur un clone superficiel (`git clone --depth`), `git log -1` peut dater le
+    fichier du commit de greffe au lieu de sa vraie dernière modification :
+    regénérer les JSON depuis un clone complet.
     """
 
     def git(*arguments: str) -> str:

@@ -83,6 +83,8 @@ scripts/
   millesime.py                date du drapeau de fraîcheur, commune aux deux scripts
   requirements.txt
 
+tests/                        fonctions pures des scripts (unittest) et du site (node --test)
+
 docs/                         racine servie par GitHub Pages
   index.html                  coquille : barre latérale + zone de contenu
   assets/
@@ -95,10 +97,14 @@ docs/                         racine servie par GitHub Pages
       donnees.js               chargement JSON avec cache mémoire
       tarifs.js                tarifs des GHS : index par GHM, table compacte (thème, fiche code, algorithme)
       arbre_vue.js             dessin d'un arbre de décision, commun aux algorithmes MCO et SMR
+      arbre_graphe.js          lecture d'un arbre de décision : parents, chemin jusqu'à la racine, recherche des étapes, sans DOM
+      groupage_mco.js          fonction groupage MCO : racines atteintes, codes GHM d'une case, codes et actes frontières, exclusions des CMA, sans DOM
       smr.js                   fonction groupage SMR : chargement des jeux, positions permises, exclusions des CMA, actes spécialisés, sans DOM
-      smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tarifs d'un GME)
+      smr_arbre.js             arbres de décision du volume 1 du Manuel des GME (orientation, tests d'entrée en GN, arbre de chaque GN), sans DOM
+      smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tableaux des fiches, tarifs d'un GME)
       themes/<module>.js       une vue par thème (`module` de registry.js)
       themes/smr/<module>.js   les thèmes propres au SMR, dans le sous-dossier de leur champ
+      themes/smr/fiche_actes.js   fiches des actes CSARR, CCAM et CSAR, ouvertes par la fiche code (fiche.js)
     data/<theme>/<jeu>.json    généré par build_data.py, ne pas éditer à la main
     data/groupage/arbre.json   généré par build_arbre.py, ne pas éditer à la main
     data/groupage/entrees.json   généré par build_entrees.py, ne pas éditer à la main
@@ -259,9 +265,9 @@ de la barre latérale.
 Les tables du groupage SMR viennent des fichiers associés au Manuel des GME, que l'ATIH
 publie à chaque version de la fonction groupage ; les règles qui les relient (ordre des
 tests, seuils « par jour ET par séjour », pondération des actes CSAR, exclusions des CMA…)
-viennent du volume 1 du manuel : l'algorithme (`themes/smr/arbre.js`) en fait des arbres
-de décision, dessinés par le même module que ceux du MCO (`arbre_vue.js`), chaque étape
-renvoyant à la page de l'annexe où elle se lit.
+viennent du volume 1 du manuel : `smr_arbre.js` en fait des arbres de décision, que
+l'algorithme (`themes/smr/arbre.js`) dessine par le même module que ceux du MCO
+(`arbre_vue.js`), chaque étape renvoyant à la page de l'annexe où elle se lit.
 
 1. Remplacer les fichiers de `data/smr/groupage/` et `data/smr/readaptation/` par ceux de
    la nouvelle version, sous les mêmes noms (ceux de l'ATIH ; `tarifs.xlsx` pour les
@@ -277,7 +283,7 @@ renvoyant à la page de l'annexe où elle se lit.
    règle du MCO : sa campagne est déclarée dans `CAMPAGNE_TARIFS`, avec l'empreinte que
    donne le message d'arrêt.
 3. Relire le volume 1 de la nouvelle version : une règle qui change se reporte dans
-   l'algorithme (`themes/smr/arbre.js`), et dans `smr.js` si elle touche aux positions
+   `smr_arbre.js` (les arbres de l'algorithme), et dans `smr.js` si elle touche aux positions
    permises, aux exclusions des CMA ou aux actes spécialisés.
 4. Committer les fichiers de l'ATIH et les JSON générés ensemble.
 
@@ -287,6 +293,26 @@ codes ; quelques codes de `CIM_infos_SMR.xlsx` arrivent avec leur point (« U11.
 espace invisible ; pour sept couples acte CSAR / intervenant, la pondération du fichier CSAR
 diffère de celle du CSARR transcodé, que la fonction groupage retient — le thème
 « Transcodage CSAR ↔ CSARR » les signale.
+
+## Tests
+
+Les fonctions pures des scripts et du site ont leurs tests, sans autre dépendance que
+`scripts/requirements.txt` et Node 22 :
+
+    python -m unittest discover tests
+    node --test
+
+Les scripts ont leur test de non-régression, le filet à passer avant tout changement
+d'un script. Sans modification des sources de `data/`, les JSON regénérés sont identiques
+à ceux qui sont commités, depuis un clone complet (voir `scripts/millesime.py`). Lancer
+les cinq scripts dans cet ordre, puis vérifier que `git diff` ne rend rien :
+
+    python scripts/build_data.py
+    python scripts/build_entrees.py
+    python scripts/build_cma.py
+    python scripts/build_arbre.py
+    python scripts/build_smr.py
+    git diff --exit-code docs/assets/data
 
 ## Déploiement
 

@@ -1,10 +1,11 @@
 // Fonction groupage SMR — chargement des jeux produits par
 // scripts/build_smr.py, et ce que plusieurs thèmes SMR lisent de la même
-// façon : graphie des codes, libellés des groupes, positions permises d'un
-// diagnostic et erreurs qu'il lève, exclusions des CMA, caractère spécialisé
-// d'un acte. Les règles du groupage elles-mêmes (volume 1 du Manuel des
-// GME, data/smr/groupage/manuel_gme_volume_1.pdf) sont présentées par
-// l'algorithme, themes/smr/arbre.js.
+// façon : graphie des codes, libellés des groupes et des modalités CSAR,
+// modulateurs de lieu CSARR, positions permises d'un diagnostic et erreurs
+// qu'il lève, exclusions des CMA, GN sans niveau de sévérité 2, caractère
+// spécialisé d'un acte. Les règles du groupage elles-mêmes (volume 1 du
+// Manuel des GME, data/smr/groupage/manuel_gme_volume_1.pdf) sont
+// mises en arbres par smr_arbre.js, que dessine l'algorithme.
 //
 // Rien ici ne touche au DOM : les fonctions reçoivent les jeux chargés en
 // argument (`smr`, cf. chargerSmr). Partagé par les thèmes SMR : fiche code,
@@ -179,6 +180,13 @@ export const TYPES_READAPTATION = {
 
 export const POSITIONS = ["MMP", "AE", "DAS"];
 
+// Colonne « acte_coll » de CSAR_infos.xlsx (lisez-moi).
+export const MODALITES = { 0: "individuel", 1: "collectif", 2: "individuel ou collectif" };
+
+// Modulateurs de lieu CSARR qui majorent la pondération (3.3.1.4) : les
+// seuls que note ACTES_ponderations, une colonne chacun.
+export const MODULATEURS_LIEU = ["HW", "LJ", "XH", "L3"];
+
 // ==== Diagnostics ====
 
 /** Un code peut-il être codé à cette position ? Profil de CIM_infos_SMR :
@@ -236,4 +244,41 @@ export function estExclue(smr, cma, orientant) {
   // inconnu compris entre deux bornes n'y figure pas pour autant.
   if (!smr.diagnostics._parCle.has(c)) return false;
   return smr.exclusions.listes[index].some(([a, b]) => c >= a && c <= b);
+}
+
+// Nombre de codes de chaque liste d'exclusion, calculé une fois par jeu
+// d'exclusions et de diagnostics chargés, sans toucher aux objets que
+// partagent les thèmes.
+const taillesParJeu = new WeakMap();
+
+/** Nombre de codes de la liste d'exclusion `index` : les plages ont pour
+ *  bornes des clefs de CIM_infos_SMR, dans l'ordre trié (build_smr.py), on
+ *  compte les clefs comprises entre elles. Une plage dont une borne n'est
+ *  pas dans CIM_infos_SMR ne compte pas. */
+export function tailleListeExclusion(diagnostics, exclusions, index) {
+  if (!taillesParJeu.has(exclusions)) taillesParJeu.set(exclusions, new WeakMap());
+  const parDiagnostics = taillesParJeu.get(exclusions);
+  if (!parDiagnostics.has(diagnostics)) {
+    // Tri par unités de code, comme le `sorted` de Python : les clefs ne
+    // portent que des capitales, des chiffres et « + ».
+    const cles = [...diagnostics._parCle.keys()].sort();
+    const rang = new Map(cles.map((c, i) => [c, i]));
+    const taille = (plages) => {
+      let n = 0;
+      for (const [a, b] of plages) if (rang.has(a) && rang.has(b)) n += rang.get(b) - rang.get(a) + 1;
+      return n;
+    };
+    parDiagnostics.set(diagnostics, exclusions.listes.map(taille));
+  }
+  return parDiagnostics.get(diagnostics)[index];
+}
+
+/** Les GN sans niveau de sévérité 2 : leurs GME d'HC finissent tous par 1
+ *  (5.2.3). En 2026, le seul GN 2303, soins palliatifs, comme le contrôle
+ *  verifier_gme de build_smr.py. */
+export function gnSansSeverite2(k) {
+  const gmes = Object.keys(k.groupes.GME);
+  return Object.keys(k.groupes.GN).filter(
+    (gn) => gmes.some((gme) => gme.startsWith(gn) && gme.endsWith("1")) && !gmes.some((gme) => gme.startsWith(gn) && gme.endsWith("2"))
+  );
 }

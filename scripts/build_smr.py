@@ -42,7 +42,7 @@ Cibles, dans docs/assets/data/smr/, avec le même découpage :
 Les règles de l'algorithme (ordre des tests, seuils « par jour ET par
 séjour », pondération des actes CSAR…) ne sont pas dans ces fichiers mais
 dans le volume 1 du Manuel des GME (data/smr/groupage/manuel_gme_volume_1.pdf) : c'est
-l'algorithme du site (docs/assets/js/themes/smr/arbre.js) qui en fait des arbres.
+docs/assets/js/smr_arbre.js qui en fait les arbres de l'algorithme du site.
 
 Comme les autres scripts, celui-ci s'arrête plutôt que de deviner : un
 en-tête qui change, un test d'entrée en GN illisible, une liste citée mais
@@ -754,15 +754,6 @@ def lire_csar(ponderations, intervenants):
     for code, m in modalites.items():
         if "2" in m and m != {"2"}:
             raise ErreurDonnees(f"CSAR_infos.xlsx : {code} mêle la modalité 2 et les modalités 0 ou 1")
-    intervenants_csar = feuille("CSAR_infos.xlsx", "transcodage_intervenants", 1, ["Intervenants CSAR", "Intervenants CSARR transcodés"])
-    transposition = {}
-    for n, (csar, csarr) in enumerate(intervenants_csar, start=2):
-        a, b = texte(csar)[:2], texte(csarr)[:2]
-        if not (a.isdigit() and b.isdigit()):
-            raise ErreurDonnees(f"CSAR_infos.xlsx, transcodage_intervenants, ligne {n} : intervenant illisible")
-        if a != b:
-            transposition[a] = b
-            intervenants.setdefault(a, texte(csar)[3:].capitalize())
     modulateurs = feuille(
         "CSAR_infos.xlsx", "modulateur_modalite_extension", 1,
         ["Type", "Variable", "Modalite", "Niveau_ou_module_de_technicite", "Libelle", "Ponderation",
@@ -815,7 +806,22 @@ def lire_csar(ponderations, intervenants):
         if transcode is None:
             raise ErreurDonnees(f"ACTES_ponderations.xlsx : pas de pondération de {csarr} pour l'intervenant {iv}")
         t += [fichier, transcode]
-    return transcodage, transposition, temps, lieu, modulables
+    return transcodage, temps, lieu, modulables
+
+
+def lire_transposition():
+    """Intervenants CSAR transposés en un autre intervenant CSARR (code CSAR
+    → code CSARR), et le nom de chacun des intervenants CSAR transposés."""
+    lignes = feuille("CSAR_infos.xlsx", "transcodage_intervenants", 1, ["Intervenants CSAR", "Intervenants CSARR transcodés"])
+    transposition, noms = {}, {}
+    for n, (csar, csarr) in enumerate(lignes, start=2):
+        a, b = texte(csar)[:2], texte(csarr)[:2]
+        if not (a.isdigit() and b.isdigit()):
+            raise ErreurDonnees(f"CSAR_infos.xlsx, transcodage_intervenants, ligne {n} : intervenant illisible")
+        if a != b:
+            transposition[a] = b
+            noms.setdefault(a, texte(csar)[3:].capitalize())
+    return transposition, noms
 
 
 # ==== Erreurs ====
@@ -881,6 +887,8 @@ def lire_tarifs(groupes):
         raise ErreurDonnees(f"tarifs.xlsx a changé : déclarer sa campagne dans CAMPAGNE_TARIFS, avec son empreinte {lue}")
     classeur = load_workbook(source("tarifs.xlsx"), read_only=True, data_only=True)
     try:
+        if FEUILLE_TARIFS not in classeur.sheetnames:
+            raise ErreurDonnees(f"tarifs.xlsx : pas de feuille « {FEUILLE_TARIFS} » ({', '.join(classeur.sheetnames)})")
         ws = classeur[FEUILLE_TARIFS]
         ws.reset_dimensions()
         brutes = [list(r) for r in ws.iter_rows(values_only=True)]
@@ -898,10 +906,12 @@ def lire_tarifs(groupes):
     tarifs = []
     couples = set()
     for n, r in enumerate(brutes[entetes[0] + 1:], start=entetes[0] + 2):
-        r = (r + [None] * 11)[:11] if len(r) >= 11 else r + [None] * (11 - len(r))
         if all(v is None or not texte(v) for v in r):
             continue
         ou = f"tarifs.xlsx, ligne {n}"
+        if any(texte(v) for v in r[len(COLONNES_TARIFS):]):
+            raise ErreurDonnees(f"{ou} : valeur hors des colonnes de l'en-tête")
+        r = (r + [None] * len(COLONNES_TARIFS))[: len(COLONNES_TARIFS)]
         gmt, gme = texte(r[0]), texte(r[1])
         if not re.fullmatch(r"\d{4}", gmt):
             raise ErreurDonnees(f"{ou} : GMT illisible {gmt!r}")
@@ -953,71 +963,71 @@ def lire_pages_manuel(groupes, tests, gl):
     import pymupdf  # comme build_arbre.py ; seul ce passage en dépend
 
     fichier = "manuel_gme_volume_1.pdf"
-    doc = pymupdf.open(source(fichier))
-    debut = {}
-    for i, page in enumerate(doc, start=1):
-        t = page.get_text()
-        if "....." in t:  # sommaire
-            continue
-        for num, titre in ANNEXES.items():
-            if num not in debut and re.search(rf"^{re.escape(num)}\s+{titre}", t, re.M):
-                debut[num] = i
-    if list(debut) != list(ANNEXES):
-        raise ErreurDonnees(f"{fichier} : annexes introuvables ou dans le désordre ({debut})")
-    bornes = dict(zip(ANNEXES, list(debut.values())[1:]))
+    with pymupdf.open(source(fichier)) as doc:
+        debut = {}
+        for i, page in enumerate(doc, start=1):
+            t = page.get_text()
+            if "....." in t:  # sommaire
+                continue
+            for num, titre in ANNEXES.items():
+                if num not in debut and re.search(rf"^{re.escape(num)}\s+{titre}", t, re.M):
+                    debut[num] = i
+        if list(debut) != list(ANNEXES):
+            raise ErreurDonnees(f"{fichier} : annexes introuvables ou dans le désordre ({debut})")
+        bornes = dict(zip(ANNEXES, list(debut.values())[1:]))
 
-    def mots(numero):
-        """Les mots de la première colonne de chaque page de l'annexe, dans
-        l'ordre de lecture, avec leur ordonnée et les mots de leur ligne."""
-        for p in range(debut[numero], bornes[numero]):
-            tous = sorted(doc[p - 1].get_text("words"), key=lambda w: (w[5], w[6], w[7]))
-            for w in tous:
-                if w[0] < COLONNE_1:
-                    yield p, w, tous
+        def mots(numero):
+            """Les mots de la première colonne de chaque page de l'annexe, dans
+            l'ordre de lecture, avec leur ordonnée et les mots de leur ligne."""
+            for p in range(debut[numero], bornes[numero]):
+                tous = sorted(doc[p - 1].get_text("words"), key=lambda w: (w[5], w[6], w[7]))
+                for w in tous:
+                    if w[0] < COLONNE_1:
+                        yield p, w, tous
 
-    # 7.2 : la CM est centrée dans la hauteur de sa ligne, le rang calé en
-    # haut : le rang d'une CM est le dernier écrit au-dessus d'elle.
-    noeuds = {}
-    for p, w, tous in mots("7.2"):
-        if w[4] not in groupes["CM"]:
-            continue
-        rangs = [v for v in tous if COLONNE_1 <= v[0] < COLONNE_2 and v[4].isdigit() and v[1] <= w[1] + 3]
-        if rangs:
-            noeuds.setdefault(f"{w[4]}-{max(rangs, key=lambda v: v[1])[4]}", p)
-    manquants = [f"{t['cm']}-{t['ordre']}" for t in tests if f"{t['cm']}-{t['ordre']}" not in noeuds]
-    if manquants:
-        raise ErreurDonnees(f"{fichier}, annexe 7.2 : nœuds introuvables {manquants}")
+        # 7.2 : la CM est centrée dans la hauteur de sa ligne, le rang calé en
+        # haut : le rang d'une CM est le dernier écrit au-dessus d'elle.
+        noeuds = {}
+        for p, w, tous in mots("7.2"):
+            if w[4] not in groupes["CM"]:
+                continue
+            rangs = [v for v in tous if COLONNE_1 <= v[0] < COLONNE_2 and v[4].isdigit() and v[1] <= w[1] + 3]
+            if rangs:
+                noeuds.setdefault(f"{w[4]}-{max(rangs, key=lambda v: v[1])[4]}", p)
+        manquants = [f"{t['cm']}-{t['ordre']}" for t in tests if f"{t['cm']}-{t['ordre']}" not in noeuds]
+        if manquants:
+            raise ErreurDonnees(f"{fichier}, annexe 7.2 : nœuds introuvables {manquants}")
 
-    def par_gn(numero):
-        pages = {}
-        for p, w, _ in mots(numero):
-            if w[4] in groupes["GN"]:
-                pages.setdefault(w[4], p)
-        if set(pages) != set(groupes["GN"]):
-            raise ErreurDonnees(f"{fichier}, annexe {numero} : GN introuvables {sorted(set(groupes['GN']) - set(pages))}")
-        return pages
+        def par_gn(numero):
+            pages = {}
+            for p, w, _ in mots(numero):
+                if w[4] in groupes["GN"]:
+                    pages.setdefault(w[4], p)
+            if set(pages) != set(groupes["GN"]):
+                raise ErreurDonnees(f"{fichier}, annexe {numero} : GN introuvables {sorted(set(groupes['GN']) - set(pages))}")
+            return pages
 
-    # 7.5 : un code de GR trop large pour sa colonne passe à la ligne
-    # (« 014 », puis « 7S »).
-    pages_gr, attente = {}, None
-    for p, w, _ in mots("7.5"):
-        t = w[4]
-        if attente and re.fullmatch(r"\d[A-Z]", t):
-            pages_gr.setdefault(attente[0] + t, attente[1])
-        elif re.fullmatch(r"\d{4}[A-Z]", t):
-            pages_gr.setdefault(t, p)
-        attente = (t, p) if re.fullmatch(r"\d{3}", t) else None
-    if set(pages_gr) != set(gl):
-        raise ErreurDonnees(
-            f"{fichier}, annexe 7.5 : GR introuvables {sorted(set(gl) - set(pages_gr))}, en trop {sorted(set(pages_gr) - set(gl))}"
-        )
-    pages = {"noeuds": noeuds, "grHc": par_gn("7.3"), "grHtp": par_gn("7.4"), "gl": pages_gr}
+        # 7.5 : un code de GR trop large pour sa colonne passe à la ligne
+        # (« 014 », puis « 7S »).
+        pages_gr, attente = {}, None
+        for p, w, _ in mots("7.5"):
+            t = w[4]
+            if attente and re.fullmatch(r"\d[A-Z]", t):
+                pages_gr.setdefault(attente[0] + t, attente[1])
+            elif re.fullmatch(r"\d{4}[A-Z]", t):
+                pages_gr.setdefault(t, p)
+            attente = (t, p) if re.fullmatch(r"\d{3}", t) else None
+        if set(pages_gr) != set(gl):
+            raise ErreurDonnees(
+                f"{fichier}, annexe 7.5 : GR introuvables {sorted(set(gl) - set(pages_gr))}, en trop {sorted(set(pages_gr) - set(gl))}"
+            )
+        pages = {"noeuds": noeuds, "grHc": par_gn("7.3"), "grHtp": par_gn("7.4"), "gl": pages_gr}
 
-    # 7.2 : les tests de chaque nœud, lus dans les tableaux de l'annexe
-    # (première cellule : la CM, deuxième : le rang, dernière : le GN).
+        # 7.2 : les tests de chaque nœud, lus dans les tableaux de l'annexe
+        # (première cellule : la CM, deuxième : le rang, dernière : le GN).
+        with contextlib.redirect_stdout(io.StringIO()):  # conseil de pymupdf sur pymupdf_layout
+            tableaux = [t.extract() for p in range(debut["7.2"], bornes["7.2"]) for t in doc[p - 1].find_tables().tables]
     ecrits = {}
-    with contextlib.redirect_stdout(io.StringIO()):  # conseil de pymupdf sur pymupdf_layout
-        tableaux = [t.extract() for p in range(debut["7.2"], bornes["7.2"]) for t in doc[p - 1].find_tables().tables]
     for lignes in tableaux:
         for r in lignes:
             cm, rang = texte(r[0]), texte(r[1])
@@ -1073,7 +1083,11 @@ def main() -> None:
         actes_spe, listes_spe, gn_liste = lire_actes_spe(groupes, {a[0] for a in ponderations})
         cma_ccam = lire_cma_ccam()
         exclusions_cma, listes_exclusion = lire_exclusions(diagnostics)
-        transcodage, transposition, temps, lieu_csar, modulables = lire_csar(ponderations, intervenants)
+        transcodage, temps, lieu_csar, modulables = lire_csar(ponderations, intervenants)
+        transposition, noms_csar = lire_transposition()
+        # Le référentiel nomme aussi les intervenants CSAR transposés que
+        # ACTES_ponderations.xlsx ne connaît pas.
+        intervenants |= {code: nom for code, nom in noms_csar.items() if code not in intervenants}
         erreurs, actes_erreurs = lire_erreurs()
         campagne, tarifs = lire_tarifs(groupes)
         pages, ecarts_annexe = lire_pages_manuel(groupes, tests, gl)

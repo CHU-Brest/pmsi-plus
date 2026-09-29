@@ -20,14 +20,28 @@ function recuperer(url) {
   });
 }
 
+/** Garde la promesse de `charger()` sous `cle`, sauf si elle échoue : une
+ *  coupure passagère ne condamne pas le jeu jusqu'au rechargement de la
+ *  page, la visite suivante le redemande. */
+function memoriser(cle, charger) {
+  if (!cache.has(cle)) {
+    cache.set(
+      cle,
+      charger().catch((erreur) => {
+        cache.delete(cle);
+        throw erreur;
+      })
+    );
+  }
+  return cache.get(cle);
+}
+
 /** Charge un JSON qui n'est pas un tableau colonnaire (l'arbre de la
  *  fonction groupage, produit par scripts/build_arbre.py) et le rend tel
  *  quel, gardé en cache comme les jeux. */
 export function chargerJson(theme, fichier) {
   const url = `assets/data/${theme}/${fichier}.json`;
-  const cle = `brut:${url}`;
-  if (!cache.has(cle)) cache.set(cle, recuperer(url));
-  return cache.get(cle);
+  return memoriser(`brut:${url}`, () => recuperer(url));
 }
 
 /** Charge `assets/data/<theme>/<fichier>.json` et rend `{ libelle,
@@ -38,17 +52,12 @@ export function chargerJeu(theme, fichier, libelle) {
   const url = `assets/data/${theme}/${fichier}.json`;
   // Seules les lignes reconstituées restent en cache, pas le format
   // colonnaire téléchargé : il serait gardé en double pour rien.
-  const cle = url;
-  if (!cache.has(cle)) {
-    cache.set(
-      cle,
-      recuperer(url).then((payload) => ({
-        libelle,
-        millesime: payload.millesime,
-        campagne: payload.campagne,
-        lignes: reconstituerLignes(payload),
-      }))
-    );
-  }
-  return cache.get(cle);
+  return memoriser(url, () =>
+    recuperer(url).then((payload) => ({
+      libelle,
+      millesime: payload.millesime,
+      campagne: payload.campagne,
+      lignes: reconstituerLignes(payload),
+    }))
+  );
 }

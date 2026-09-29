@@ -67,7 +67,9 @@ JEUX: tuple[Jeu, ...] = (
 # codes CIM-10 sans point (« C169+0 ») et en-tête abrégé (« diag ; niv ;
 # libellé ») : relue sous les noms et la graphie des autres jeux, pour que le
 # site la croise code pour code avec les listes de la fonction groupage.
-COLONNES_CSV = {"cma.csv": ("Code", "Niveau", "Libellé")}
+# L'en-tête lu doit être celui du fichier, dont le « é » de « libellé »
+# arrive en caractère de substitution (0x1A).
+COLONNES_CSV = {"cma.csv": {"diag": "Code", "niv": "Niveau", "libell\x1a": "Libellé"}}
 
 
 def code_cim(code: str) -> str:
@@ -79,13 +81,23 @@ def code_cim(code: str) -> str:
 def lire_csv(chemin: Path) -> list[dict]:
     colonnes = COLONNES_CSV[chemin.name]
     texte = chemin.read_bytes().decode("cp1252")
-    lignes = list(csv.reader(texte.splitlines(), delimiter=";"))[1:]
+    lignes = list(csv.reader(texte.splitlines(), delimiter=";"))
+    entete = [v.strip() for v in lignes[0]] if lignes else []
+    if entete != list(colonnes):
+        raise ErreurDonnees(f"{chemin.name} : en-tête inattendu {entete}, attendu {list(colonnes)}")
+    noms = list(colonnes.values())
     resultat = []
-    for ligne in lignes:
+    for n, ligne in enumerate(lignes[1:], start=2):
         if not any(v.strip() for v in ligne):
             continue
+        if len(ligne) < 3:
+            raise ErreurDonnees(f"{chemin.name}, ligne {n} : moins de 3 champs")
         code, niveau, libelle = (v.strip() for v in ligne[:3])
-        resultat.append({colonnes[0]: code_cim(code), colonnes[1]: int(niveau), colonnes[2]: libelle})
+        try:
+            niveau = int(niveau)
+        except ValueError:
+            raise ErreurDonnees(f"{chemin.name}, ligne {n} : niveau illisible ({niveau!r})") from None
+        resultat.append({noms[0]: code_cim(code), noms[1]: niveau, noms[2]: libelle})
     return resultat
 
 # Colonnes techniques dont un null xlsx doit se lire comme une chaîne vide et
@@ -147,28 +159,25 @@ def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
             feuille = classeur[nom_feuille]
         else:
             raise ErreurDonnees(f"{chemin.name} : pas de feuille « {nom_feuille} » ({', '.join(classeur.sheetnames)})")
-        verifie = chemin.name in COLONNES_XLSX
-        if verifie:
-            # En lecture seule, openpyxl s'arrête à l'étendue que le classeur
-            # déclare (balise <dimension>) : fausse, elle tronquerait la
-            # feuille sans rien dire. On lit jusqu'à la dernière cellule.
-            feuille.reset_dimensions()
+        # En lecture seule, openpyxl s'arrête à l'étendue que le classeur
+        # déclare (balise <dimension>) : fausse, elle tronquerait la
+        # feuille sans rien dire. On lit jusqu'à la dernière cellule.
+        feuille.reset_dimensions()
         ligne_entete = LIGNE_ENTETE.get(chemin.name, 1)
         lignes = feuille.iter_rows(min_row=ligne_entete, values_only=True)
         entetes = [str(c).strip() if c is not None else "" for c in next(lignes)]
-        if verifie:
+        if chemin.name in COLONNES_XLSX:
             entetes = renommer(chemin.name, entetes)
         resultat = []
         for n, ligne in enumerate(lignes, start=ligne_entete + 1):
             if all(v is None for v in ligne):
                 continue
-            if verifie:
-                # Sans étendue déclarée, une ligne s'arrête à sa dernière
-                # cellule remplie : on la complète, et une valeur au-delà de
-                # l'en-tête arrête la conversion au lieu d'être ignorée.
-                if any(v is not None for v in ligne[len(entetes):]):
-                    raise ErreurDonnees(f"{chemin.name}, ligne {n} : valeur hors des colonnes de l'en-tête")
-                ligne = (*ligne, *[None] * (len(entetes) - len(ligne)))
+            # Sans étendue déclarée, une ligne s'arrête à sa dernière
+            # cellule remplie : on la complète, et une valeur au-delà de
+            # l'en-tête arrête la conversion au lieu d'être ignorée.
+            if any(v is not None for v in ligne[len(entetes):]):
+                raise ErreurDonnees(f"{chemin.name}, ligne {n} : valeur hors des colonnes de l'en-tête")
+            ligne = (*ligne, *[None] * (len(entetes) - len(ligne)))
             enregistrement = {}
             for entete, v in zip(entetes, ligne):
                 if entete in COLONNES_TEXTE_VIDE_SI_NULLE and v is None:
@@ -198,9 +207,7 @@ def verifier_tarifs(lignes: list[dict]) -> None:
     """Chaque ligne se lit sans rien deviner : un couple GHS-GHM unique, des
     bornes et montants lisibles et cohérents entre eux, un seul tarif par
     GHS (le même, quel que soit le GHM qu'il couvre), un seul libellé par
-    GHM. Et l'arrêté couvre la classification publiée : aucune racine
-    inconnue de racines.xlsx, aucune racine sans tarif hors de
-    RACINES_SANS_TARIF."""
+    GHM."""
     if not lignes:
         raise ErreurDonnees("tarifs.xlsx : aucune ligne de tarif")
     couples: set[tuple[int, str]] = set()
@@ -245,10 +252,15 @@ def verifier_tarifs(lignes: list[dict]) -> None:
         attendu = libelles.setdefault(ghm, libelle)
         if attendu != libelle:
             raise ErreurDonnees(f"{ou} : libellé {libelle!r} différent de {attendu!r}")
+
+
+def verifier_couverture_racines(lignes: list[dict], racines: set[str]) -> None:
+    """L'arrêté couvre la classification publiée (`racines`, celles de
+    racines.xlsx) : aucune racine inconnue, aucune racine sans tarif hors de
+    RACINES_SANS_TARIF."""
     # Un arrêté d'un autre millésime que la classification publiée : ses
     # racines nouvelles n'auraient ni libellé ni place dans l'arbre.
-    racines = {l["ListeRacineGHM"] for l in lire(DOSSIER_DONNEES / "groupage" / "racines.xlsx")}
-    tarifees = {ghm[:5] for ghm in libelles}
+    tarifees = {ligne["GHM"][:5] for ligne in lignes}
     inconnues = sorted(tarifees - racines)
     if inconnues:
         raise ErreurDonnees(f"tarifs.xlsx : {len(inconnues)} racine(s) absente(s) de racines.xlsx {inconnues[:10]}")
@@ -285,6 +297,9 @@ def convertir(jeu: Jeu) -> None:
     lignes = lire_csv(source) if source.suffix == ".csv" else lire(source, jeu.feuille)
     if jeu.fichier in VERIFICATIONS:
         VERIFICATIONS[jeu.fichier](lignes)
+    if jeu.fichier == "tarifs.xlsx":  # contrôle croisé avec un autre jeu
+        racines = {l["ListeRacineGHM"] for l in lire(DOSSIER_DONNEES / "groupage" / "racines.xlsx")}
+        verifier_couverture_racines(lignes, racines)
 
     dossier_sortie = DOSSIER_SORTIE / jeu.theme
     dossier_sortie.mkdir(parents=True, exist_ok=True)

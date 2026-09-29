@@ -9,7 +9,7 @@
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../../interface.js";
 import { chargerClassification } from "../../smr.js";
-import { lienFiche, sourceFg } from "../../smr_interface.js";
+import { lienErreurs, lienFiche, sourceFg } from "../../smr_interface.js";
 
 const COLONNES_CHERCHABLES = ["Code", "Libellé"];
 
@@ -110,8 +110,8 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   function afficher() {
     const garde = recherche.filtre(requete);
     resultats(zoneResultats, lignes.filter((l) => garde(l) && (!bloquantesSeulement || l._bloquant)), { total: lignes.length });
-    const cible = requete.trim() ? `#/smr/erreurs/${encodeURIComponent(requete.trim())}` : "#/smr/erreurs";
-    if (location.hash !== cible) history.replaceState(null, "", cible);
+    const cible = lienErreurs(requete.trim());
+    if (zoneResultats.isConnected && location.hash !== cible) history.replaceState(null, "", cible);
   }
   afficher();
 }

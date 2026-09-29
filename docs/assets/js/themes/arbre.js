@@ -10,8 +10,7 @@
 import { chargerJson, chargerJeu } from "../donnees.js";
 import { el, fraicheur } from "../interface.js";
 import { dessinerArbre } from "../arbre_vue.js";
-import { couvre, couvreRacine } from "./cma.js";
-import { racinesAtteintes } from "./frontieres.js";
+import { codesGhm, couvreRacine, exclusionParDp, ligneCma, racinesDepuis } from "../groupage_mco.js";
 import { chargerTarifs, noteTarifs, parGhm, tableTarifs } from "../tarifs.js";
 
 const ORIENTATION = "orientation";
@@ -54,16 +53,6 @@ const COULEURS = {
   age: "l'âge intervient comme marqueur de sévérité",
   age_gestationnel: "l'âge gestationnel intervient comme marqueur de sévérité",
 };
-
-/** Codes GHM couverts par une case : « 1 » en bas vaut les niveaux 1 à 4,
- *  une lettre vaut elle-même ; la case du haut ajoute J ou T. */
-export function codesGhm(f) {
-  const codes = [];
-  if (f.bas === "1") codes.push(...["1", "2", "3", "4"].map((n) => f.racine + n));
-  else if (f.bas) codes.push(f.racine + f.bas);
-  if (f.haut) codes.push(f.racine + f.haut);
-  return codes;
-}
 
 function titreCmd(c) {
   const prefixe = ["15", "27"].includes(c.cmd) ? "CM" : "CMD";
@@ -200,7 +189,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
             { class: "etape-tete" },
             picto,
             el("span", { class: "etape-intitule" }, ...intitule),
-            el("span", { class: "etape-page" }, "p. 9")
+            el("span", { class: "etape-page" }, `p. ${arbre.pageOrientation}`)
           ),
           el(
             "div",
@@ -224,7 +213,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       el(
         "p",
         { class: "sous-titre" },
-        "Volume 3, page 9. Les tests sont faits dans cet ordre ; le premier satisfait oriente le séjour, et le DP détermine la CMD en dernier recours."
+        `Volume 3, page ${arbre.pageOrientation}. Les tests sont faits dans cet ordre ; le premier satisfait oriente le séjour, et le DP détermine la CMD en dernier recours.`
       ),
       ol
     );
@@ -319,8 +308,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
    *  exclusions de CMA : les racines que sa branche peut atteindre, et, si
    *  c'est un test sur le DP, les DP possibles (les codes de la liste). */
   function contexteDeListe(n, b) {
-    if (!arbre._memoRacines) arbre._memoRacines = new Map();
-    const racines = [...racinesAtteintes(arbre, b.vers, arbre._memoRacines)].filter((r) => /^\d{2}[CKMZ]\d{2}$/.test(r));
+    const racines = [...racinesDepuis(arbre, b.vers)].filter((r) => /^\d{2}[CKMZ]\d{2}$/.test(r));
     return { racines, dp: n.genre === "test" && n.symbole === "DP" };
   }
 
@@ -447,7 +435,6 @@ async function codesDeListe(code, nature, contexte) {
     console.error(erreur);
     return resultat;
   }
-  if (!exclusions.parCode) exclusions.parCode = new Map(exclusions.cma.map((c) => [c[0], c]));
   const dps = contexte?.dp ? resultat.map((r) => r.Code) : [];
   const racines = contexte?.racines ?? [];
   for (const r of resultat) r._cma = statutCma(exclusions, r.Code, dps, racines);
@@ -458,12 +445,12 @@ async function codesDeListe(code, nature, contexte) {
  *  toutes les racines atteignables, ou tous les DP possibles, l'excluent ;
  *  `partielle` si certains seulement ; `retenue` sinon. */
 function statutCma(exclusions, code, dps, racines) {
-  const fiche = exclusions.parCode.get(code);
+  const fiche = ligneCma(exclusions, code);
   if (!fiche) return null;
-  const [, niveau, listeDp, listeRacine] = fiche;
+  const [, niveau, , listeRacine] = fiche;
   const parRacine =
     listeRacine == null ? [] : racines.filter((r) => exclusions.racines[listeRacine].some((e) => couvreRacine(e, r)));
-  const parDp = listeDp == null ? [] : dps.filter((d) => exclusions.dp[listeDp].some((e) => couvre(e, d)));
+  const parDp = dps.filter((d) => exclusionParDp(exclusions, code, d));
   const toutes = (parRacine.length && parRacine.length === racines.length) || (parDp.length && parDp.length === dps.length);
   const statut = toutes ? "exclue" : parRacine.length || parDp.length ? "partielle" : "retenue";
   const details = [`CMA de niveau ${niveau}`];

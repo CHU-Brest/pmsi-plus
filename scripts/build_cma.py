@@ -19,8 +19,8 @@ sous la forme du manuel (« A00 », « R05-R07 », « M0-M62.89* »,
 
 Comme build_arbre.py, le script s'arrête plutôt que de deviner : une liste
 citée par l'annexe 4 et absente de l'annexe 5, une numérotation qui saute,
-un élément de liste illisible, ou un niveau qui contredit data/groupage/
-cma.csv arrêtent la conversion.
+un élément de liste illisible, un niveau qui contredit data/groupage/
+cma.csv, ou ce csv absent, arrêtent la conversion.
 """
 
 from __future__ import annotations
@@ -138,18 +138,21 @@ def verifier(cma: list[list], dp: dict, racines: dict) -> None:
             f"listes citées par l'annexe 4 et absentes de l'annexe 5 : DP {manquantes_dp}, racines {manquantes_racines}"
         )
     # Le niveau de chaque CMA doit être celui de la liste des CMA en csv.
-    if CSV_CMA.exists():
-        niveaux = {}
-        for ligne in CSV_CMA.read_bytes().decode("cp1252").splitlines()[1:]:
-            code, niveau, _ = ligne.split(";", 2)
-            code = code.strip()
-            niveaux[code if len(code) <= 3 else f"{code[:3]}.{code[3:]}"] = int(niveau)
-        ecarts = [(c[0], c[1], niveaux[c[0]]) for c in cma if c[0] in niveaux and niveaux[c[0]] != c[1]]
-        absentes = sorted(set(niveaux) - {c[0] for c in cma})
-        if ecarts or absentes:
-            raise ErreurExtraction(
-                f"annexe 4 et cma.csv divergent : niveaux {ecarts[:10]}, CMA absentes de l'annexe {absentes[:10]}"
-            )
+    if not CSV_CMA.exists():
+        raise ErreurExtraction(f"{CSV_CMA.name} introuvable : niveaux des CMA invérifiables")
+    niveaux = {}
+    for ligne in CSV_CMA.read_bytes().decode("cp1252").splitlines()[1:]:
+        if not ligne.replace(";", "").strip():  # ligne vide, écartée comme par build_data.py
+            continue
+        code, niveau, _ = ligne.split(";", 2)
+        code = code.strip()
+        niveaux[code if len(code) <= 3 else f"{code[:3]}.{code[3:]}"] = int(niveau)
+    ecarts = [(c[0], c[1], niveaux[c[0]]) for c in cma if c[0] in niveaux and niveaux[c[0]] != c[1]]
+    absentes = sorted(set(niveaux) - {c[0] for c in cma})
+    if ecarts or absentes:
+        raise ErreurExtraction(
+            f"annexe 4 et cma.csv divergent : niveaux {ecarts[:10]}, CMA absentes de l'annexe {absentes[:10]}"
+        )
 
 
 def main() -> None:

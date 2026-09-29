@@ -10,27 +10,24 @@
 
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
-import { chargerClassification, chargerDiagnostics, chargerExclusions, cle, estExclue, graphie, normaliserActe } from "../../smr.js";
+import {
+  chargerClassification,
+  chargerDiagnostics,
+  chargerExclusions,
+  cle,
+  estExclue,
+  gnSansSeverite2,
+  graphie,
+  libelleGroupe,
+  normaliserActe,
+  RE_CIM,
+  tailleListeExclusion,
+} from "../../smr.js";
 import { lienFiche, sourceFg } from "../../smr_interface.js";
-
-/** Nombre de codes de chaque liste d'exclusion : les plages ont pour bornes
- *  des codes de CIM_infos_SMR, dont le rang dans l'ordre trié donne la
- *  taille. Calculé une fois, gardé sur le jeu d'exclusions. */
-function taillesListes(exclusions, diagnostics) {
-  if (!exclusions._tailles) {
-    const cles = [...diagnostics._parCle.keys()].sort();
-    const rang = new Map(cles.map((c, i) => [c, i]));
-    exclusions._tailles = exclusions.listes.map((plages) =>
-      plages.reduce((somme, [a, b]) => somme + rang.get(b) - rang.get(a) + 1, 0)
-    );
-  }
-  return exclusions._tailles;
-}
 
 /** Lignes du tableau des CMA CIM-10, une fois par jeu. */
 function lignesCma(diagnostics, exclusions) {
   if (!diagnostics._cmaTableau) {
-    const tailles = taillesListes(exclusions, diagnostics);
     diagnostics._cmaTableau = diagnostics.lignes
       .filter((l) => l.CMA)
       .map((l) => {
@@ -38,7 +35,7 @@ function lignesCma(diagnostics, exclusions) {
         return {
           Code: l.Code,
           "Libellé": l["Libellé"],
-          "Codes qui l'excluent": index == null ? 0 : tailles[index],
+          "Codes qui l'excluent": index == null ? 0 : tailleListeExclusion(diagnostics, exclusions, index),
         };
       });
     recherche.indexer(diagnostics._cmaTableau, ["Code", "Libellé"]);
@@ -103,7 +100,10 @@ function verificateur(k, diagnostics, exclusions, candidatInitial) {
     const c = cle(saisie);
     const diag = D.get(c);
     if (!diag) {
-      zone.append(el("p", { class: "message-info" }, `${graphie(c)} : ni code CIM-10 de CIM_infos_SMR, ni acte CCAM CMA.`));
+      // Graphie CIM-10 pour un code qui en a la forme seulement : un acte
+      // garde la sienne (« AHQP002 », pas « AHQ.P002 »).
+      const affiche = RE_CIM.test(c) ? graphie(c) : normaliserActe(saisie);
+      zone.append(el("p", { class: "message-info" }, `${affiche} : ni code CIM-10 de CIM_infos_SMR, ni acte CCAM CMA.`));
       return;
     }
     if (!diag.CMA) {
@@ -122,7 +122,7 @@ function verificateur(k, diagnostics, exclusions, candidatInitial) {
     }
     if (inconnus.length) lignes.push(` Codes inconnus, non vérifiés : ${inconnus.map(graphie).join(", ")}.`);
     const index = exclusions.cma[graphie(c)];
-    const taille = index == null ? 0 : taillesListes(exclusions, diagnostics)[index];
+    const taille = index == null ? 0 : tailleListeExclusion(diagnostics, exclusions, index);
     zone.append(
       el("p", { class: excluant.length ? "message-avertissement" : orientants.length && !inconnus.length ? "message-succes" : "message-info" }, ...lignes),
       el(
@@ -173,7 +173,9 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     el(
       "p",
       {},
-      "Les complications ou morbidités associées (CMA) sont des codes CIM-10 et des actes CCAM marqueurs de la sévérité d'un séjour d'hospitalisation complète. Un séjour d'HC qui en compte au moins une est classé en niveau de sévérité 2 (le dernier chiffre du GME), sinon en niveau 1 ; le GN 2303, soins palliatifs, n'a pas de niveau 2, et l'hospitalisation à temps partiel est toujours en niveau 0 (volume 1, 5.1 et 5.2.3)."
+      "Les complications ou morbidités associées (CMA) sont des codes CIM-10 et des actes CCAM marqueurs de la sévérité d'un séjour d'hospitalisation complète. Un séjour d'HC qui en compte au moins une est classé en niveau de sévérité 2 (le dernier chiffre du GME), sinon en niveau 1",
+      ...gnSansSeverite2(k).map((gn) => ` ; le GN ${gn}, ${libelleGroupe(k, gn).toLowerCase()}, n'a pas de niveau 2`),
+      ", et l'hospitalisation à temps partiel est toujours en niveau 0 (volume 1, 5.1 et 5.2.3)."
     ),
     el(
       "ul",
