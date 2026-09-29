@@ -907,6 +907,28 @@ def vocabulaire_de(doc: pymupdf.Document) -> Vocabulaire:
     return Vocabulaire(manuel | listes, listes)
 
 
+def lire_pages(doc: pymupdf.Document, vocabulaire: Vocabulaire) -> tuple[list[PageLue], dict[str, str]]:
+    """Les pages d'arbre, rattachées à leur CMD (celle du dernier titre
+    rencontré), et le sous-titre de chaque CMD."""
+    cache: dict[int, str] = {}
+    pages: list[PageLue] = []
+    cmd_courante = None
+    titres: dict[str, str] = {}
+    for numero in range(PREMIERE_PAGE_CMD, doc.page_count + 1):
+        lue = lire_page(doc, numero, cache, vocabulaire)
+        if not lue.objets:
+            continue
+        if lue.cmd:
+            cmd_courante = lue.cmd
+            if lue.sous_titre:
+                titres[lue.cmd] = lue.sous_titre
+        if cmd_courante is None:
+            raise ErreurExtraction(f"page {numero} : arbre avant tout titre de CMD")
+        lue.cmd = cmd_courante
+        pages.append(lue)
+    return pages, titres
+
+
 def entrees_de_page(
     objets: dict[str, Objet], cmd_de: dict[str, str], sorties: dict[tuple[str, str], list[Branche]]
 ) -> dict[tuple[str, int, str], str]:
@@ -1143,29 +1165,13 @@ def noeuds_publies(renvois: Renvois) -> tuple[dict[str, dict], list[Arete]]:
 
 
 def construire(doc: pymupdf.Document) -> dict:
-    cache: dict[int, str] = {}
     vocabulaire = vocabulaire_de(doc)
     version = next(
         (m.group(0) for m in [re.search(r"Manuel des GHM Version \d{4}", doc[PAGE_ORIENTATION - 1].get_text())] if m),
         None,
     )
 
-    # -- Lecture des pages, rattachées à leur CMD --
-    pages: list[PageLue] = []
-    cmd_courante = None
-    titres: dict[str, str] = {}
-    for numero in range(PREMIERE_PAGE_CMD, doc.page_count + 1):
-        lue = lire_page(doc, numero, cache, vocabulaire)
-        if not lue.objets:
-            continue
-        if lue.cmd:
-            cmd_courante = lue.cmd
-            if lue.sous_titre:
-                titres[lue.cmd] = lue.sous_titre
-        if cmd_courante is None:
-            raise ErreurExtraction(f"page {numero} : arbre avant tout titre de CMD")
-        lue.cmd = cmd_courante
-        pages.append(lue)
+    pages, titres = lire_pages(doc, vocabulaire)
 
     objets: dict[str, Objet] = {oid: o for p in pages for oid, o in p.objets.items()}
     cmd_de = {oid: p.cmd for p in pages for oid in p.objets}
