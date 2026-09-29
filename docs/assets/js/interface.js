@@ -347,6 +347,9 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible, fo
 /** Tableau simple, colonnes triables au clic ou au clavier, et paginé.
  *  `formats` associe à une colonne la fonction qui met sa valeur en forme
  *  (montant en euros, durée…) ; le tri se fait toujours sur la valeur. */
+// Ordre du dictionnaire : « Éther » avec les E, pas après « z ».
+const ORDRE_TEXTE = new Intl.Collator("fr");
+
 export function tableau(conteneur, lignes, { formats = {} } = {}) {
   conteneur.innerHTML = "";
   const colonnes = colonnesVisibles(lignes);
@@ -461,8 +464,12 @@ export function tableau(conteneur, lignes, { formats = {} } = {}) {
     lignesTriees = [...lignes].sort((a, b) => {
       const va = a[colonne];
       const vb = b[colonne];
-      if (va === vb) return 0;
-      const sens = va > vb ? 1 : -1;
+      // Cellules vides en dernier, dans les deux sens.
+      const videA = va == null || va === "";
+      const videB = vb == null || vb === "";
+      if (videA || videB) return videA - videB;
+      const sens =
+        typeof va === "string" || typeof vb === "string" ? ORDRE_TEXTE.compare(String(va), String(vb)) : va - vb;
       return triAsc ? sens : -sens;
     });
     page = 0;
