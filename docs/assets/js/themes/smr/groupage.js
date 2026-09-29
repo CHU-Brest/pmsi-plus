@@ -270,7 +270,8 @@ function liensFiches(lignes) {
  * Titre, explication, champ de recherche et tableau d'un jeu de lignes.
  * `corriger` réécrit la saisie avant le filtre, `indication` peut ajouter
  * un message au-dessus des résultats, `auChangement` est appelé à chaque
- * saisie tant que la section est affichée.
+ * saisie tant que la section est affichée. Rend le titre, vers lequel
+ * défile un lien profond.
  */
 function section(conteneur, lignes, { id, titre, exemple, explication = [], valeur = "", raccourci = true, corriger, indication, auChangement }) {
   // Indication et liens de fiche changent avec la saisie, comme le
@@ -290,7 +291,8 @@ function section(conteneur, lignes, { id, titre, exemple, explication = [], vale
     },
   });
 
-  conteneur.append(el("h2", {}, titre), ...explication.filter(Boolean), el("div", { class: "barre-outils" }, champ), zoneIndication, zoneResultats);
+  const h2 = el("h2", {}, titre);
+  conteneur.append(h2, ...explication.filter(Boolean), el("div", { class: "barre-outils" }, champ), zoneIndication, zoneResultats);
 
   function afficher(requete) {
     const filtre = recherche.filtre(corriger ? corriger(requete) : requete);
@@ -299,6 +301,7 @@ function section(conteneur, lignes, { id, titre, exemple, explication = [], vale
     resultats(zoneResultats, trouvees, { total: lignes.length });
   }
   afficher(valeur);
+  return h2;
 }
 
 /** L'adresse de la page pour une recherche dans la première section. */
@@ -377,7 +380,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     return;
   }
 
-  section(conteneur, lignesActes(actesSpe, k), {
+  const titreActes = section(conteneur, lignesActes(actesSpe, k), {
     id: "smr_groupage_actes",
     titre: "Listes d'actes spécialisés",
     exemple: "ex. : ALQ+183, 0147, diététique",
@@ -401,7 +404,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   });
   conteneur.append(...gnSansListe(k));
   if (listeActes) {
-    document.getElementById("smr_groupage_actes")?.closest(".barre-outils")?.previousElementSibling?.scrollIntoView();
+    titreActes.scrollIntoView();
     return true;
   }
 }
