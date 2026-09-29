@@ -76,7 +76,7 @@ export function tableTarifsGme(tarifs, gmes) {
       return el(
         "tbody",
         {},
-        el("tr", {}, el("th", { scope: "rowgroup" }, gme), el("td", { class: "sans-tarif", colspan: "11" }, "Pas de tarif dans l'arrêté"))
+        el("tr", {}, el("th", { scope: "rowgroup" }, gme), el("td", { class: "sans-tarif", colspan: "10" }, "Pas de tarif dans l'arrêté"))
       );
     }
     return el(
