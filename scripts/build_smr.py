@@ -887,6 +887,8 @@ def lire_tarifs(groupes):
         raise ErreurDonnees(f"tarifs.xlsx a changé : déclarer sa campagne dans CAMPAGNE_TARIFS, avec son empreinte {lue}")
     classeur = load_workbook(source("tarifs.xlsx"), read_only=True, data_only=True)
     try:
+        if FEUILLE_TARIFS not in classeur.sheetnames:
+            raise ErreurDonnees(f"tarifs.xlsx : pas de feuille « {FEUILLE_TARIFS} » ({', '.join(classeur.sheetnames)})")
         ws = classeur[FEUILLE_TARIFS]
         ws.reset_dimensions()
         brutes = [list(r) for r in ws.iter_rows(values_only=True)]
@@ -904,10 +906,12 @@ def lire_tarifs(groupes):
     tarifs = []
     couples = set()
     for n, r in enumerate(brutes[entetes[0] + 1:], start=entetes[0] + 2):
-        r = (r + [None] * 11)[:11] if len(r) >= 11 else r + [None] * (11 - len(r))
         if all(v is None or not texte(v) for v in r):
             continue
         ou = f"tarifs.xlsx, ligne {n}"
+        if any(texte(v) for v in r[len(COLONNES_TARIFS):]):
+            raise ErreurDonnees(f"{ou} : valeur hors des colonnes de l'en-tête")
+        r = (r + [None] * len(COLONNES_TARIFS))[: len(COLONNES_TARIFS)]
         gmt, gme = texte(r[0]), texte(r[1])
         if not re.fullmatch(r"\d{4}", gmt):
             raise ErreurDonnees(f"{ou} : GMT illisible {gmt!r}")
@@ -959,71 +963,71 @@ def lire_pages_manuel(groupes, tests, gl):
     import pymupdf  # comme build_arbre.py ; seul ce passage en dépend
 
     fichier = "manuel_gme_volume_1.pdf"
-    doc = pymupdf.open(source(fichier))
-    debut = {}
-    for i, page in enumerate(doc, start=1):
-        t = page.get_text()
-        if "....." in t:  # sommaire
-            continue
-        for num, titre in ANNEXES.items():
-            if num not in debut and re.search(rf"^{re.escape(num)}\s+{titre}", t, re.M):
-                debut[num] = i
-    if list(debut) != list(ANNEXES):
-        raise ErreurDonnees(f"{fichier} : annexes introuvables ou dans le désordre ({debut})")
-    bornes = dict(zip(ANNEXES, list(debut.values())[1:]))
+    with pymupdf.open(source(fichier)) as doc:
+        debut = {}
+        for i, page in enumerate(doc, start=1):
+            t = page.get_text()
+            if "....." in t:  # sommaire
+                continue
+            for num, titre in ANNEXES.items():
+                if num not in debut and re.search(rf"^{re.escape(num)}\s+{titre}", t, re.M):
+                    debut[num] = i
+        if list(debut) != list(ANNEXES):
+            raise ErreurDonnees(f"{fichier} : annexes introuvables ou dans le désordre ({debut})")
+        bornes = dict(zip(ANNEXES, list(debut.values())[1:]))
 
-    def mots(numero):
-        """Les mots de la première colonne de chaque page de l'annexe, dans
-        l'ordre de lecture, avec leur ordonnée et les mots de leur ligne."""
-        for p in range(debut[numero], bornes[numero]):
-            tous = sorted(doc[p - 1].get_text("words"), key=lambda w: (w[5], w[6], w[7]))
-            for w in tous:
-                if w[0] < COLONNE_1:
-                    yield p, w, tous
+        def mots(numero):
+            """Les mots de la première colonne de chaque page de l'annexe, dans
+            l'ordre de lecture, avec leur ordonnée et les mots de leur ligne."""
+            for p in range(debut[numero], bornes[numero]):
+                tous = sorted(doc[p - 1].get_text("words"), key=lambda w: (w[5], w[6], w[7]))
+                for w in tous:
+                    if w[0] < COLONNE_1:
+                        yield p, w, tous
 
-    # 7.2 : la CM est centrée dans la hauteur de sa ligne, le rang calé en
-    # haut : le rang d'une CM est le dernier écrit au-dessus d'elle.
-    noeuds = {}
-    for p, w, tous in mots("7.2"):
-        if w[4] not in groupes["CM"]:
-            continue
-        rangs = [v for v in tous if COLONNE_1 <= v[0] < COLONNE_2 and v[4].isdigit() and v[1] <= w[1] + 3]
-        if rangs:
-            noeuds.setdefault(f"{w[4]}-{max(rangs, key=lambda v: v[1])[4]}", p)
-    manquants = [f"{t['cm']}-{t['ordre']}" for t in tests if f"{t['cm']}-{t['ordre']}" not in noeuds]
-    if manquants:
-        raise ErreurDonnees(f"{fichier}, annexe 7.2 : nœuds introuvables {manquants}")
+        # 7.2 : la CM est centrée dans la hauteur de sa ligne, le rang calé en
+        # haut : le rang d'une CM est le dernier écrit au-dessus d'elle.
+        noeuds = {}
+        for p, w, tous in mots("7.2"):
+            if w[4] not in groupes["CM"]:
+                continue
+            rangs = [v for v in tous if COLONNE_1 <= v[0] < COLONNE_2 and v[4].isdigit() and v[1] <= w[1] + 3]
+            if rangs:
+                noeuds.setdefault(f"{w[4]}-{max(rangs, key=lambda v: v[1])[4]}", p)
+        manquants = [f"{t['cm']}-{t['ordre']}" for t in tests if f"{t['cm']}-{t['ordre']}" not in noeuds]
+        if manquants:
+            raise ErreurDonnees(f"{fichier}, annexe 7.2 : nœuds introuvables {manquants}")
 
-    def par_gn(numero):
-        pages = {}
-        for p, w, _ in mots(numero):
-            if w[4] in groupes["GN"]:
-                pages.setdefault(w[4], p)
-        if set(pages) != set(groupes["GN"]):
-            raise ErreurDonnees(f"{fichier}, annexe {numero} : GN introuvables {sorted(set(groupes['GN']) - set(pages))}")
-        return pages
+        def par_gn(numero):
+            pages = {}
+            for p, w, _ in mots(numero):
+                if w[4] in groupes["GN"]:
+                    pages.setdefault(w[4], p)
+            if set(pages) != set(groupes["GN"]):
+                raise ErreurDonnees(f"{fichier}, annexe {numero} : GN introuvables {sorted(set(groupes['GN']) - set(pages))}")
+            return pages
 
-    # 7.5 : un code de GR trop large pour sa colonne passe à la ligne
-    # (« 014 », puis « 7S »).
-    pages_gr, attente = {}, None
-    for p, w, _ in mots("7.5"):
-        t = w[4]
-        if attente and re.fullmatch(r"\d[A-Z]", t):
-            pages_gr.setdefault(attente[0] + t, attente[1])
-        elif re.fullmatch(r"\d{4}[A-Z]", t):
-            pages_gr.setdefault(t, p)
-        attente = (t, p) if re.fullmatch(r"\d{3}", t) else None
-    if set(pages_gr) != set(gl):
-        raise ErreurDonnees(
-            f"{fichier}, annexe 7.5 : GR introuvables {sorted(set(gl) - set(pages_gr))}, en trop {sorted(set(pages_gr) - set(gl))}"
-        )
-    pages = {"noeuds": noeuds, "grHc": par_gn("7.3"), "grHtp": par_gn("7.4"), "gl": pages_gr}
+        # 7.5 : un code de GR trop large pour sa colonne passe à la ligne
+        # (« 014 », puis « 7S »).
+        pages_gr, attente = {}, None
+        for p, w, _ in mots("7.5"):
+            t = w[4]
+            if attente and re.fullmatch(r"\d[A-Z]", t):
+                pages_gr.setdefault(attente[0] + t, attente[1])
+            elif re.fullmatch(r"\d{4}[A-Z]", t):
+                pages_gr.setdefault(t, p)
+            attente = (t, p) if re.fullmatch(r"\d{3}", t) else None
+        if set(pages_gr) != set(gl):
+            raise ErreurDonnees(
+                f"{fichier}, annexe 7.5 : GR introuvables {sorted(set(gl) - set(pages_gr))}, en trop {sorted(set(pages_gr) - set(gl))}"
+            )
+        pages = {"noeuds": noeuds, "grHc": par_gn("7.3"), "grHtp": par_gn("7.4"), "gl": pages_gr}
 
-    # 7.2 : les tests de chaque nœud, lus dans les tableaux de l'annexe
-    # (première cellule : la CM, deuxième : le rang, dernière : le GN).
+        # 7.2 : les tests de chaque nœud, lus dans les tableaux de l'annexe
+        # (première cellule : la CM, deuxième : le rang, dernière : le GN).
+        with contextlib.redirect_stdout(io.StringIO()):  # conseil de pymupdf sur pymupdf_layout
+            tableaux = [t.extract() for p in range(debut["7.2"], bornes["7.2"]) for t in doc[p - 1].find_tables().tables]
     ecrits = {}
-    with contextlib.redirect_stdout(io.StringIO()):  # conseil de pymupdf sur pymupdf_layout
-        tableaux = [t.extract() for p in range(debut["7.2"], bornes["7.2"]) for t in doc[p - 1].find_tables().tables]
     for lignes in tableaux:
         for r in lignes:
             cm, rang = texte(r[0]), texte(r[1])
