@@ -9,6 +9,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
@@ -127,6 +128,13 @@ class ListesAnnexe5(unittest.TestCase):
     def test_numerotation_qui_saute(self):
         with self.assertRaises(build_cma.ErreurExtraction):
             build_cma.listes_numerotees(["1 A00", "3 C00"], build_cma.RE_ELEMENT_DP, "t")
+
+
+class NiveauxCma(unittest.TestCase):
+    def test_csv_absent(self):
+        with mock.patch.object(build_cma, "CSV_CMA", Path(__file__).parent / "absent" / "cma.csv"):
+            with self.assertRaisesRegex(build_cma.ErreurExtraction, "cma.csv introuvable"):
+                build_cma.verifier([["A00.0", 2, None, None]], {}, {})
 
 
 class ArbreSansBoucle(unittest.TestCase):
