@@ -100,9 +100,10 @@ docs/                         racine servie par GitHub Pages
       groupage_mco.js          fonction groupage MCO : racines atteintes, codes GHM d'une case, codes et actes frontières, exclusions des CMA, sans DOM
       smr.js                   fonction groupage SMR : chargement des jeux, positions permises, exclusions des CMA, actes spécialisés, sans DOM
       smr_arbre.js             arbres de décision du volume 1 du Manuel des GME (orientation, tests d'entrée en GN, arbre de chaque GN), sans DOM
-      smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tarifs d'un GME)
+      smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tableaux des fiches, tarifs d'un GME)
       themes/<module>.js       une vue par thème (`module` de registry.js)
       themes/smr/<module>.js   les thèmes propres au SMR, dans le sous-dossier de leur champ
+      themes/smr/fiche_actes.js   fiches des actes CSARR, CCAM et CSAR, ouvertes par la fiche code (fiche.js)
     data/<theme>/<jeu>.json    généré par build_data.py, ne pas éditer à la main
     data/groupage/arbre.json   généré par build_arbre.py, ne pas éditer à la main
     data/groupage/entrees.json   généré par build_entrees.py, ne pas éditer à la main

@@ -1,6 +1,6 @@
 // Composants d'affichage partagés par les thèmes SMR : source de la
-// fonction groupage, liens entre thèmes, libellés des groupes et table des
-// tarifs d'un GME. Les règles de groupage, elles, sont dans smr.js (sans DOM).
+// fonction groupage, liens entre thèmes, libellés des groupes, tableaux et
+// notes des fiches, table des tarifs d'un GME. Les règles de groupage, elles, sont dans smr.js (sans DOM).
 
 import { el } from "./interface.js";
 import { euros, jours } from "./tarifs.js";
@@ -44,6 +44,54 @@ export function groupeLibelle(k, code) {
     " ",
     libelleGroupe(k, code)
   );
+}
+
+// ==== Composants des fiches ====
+
+// Partagés par la fiche code (themes/smr/fiche.js) et les fiches d'actes
+// (themes/smr/fiche_actes.js).
+
+export const lien = (href, ...enfants) => el("a", { href }, ...enfants);
+export const note = (...enfants) => el("p", { class: "fiche-note" }, ...enfants);
+// Césures des en-têtes (trait d'union conditionnel) : en capitales
+// espacées, « PONDÉRATION » ou « INTERVENANTS » sont les mots les plus
+// larges d'un tableau et le faisaient déborder d'un téléphone ; coupés au
+// besoin seulement, ils restent entiers sur grand écran.
+const CESURES = {
+  Accepté: "Accep\u00adté",
+  arrivée: "arri\u00advée",
+  entrée: "en\u00adtrée",
+  Intervenant: "Inter\u00advenant",
+  Intervenants: "Inter\u00advenants",
+  Majoration: "Majo\u00adration",
+  Modalité: "Moda\u00adlité",
+  Modulateur: "Modu\u00adlateur",
+  Pondération: "Pondé\u00adration",
+  Position: "Posi\u00adtion",
+  Propriété: "Pro\u00adpriété",
+  spécialisé: "spécia\u00adlisé",
+  transcodé: "trans\u00adcodé",
+};
+export const entete = (texte, titre) =>
+  el("th", { scope: "col", title: titre }, texte.replace(/\p{L}+/gu, (mot) => CESURES[mot] ?? mot));
+// Libellé sous son code, dans la même cellule : un tableau de quatre
+// colonnes au plus tient dans un téléphone sans défiler, et l'étiquette
+// d'écart, en dernière colonne, reste en vue.
+export const sousLibelle = (texte) =>
+  texte && texte.length ? el("span", { class: "racine-libellee" }, ...(Array.isArray(texte) ? texte : [texte])) : null;
+
+/** Tableau à la manière de la fiche MCO : en-têtes, puis un ou plusieurs
+ *  <tbody> (un par groupe de lignes), affiché en entier. */
+export function table(entetes, ...corps) {
+  return el(
+    "div",
+    { class: "codes-liste" },
+    el("table", {}, el("thead", {}, el("tr", {}, ...entetes)), ...corps)
+  );
+}
+
+export function lienGn(k, gn) {
+  return lien(lienArbre(gn), groupeLibelle(k, gn));
 }
 
 // ==== Tarifs ====
