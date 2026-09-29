@@ -19,7 +19,7 @@
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, nombre } from "../../interface.js";
 import { chargerClassification, chargerCsar, MODALITES } from "../../smr.js";
-import { lienFiche, sourceFg } from "../../smr_interface.js";
+import { lienCsar, lienFiche, sourceFg } from "../../smr_interface.js";
 
 // Au-delà, la liste des intervenants d'une condition se résume.
 const INTERVENANTS_CITES_MAX = 4;
@@ -292,7 +292,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     );
     // L'adresse suit la recherche, pour qu'elle se partage ou se signale
     // telle quelle (sans entrée d'historique).
-    const cible = requete.trim() ? `#/smr/csar/${encodeURIComponent(requete.trim())}` : "#/smr/csar";
+    const cible = lienCsar(requete.trim());
     if (zoneActes.isConnected && location.hash !== cible) history.replaceState(null, "", cible);
   }
 

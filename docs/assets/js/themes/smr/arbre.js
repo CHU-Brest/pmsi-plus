@@ -27,7 +27,7 @@ import {
   libelleGroupe,
   TYPES_READAPTATION,
 } from "../../smr.js";
-import { lienCode, lienTarifs, noteTarifsSmr, sourceFg, tableTarifsGme } from "../../smr_interface.js";
+import { lienCode, lienErreurs, lienGroupage, lienTarifs, noteTarifsSmr, sourceFg, tableTarifsGme } from "../../smr_interface.js";
 
 const ORIENTATION = "orientation";
 // CM 90 « Erreurs et recueils inclassables » : aucune liste n'y oriente,
@@ -638,7 +638,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
             el(
               "p",
               { class: "compteur" },
-              el("a", { class: "lien-texte", href: `#/smr/erreurs/${n.erreur}` }, `L'erreur ${n.erreur} dans les erreurs de la fonction groupage`)
+              el("a", { class: "lien-texte", href: lienErreurs(n.erreur) }, `L'erreur ${n.erreur} dans les erreurs de la fonction groupage`)
             ),
           ];
     }
@@ -887,7 +887,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
           const fiche = k.listesSpe?.[n.listeSpe];
           return [
             "Actes de la liste d'actes spécialisés du GN : ",
-            el("a", { class: "code", href: `#/smr/groupage/${encodeURIComponent(n.listeSpe)}`, title: "Actes de la liste" }, n.listeSpe),
+            el("a", { class: "code", href: lienGroupage(n.listeSpe), title: "Actes de la liste" }, n.listeSpe),
             fiche?.libelle ? ` (« ${fiche.libelle} »)` : "",
             ".",
           ];

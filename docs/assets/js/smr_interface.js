@@ -18,9 +18,16 @@ export function sourceFg() {
 
 // ==== Liens entre thèmes ====
 
+// Les adresses des thèmes SMR, dans l'ordre de registry.js : un slug
+// renommé là se renomme ici.
 export const lienFiche = (code) => `#/smr/fiche/${encodeURIComponent(code)}`;
+export const lienGroupage = (recherche) => (recherche ? `#/smr/groupage/${encodeURIComponent(recherche)}` : "#/smr/groupage");
 export const lienArbre = (gn) => (gn ? `#/smr/arbre/${gn}` : "#/smr/arbre");
 export const lienTarifs = (recherche) => (recherche ? `#/smr/tarifs/${encodeURIComponent(recherche)}` : "#/smr/tarifs");
+export const lienErreurs = (recherche) => (recherche ? `#/smr/erreurs/${encodeURIComponent(recherche)}` : "#/smr/erreurs");
+export const lienCma = (code) => (code ? `#/smr/cma/${encodeURIComponent(code)}` : "#/smr/cma");
+export const lienPonderations = (recherche) => (recherche ? `#/smr/ponderations/${encodeURIComponent(recherche)}` : "#/smr/ponderations");
+export const lienCsar = (recherche) => (recherche ? `#/smr/csar/${encodeURIComponent(recherche)}` : "#/smr/csar");
 
 /** Lien vers la fiche d'un code CIM-10 (graphie à point) ou d'un acte. */
 export function lienCode(code, texte = null) {

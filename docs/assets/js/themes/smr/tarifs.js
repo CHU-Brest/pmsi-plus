@@ -224,7 +224,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       // de défaire la saisie lettre à lettre.
       if (!zoneResultats.isConnected) return;
       const cible = lienTarifs(valeur.trim());
-      if (location.hash.startsWith("#/smr/tarifs") && location.hash !== cible) history.replaceState(null, "", cible);
+      if (location.hash.startsWith(lienTarifs()) && location.hash !== cible) history.replaceState(null, "", cible);
     },
   });
   champ.append(

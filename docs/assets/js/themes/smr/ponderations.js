@@ -11,7 +11,7 @@
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
 import { chargerActes, chargerActesSpe, chargerClassification, MODULATEURS_LIEU } from "../../smr.js";
-import { lienFiche } from "../../smr_interface.js";
+import { lienCsar, lienFiche, lienPonderations } from "../../smr_interface.js";
 
 const COLONNES_CHERCHABLES = ["Code", "Libellé", "Spécialisé"];
 const NOMENCLATURES = ["CSARR", "CCAM"];
@@ -168,7 +168,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         "li",
         {},
         `En CSAR, l'acte prend la pondération de son CSARR transcodé ; s'il accepte le modulateur de temps (${k.csar.temps.map(([m, , p]) => `${m} ${p}`).join(", ")}), la plus élevée des deux est retenue (3.3.1.3). Voir le `,
-        el("a", { class: "lien-texte", href: "#/smr/csar" }, "transcodage CSAR ↔ CSARR"),
+        el("a", { class: "lien-texte", href: lienCsar() }, "transcodage CSAR ↔ CSARR"),
         "."
       ),
       el(
@@ -213,7 +213,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       );
     }
     resultats(zoneResultats, trouvees, { total: lignes.length });
-    const cible = requete.trim() ? `#/smr/ponderations/${encodeURIComponent(requete.trim())}` : "#/smr/ponderations";
+    const cible = lienPonderations(requete.trim());
     if (zoneResultats.isConnected && location.hash !== cible) history.replaceState(null, "", cible);
   }
   afficher();

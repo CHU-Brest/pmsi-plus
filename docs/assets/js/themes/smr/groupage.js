@@ -13,7 +13,7 @@
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
 import { chargerActesSpe, chargerClassification, chargerDiagnostics, cle, graphie, libelleGroupe } from "../../smr.js";
-import { lienArbre, lienCode, sourceFg } from "../../smr_interface.js";
+import { lienArbre, lienCode, lienCsar, lienGroupage, sourceFg } from "../../smr_interface.js";
 
 // Au-delà, une ligne de liens serait plus longue que le tableau qu'elle
 // accompagne : la recherche est trop large pour qu'on vise un code.
@@ -304,12 +304,6 @@ function section(conteneur, lignes, { id, titre, exemple, explication = [], vale
   return h2;
 }
 
-/** L'adresse de la page pour une recherche dans la première section. */
-function adresse(requete) {
-  const texte = requete.trim();
-  return texte ? `#/smr/groupage/${encodeURIComponent(texte)}` : "#/smr/groupage";
-}
-
 // ==== Rendu ====
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
@@ -366,8 +360,8 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     // L'adresse suit la recherche sans entrée d'historique : le retour
     // arrière quitte la page au lieu de défaire la saisie lettre à lettre.
     auChangement: (requete) => {
-      const cible = adresse(requete);
-      if (location.hash.startsWith("#/smr/groupage") && location.hash !== cible) history.replaceState(null, "", cible);
+      const cible = lienGroupage(requete.trim());
+      if (location.hash.startsWith(lienGroupage()) && location.hash !== cible) history.replaceState(null, "", cible);
     },
   });
   conteneur.append(el("hr", { class: "separateur" }));
@@ -395,7 +389,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
           "par GN, par regroupement de GN ou par CM (volume 1, 3.2.3) ; « GN couverts » donne les GN que le fichier de l'ATIH " +
           "rattache à chacune. Seuls les actes de la liste du GN du séjour entrent dans son score de réadaptation spécialisée " +
           "(3.3.2.1). Un acte CSAR prend le caractère spécialisé de l'acte CSARR que lui donne le ",
-        el("a", { class: "lien-texte", href: "#/smr/csar" }, "transcodage"),
+        el("a", { class: "lien-texte", href: lienCsar() }, "transcodage"),
         " (3.2.3)."
       ),
     ],

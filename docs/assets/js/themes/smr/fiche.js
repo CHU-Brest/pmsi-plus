@@ -35,7 +35,7 @@ import {
   orienteDansCm,
   positionAutorisee,
 } from "../../smr.js";
-import { groupeLibelle, lienArbre, lienFiche, sourceFg } from "../../smr_interface.js";
+import { groupeLibelle, lienArbre, lienCma, lienCsar, lienFiche, lienGroupage, lienPonderations, sourceFg } from "../../smr_interface.js";
 
 const SUGGESTIONS_MAX = 12;
 // Au-delà, les intervenants d'une ligne de tableau se replient : une ligne
@@ -475,15 +475,15 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       "p",
       { class: "pied-page" },
       "Vues d'ensemble : ",
-      el("a", { class: "lien-texte", href: "#/smr/groupage" }, "listes de la fonction groupage"),
+      el("a", { class: "lien-texte", href: lienGroupage() }, "listes de la fonction groupage"),
       " · ",
-      el("a", { class: "lien-texte", href: "#/smr/arbre" }, "algorithme de la fonction groupage"),
+      el("a", { class: "lien-texte", href: lienArbre() }, "algorithme de la fonction groupage"),
       " · ",
-      el("a", { class: "lien-texte", href: "#/smr/cma" }, "CMA et exclusions"),
+      el("a", { class: "lien-texte", href: lienCma() }, "CMA et exclusions"),
       " · ",
-      el("a", { class: "lien-texte", href: "#/smr/ponderations" }, "pondérations des actes"),
+      el("a", { class: "lien-texte", href: lienPonderations() }, "pondérations des actes"),
       " · ",
-      el("a", { class: "lien-texte", href: "#/smr/csar" }, "transcodage CSAR ↔ CSARR"),
+      el("a", { class: "lien-texte", href: lienCsar() }, "transcodage CSAR ↔ CSARR"),
       "."
     )
   );
@@ -822,7 +822,7 @@ function blocCma(smr, diag, affiche) {
     );
   }
   blocs.push(
-    el("p", {}, el("a", { class: "lien-texte", href: `#/smr/cma/${encodeURIComponent(affiche)}` }, "Voir la CMA et sa liste d'exclusion complète"))
+    el("p", {}, el("a", { class: "lien-texte", href: lienCma(affiche) }, "Voir la CMA et sa liste d'exclusion complète"))
   );
   return blocs;
 }
@@ -934,7 +934,7 @@ function ficheActe(smr, trouve) {
             : el("p", {}, `${c} n'est pas une CMA : il n'est pas marqueur de sévérité.`),
           cma ? note("Volume 1, 5.2 ; liste de CMA_CCAM.") : null,
           cma
-            ? el("p", {}, el("a", { class: "lien-texte", href: `#/smr/cma/${encodeURIComponent(c)}` }, "Voir dans la liste des CMA"))
+            ? el("p", {}, el("a", { class: "lien-texte", href: lienCma(c) }, "Voir dans la liste des CMA"))
             : null,
         ]
       : []),
@@ -1232,7 +1232,7 @@ function ficheCsar(smr, { code: c, lignes }) {
           `Intervenants ${Object.keys(k.csar.transposition).join(" et ")} du CSAR : transposés en ${[...new Set(Object.values(k.csar.transposition))].map((iv) => `${iv} (${libelleIntervenant(k, iv).toLowerCase()})`).join(", ")} avant le transcodage. Volume 1, 3.3.1.2.`
         )
       : null,
-    el("p", {}, el("a", { class: "lien-texte", href: `#/smr/csar/${encodeURIComponent(c)}` }, "Voir dans le transcodage CSAR ↔ CSARR")),
+    el("p", {}, el("a", { class: "lien-texte", href: lienCsar(c) }, "Voir dans le transcodage CSAR ↔ CSARR")),
     el("h3", {}, "Caractère spécialisé"),
     el(
       "p",
