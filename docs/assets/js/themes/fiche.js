@@ -6,8 +6,9 @@
 // leurs tarifs, actes frontières).
 //
 // Tout est calculé dans le navigateur à partir des référentiels déjà
-// publiés : arbre.json, listes de la fonction groupage, liste des CMA et
-// leurs exclusions, tarifs des GHS.
+// publiés : arbre.json, listes de la fonction groupage, diagnostics
+// d'entrée des CMD (volume 2), liste des CMA et leurs exclusions, tarifs des
+// GHS.
 
 import { chargerJeu, chargerJson } from "../donnees.js";
 import { normaliser } from "../recherche.js";
@@ -21,9 +22,6 @@ import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "
 const SUGGESTIONS_MAX = 12;
 const RE_CCAM = /^[A-Z]{4}\d{3}/;
 const RE_RACINE = /^\d{2}[CKMZ]\d{2}$/;
-// Liste de diagnostics d'une CMD : « D-0307 » est une liste de la CMD 03. En
-// DP, un code de l'une d'elles oriente le séjour vers cette CMD.
-const RE_LISTE_CMD = /^D-(\d{2})\d{2}$/;
 
 // Type de racine, 3e caractère de son code.
 const TYPES_RACINE = { C: "chirurgicale", K: "interventionnelle", M: "médicale", Z: "indifférenciée" };
@@ -47,6 +45,7 @@ const jeux = {
   diagnostics: () => chargerJeu("groupage", "diagnostics", "listes de diagnostics de la fonction groupage"),
   actes: () => chargerJeu("groupage", "actes", "listes d'actes de la fonction groupage"),
   cma: () => chargerJeu("groupage", "cma", "liste des CMA de la fonction groupage"),
+  entrees: () => chargerJeu("groupage", "entrees", "diagnostics d'entrée des CMD (volume 2)"),
   racines: () => chargerJeu("groupage", "racines", "libellés des racines de GHM"),
 };
 
@@ -209,7 +208,11 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     if (q.length < 2) return;
     const code = graphie(q);
     const ccam = /^[a-z]{4}\d/i.test(q.replace(/\s+/g, ""));
-    const aChercher = ccam ? ["actes"] : /^[a-z]\d/i.test(q) ? ["diagnostics", "cma"] : ["diagnostics", "cma", "actes"];
+    const aChercher = ccam
+      ? ["actes"]
+      : /^[a-z]\d/i.test(q)
+        ? ["diagnostics", "cma", "entrees"]
+        : ["diagnostics", "cma", "entrees", "actes"];
     const trouves = new Map();
     const mots = normaliser(q).split(/\s+/).filter(Boolean);
     for (const nom of aChercher) {
@@ -264,22 +267,31 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 // ==== Fiche d'un diagnostic ====
 
 async function ficheDiagnostic(arbre, code) {
-  const [diagnostics, cma, exclusions, tarifs] = await Promise.all([
+  const [diagnostics, cma, entrees, exclusions, tarifs] = await Promise.all([
     jeux.diagnostics(),
     jeux.cma(),
+    jeux.entrees(),
     chargerJson("groupage", "cma_exclusions"),
     chargerTarifs().catch(() => null),
   ]);
   const lignes = diagnostics.lignes.filter((l) => l.Code === code);
-  const libelle = lignes[0]?.["Libellé code"] ?? cma.lignes.find((l) => l.Code === code)?.["Libellé"];
+  const entreesDuCode = entrees.lignes.filter((l) => l.Code === code);
+  const libelle =
+    lignes[0]?.["Libellé code"] ?? cma.lignes.find((l) => l.Code === code)?.["Libellé"] ?? entreesDuCode[0]?.["Libellé"];
   if (!libelle) {
-    return [el("p", { class: "message-info" }, `${code} ne figure ni dans les listes de la fonction groupage, ni parmi les CMA.`)];
+    return [
+      el(
+        "p",
+        { class: "message-info" },
+        `${code} ne figure ni dans les listes de la fonction groupage, ni parmi les CMA, ni parmi les diagnostics d'entrée des CMD.`
+      ),
+    ];
   }
   const listes = [...new Set(lignes.map((l) => l.Liste))].sort();
   const { parListe } = indexer(arbre);
   const etapes = listes.flatMap((l) => (parListe.get(l) ?? []).map((e) => ({ ...e, liste: l })));
   const surLeDp = (e) => e.n.genre === "test" && e.n.symbole === "DP";
-  const cmds = listes.map((l) => etapeCmd(arbre, l)).filter(Boolean);
+  const cmds = entreesDuCode.map((e) => etapeCmd(arbre, e.CMD)).filter(Boolean);
   const parcours = parcoursEnDp(listes);
   const enDp = [...cmds, ...marquerAtteintes(arbre, etapes.filter(surLeDp), cmds, parcours)];
   const autres = etapes.filter((e) => !surLeDp(e));
@@ -301,7 +313,7 @@ async function ficheDiagnostic(arbre, code) {
       : el(
           "p",
           { class: "message-info" },
-          `${code} ne figure dans aucune liste de diagnostics propre à une CMD, numérotée d'après elle (D-0307 pour la CMD 03) : la CMD où il oriente le séjour en DP n'est pas calculée ici.`
+          `${code} n'est un diagnostic d'entrée d'aucune CMD (volume 2 du Manuel des GHM) : en DP, il n'oriente le séjour vers aucune CMD.`
         ),
     enDp.length ? tableEtapes(arbre, enDp, parcours) : null,
     enDp.length
@@ -328,15 +340,13 @@ async function ficheDiagnostic(arbre, code) {
   ];
 }
 
-/** L'étape qui oriente le séjour en DP vers la CMD d'une liste : pour
- *  « D-0307 », la racine de l'arbre de la CMD 03 (« DP : CMD 03 »). Null
- *  pour une liste qui n'est pas propre à une CMD. Un code des appareils
- *  génitaux est dans deux de ces listes, CMD 12 et 13, selon le sexe. */
-function etapeCmd(arbre, liste) {
-  const m = RE_LISTE_CMD.exec(liste);
-  const cmd = m && arbre.cmd.find((c) => c.cmd === m[1]);
-  if (!cmd) return null;
-  return { id: cmd.racine, n: arbre.noeuds[cmd.racine], i: 0, liste, libelle: `CMD ${cmd.cmd} ${cmd.titre} (${liste})` };
+/** L'étape qui oriente le séjour en DP vers une CMD dont le code est un
+ *  diagnostic d'entrée (volume 2) : la racine de l'arbre de la CMD. Un code
+ *  des appareils génitaux entre dans deux CMD, 12 et 13, selon le sexe. La
+ *  ligne dit « DP » même en CMD 15, dont la racine teste l'âge. */
+function etapeCmd(arbre, cmd) {
+  const c = arbre.cmd.find((x) => x.cmd === cmd);
+  return c ? { id: c.racine, n: arbre.noeuds[c.racine], i: 0, test: `DP : CMD ${c.cmd} ${c.titre}` } : null;
 }
 
 /** Marque `nonAtteinte` les étapes sur le DP dont le séjour ne prend pas le
@@ -425,7 +435,7 @@ function tableEtapes(arbre, etapes, parcours) {
             "tr",
             {},
             el("td", { class: "code" }, lienArbre(e)),
-            el("td", {}, `${symbole} : ${e.libelle ?? b.libelle}`),
+            el("td", {}, e.test ?? `${symbole} : ${b.libelle}`),
             e.nonAtteinte
               ? el(
                   "td",
