@@ -106,15 +106,15 @@ export function natureGmt(ligne) {
   return "GMT principal";
 }
 
-/** Ce qu'il faut savoir pour lire un tarif SMR ; `lien` mène aux tarifs
+/** Ce qu'il faut savoir pour lire un tarif SMR ; `adresse` mène aux tarifs
  *  dans le thème Tarifs. */
-export function noteTarifsSmr(lien) {
+export function noteTarifsSmr(adresse) {
   return el(
     "p",
     { class: "note-tarifs" },
     "Tarifs nationaux de l'annexe I de l'arrêté tarifaire SMR (établissements mentionnés aux a, b et c de l'article L. 162-22 du code de la sécurité sociale), avant coefficients géographique et Ségur. Un GME d'hospitalisation complète relève de trois GMT — le GMT principal, un GMT2 et celui des séjours de moins de 8 jours terminés par un transfert ou un décès — ; les règles qui affectent un séjour à l'un d'eux sont celles de la notice technique de l'ATIH, pas du Manuel des GME.",
-    lien ? " " : null,
-    lien ? el("a", { class: "lien-texte", href: lien }, "Voir dans les tarifs des GME") : null
+    adresse ? " " : null,
+    adresse ? el("a", { class: "lien-texte", href: adresse }, "Voir dans les tarifs des GME") : null
   );
 }
 
@@ -123,7 +123,7 @@ const duree = (n) => el("td", { class: "nombre" }, n == null ? "–" : jours(n))
 
 /** Les GMT d'une liste de GME : un groupe de lignes par GME. */
 export function tableTarifsGme(tarifs, gmes) {
-  const entete = (texte, titre, numerique = false) =>
+  const enteteTarif = (texte, titre, numerique = false) =>
     el("th", { scope: "col", class: numerique ? "nombre" : undefined, title: titre }, texte);
   const corps = gmes.map((gme) => {
     const lignes = tarifs._parGme.get(gme) ?? [];
@@ -168,17 +168,17 @@ export function tableTarifsGme(tarifs, gmes) {
         el(
           "tr",
           {},
-          entete("GME"),
-          entete("GMT", "Groupe médico-tarifaire"),
-          entete("Nature"),
-          entete("DZF", "Début de zone forfaitaire, en jours", true),
-          entete("FZF", "Fin de zone forfaitaire, en jours", true),
-          entete("TZB", "Tarif de la zone basse", true),
-          entete("SZB", "Supplément de la zone basse", true),
-          entete("TZF1", "Tarif de la zone forfaitaire, période 1", true),
-          entete("TZF2", "Tarif de la zone forfaitaire, période 2", true),
-          entete("TZF3", "Tarif de la zone forfaitaire, période 3", true),
-          entete("SZH", "Supplément de la zone haute", true)
+          enteteTarif("GME"),
+          enteteTarif("GMT", "Groupe médico-tarifaire"),
+          enteteTarif("Nature"),
+          enteteTarif("DZF", "Début de zone forfaitaire, en jours", true),
+          enteteTarif("FZF", "Fin de zone forfaitaire, en jours", true),
+          enteteTarif("TZB", "Tarif de la zone basse", true),
+          enteteTarif("SZB", "Supplément de la zone basse", true),
+          enteteTarif("TZF1", "Tarif de la zone forfaitaire, période 1", true),
+          enteteTarif("TZF2", "Tarif de la zone forfaitaire, période 2", true),
+          enteteTarif("TZF3", "Tarif de la zone forfaitaire, période 3", true),
+          enteteTarif("SZH", "Supplément de la zone haute", true)
         )
       ),
       ...corps
