@@ -39,11 +39,26 @@ export function codesGhm(f) {
   return codes;
 }
 
-// ==== Codes frontières en DP ====
+// ==== Codes et actes frontières ====
+
+// Codes et actes frontières, calculés une fois par arbre et par jeu de
+// listes chargés : la fiche code et les vues d'ensemble lisent les mêmes
+// lignes. Ils restent ici, sans toucher aux objets que partagent les
+// thèmes ; les vues d'ensemble ajoutent `_recherche` aux lignes
+// (recherche.indexer), que la fiche ne lit pas.
+const frontieresDpParArbre = new WeakMap();
+const frontieresActesParArbre = new WeakMap();
 
 /** Codes frontières en DP : pour chaque colonne de tests sur le DP, les
  *  codes d'une même catégorie CIM-10 qui partent vers des cas différents. */
 export function frontieresDp(arbre, diagnostics) {
+  if (!frontieresDpParArbre.has(arbre)) frontieresDpParArbre.set(arbre, new WeakMap());
+  const calculees = frontieresDpParArbre.get(arbre);
+  if (!calculees.has(diagnostics)) calculees.set(diagnostics, calculerFrontieresDp(arbre, diagnostics));
+  return calculees.get(diagnostics);
+}
+
+function calculerFrontieresDp(arbre, diagnostics) {
   const codesDeListe = new Map();
   const libelleCode = new Map();
   for (const l of diagnostics) {
@@ -91,8 +106,6 @@ export function frontieresDp(arbre, diagnostics) {
   return lignes;
 }
 
-// ==== Actes frontières ====
-
 const SYMBOLES_ACTES = new Set(["A", "A2", "Atous"]);
 
 function typesDe(racines) {
@@ -102,6 +115,13 @@ function typesDe(racines) {
 /** Actes frontières : dans chaque CMD, les actes d'une même famille (4
  *  premières lettres du code CCAM) qui mènent à des racines différentes. */
 export function frontieresActes(arbre, actes) {
+  if (!frontieresActesParArbre.has(arbre)) frontieresActesParArbre.set(arbre, new WeakMap());
+  const calculees = frontieresActesParArbre.get(arbre);
+  if (!calculees.has(actes)) calculees.set(actes, calculerFrontieresActes(arbre, actes));
+  return calculees.get(actes);
+}
+
+function calculerFrontieresActes(arbre, actes) {
   const codesDeListe = new Map();
   const libelleCode = new Map();
   for (const l of actes) {

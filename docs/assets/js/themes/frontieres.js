@@ -17,10 +17,9 @@ export async function rendre(conteneur) {
     chargerJson("groupage", "arbre"),
     chargerJeu("groupage", "diagnostics", "listes de diagnostics de la fonction groupage"),
   ]);
-  if (!arbre._frontieres) {
-    arbre._frontieres = recherche.indexer(frontieresDp(arbre, diagnostics.lignes), COLONNES_CHERCHABLES);
-  }
-  const lignes = arbre._frontieres;
+  // Lignes calculées une fois (groupage_mco.js), partagées avec la fiche
+  // code ; les indexer à chaque visite ne prend qu'une quinzaine de ms.
+  const lignes = recherche.indexer(frontieresDp(arbre, diagnostics.lignes), COLONNES_CHERCHABLES);
   const categories = new Set(lignes.map((l) => `${l.CMD}/${l._categorie}`)).size;
 
   conteneur.innerHTML = "";

@@ -317,10 +317,10 @@ async function ficheDiagnostic(arbre, code, libelles) {
   const enDp = [...cmds, ...marquerAtteintes(arbre, etapes.filter(surLeDp), cmds, parcours)];
   const autres = etapes.filter((e) => !surLeDp(e));
 
-  if (!arbre._frontieresDp) arbre._frontieresDp = frontieresDp(arbre, diagnostics.lignes);
-  const frontiere = arbre._frontieresDp.filter((f) => f.Code === code);
+  const frontieres = frontieresDp(arbre, diagnostics.lignes);
+  const frontiere = frontieres.filter((f) => f.Code === code);
   const voisins = frontiere.length
-    ? arbre._frontieresDp.filter(
+    ? frontieres.filter(
         (f) => f._categorie === code.slice(0, 3) && frontiere.some((x) => x.CMD === f.CMD) && f.Code !== code
       )
     : [];
@@ -601,9 +601,9 @@ async function ficheActe(arbre, code, libelles) {
   const listes = [...new Set(lignes.map((l) => l.Liste))].sort();
   const { parListe } = indexer(arbre);
   const etapes = listes.flatMap((l) => (parListe.get(l) ?? []).map((e) => ({ ...e, liste: l })));
-  if (!arbre._frontieresActes) arbre._frontieresActes = frontieresActes(arbre, actes.lignes);
-  const moi = arbre._frontieresActes.filter((f) => codeCcam(f.Code) === code);
-  const voisins = arbre._frontieresActes.filter(
+  const frontieres = frontieresActes(arbre, actes.lignes);
+  const moi = frontieres.filter((f) => codeCcam(f.Code) === code);
+  const voisins = frontieres.filter(
     (f) => moi.some((m) => m.CMD === f.CMD && m._famille === f._famille && m.Racines !== f.Racines) && codeCcam(f.Code) !== code
   );
   return [

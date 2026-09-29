@@ -16,10 +16,9 @@ export async function rendre(conteneur) {
     chargerJson("groupage", "arbre"),
     chargerJeu("groupage", "actes", "listes d'actes de la fonction groupage"),
   ]);
-  if (!arbre._actesFrontieres) {
-    arbre._actesFrontieres = recherche.indexer(frontieresActes(arbre, actes.lignes), ["CMD", "Code", "Racines", "Liste(s)", "Libellé code"]);
-  }
-  const lignes = arbre._actesFrontieres;
+  // Lignes calculées une fois (groupage_mco.js), partagées avec la fiche
+  // code ; les indexer à chaque visite ne prend qu'une vingtaine de ms.
+  const lignes = recherche.indexer(frontieresActes(arbre, actes.lignes), ["CMD", "Code", "Racines", "Liste(s)", "Libellé code"]);
   const familles = new Set(lignes.map((l) => `${l.CMD}/${l._famille}`)).size;
 
   conteneur.innerHTML = "";

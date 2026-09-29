@@ -96,6 +96,17 @@ test("frontieresDp : deux codes d'une catégorie vers deux cas différents", () 
   assert.deepEqual(lignes.map((l) => [l.Code, l.Racines]), [["A00.0", "01C03"], ["A00.1", "01M04"]]);
 });
 
+test("frontieresDp : calculé une fois par arbre et par listes, sans rien poser sur l'arbre", () => {
+  const diagnostics = [
+    { Liste: "D-0101", Code: "A00.0", "Libellé code": "a" },
+    { Liste: "D-0102", Code: "A00.1", "Libellé code": "b" },
+  ];
+  const lignes = frontieresDp(arbre, diagnostics);
+  assert.equal(frontieresDp(arbre, diagnostics), lignes);
+  assert.deepEqual(frontieresDp(arbre, [diagnostics[0]]), []); // autres listes, autre calcul
+  assert.deepEqual(Object.keys(arbre), ["listes", "noeuds"]);
+});
+
 test("frontieresActes : une famille d'actes vers des racines de types différents", () => {
   const arbreActes = {
     noeuds: {
@@ -110,6 +121,8 @@ test("frontieresActes : une famille d'actes vers des racines de types différent
   ];
   const lignes = frontieresActes(arbreActes, actes);
   assert.deepEqual(lignes.map((l) => [l.Code, l.Racines, l._typeChange]), [["EBLA001", "05C02", true], ["EBLA003", "05K06", true]]);
+  assert.equal(frontieresActes(arbreActes, actes), lignes); // calculé une fois
+  assert.deepEqual(Object.keys(arbreActes), ["noeuds"]);
 });
 
 // ==== Recherche ====
