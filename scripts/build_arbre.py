@@ -1039,40 +1039,10 @@ def arete_vers(renvois: Renvois, de: str, b: Branche, role: str, publie: dict | 
     return Arete(de, arrivee.vers, arrivee.fleche, role, arrivee.arrivee, publie)
 
 
-def construire(doc: pymupdf.Document) -> dict:
-    cache: dict[int, str] = {}
-    vocabulaire = vocabulaire_de(doc)
-    version = next(
-        (m.group(0) for m in [re.search(r"Manuel des GHM Version \d{4}", doc[PAGE_ORIENTATION - 1].get_text())] if m),
-        None,
-    )
-
-    # -- Lecture des pages, rattachées à leur CMD --
-    pages: list[PageLue] = []
-    cmd_courante = None
-    titres: dict[str, str] = {}
-    for numero in range(PREMIERE_PAGE_CMD, doc.page_count + 1):
-        lue = lire_page(doc, numero, cache, vocabulaire)
-        if not lue.objets:
-            continue
-        if lue.cmd:
-            cmd_courante = lue.cmd
-            if lue.sous_titre:
-                titres[lue.cmd] = lue.sous_titre
-        if cmd_courante is None:
-            raise ErreurExtraction(f"page {numero} : arbre avant tout titre de CMD")
-        lue.cmd = cmd_courante
-        pages.append(lue)
-
-    objets: dict[str, Objet] = {oid: o for p in pages for oid, o in p.objets.items()}
-    cmd_de = {oid: p.cmd for p in pages for oid in p.objets}
-    sorties = {cle: b for p in pages for cle, b in p.sorties.items()}
-
-    entrees_page = entrees_de_page(objets, cmd_de, sorties)
-    entrees_cmd = entrees_de_cmd(objets, cmd_de, sorties)
-    renvois = Renvois(objets, cmd_de, sorties, entrees_page, entrees_cmd)
-
-    # -- Nœuds de l'arbre publié --
+def noeuds_publies(renvois: Renvois) -> tuple[dict[str, dict], list[Arete]]:
+    """Les nœuds de l'arbre publié, un par symbole qui n'est pas un simple
+    renvoi, et les arêtes qui les relient."""
+    objets, cmd_de, sorties, entrees_cmd = renvois.objets, renvois.cmd_de, renvois.sorties, renvois.entrees_cmd
     noeuds: dict[str, dict] = {}
     aretes: list[Arete] = []
 
@@ -1169,7 +1139,43 @@ def construire(doc: pymupdf.Document) -> dict:
             noeuds[oid] = noeud
         else:
             raise ErreurExtraction(f"{oid} : genre {o.genre} non géré")
+    return noeuds, aretes
 
+
+def construire(doc: pymupdf.Document) -> dict:
+    cache: dict[int, str] = {}
+    vocabulaire = vocabulaire_de(doc)
+    version = next(
+        (m.group(0) for m in [re.search(r"Manuel des GHM Version \d{4}", doc[PAGE_ORIENTATION - 1].get_text())] if m),
+        None,
+    )
+
+    # -- Lecture des pages, rattachées à leur CMD --
+    pages: list[PageLue] = []
+    cmd_courante = None
+    titres: dict[str, str] = {}
+    for numero in range(PREMIERE_PAGE_CMD, doc.page_count + 1):
+        lue = lire_page(doc, numero, cache, vocabulaire)
+        if not lue.objets:
+            continue
+        if lue.cmd:
+            cmd_courante = lue.cmd
+            if lue.sous_titre:
+                titres[lue.cmd] = lue.sous_titre
+        if cmd_courante is None:
+            raise ErreurExtraction(f"page {numero} : arbre avant tout titre de CMD")
+        lue.cmd = cmd_courante
+        pages.append(lue)
+
+    objets: dict[str, Objet] = {oid: o for p in pages for oid, o in p.objets.items()}
+    cmd_de = {oid: p.cmd for p in pages for oid in p.objets}
+    sorties = {cle: b for p in pages for cle, b in p.sorties.items()}
+
+    entrees_page = entrees_de_page(objets, cmd_de, sorties)
+    entrees_cmd = entrees_de_cmd(objets, cmd_de, sorties)
+    renvois = Renvois(objets, cmd_de, sorties, entrees_page, entrees_cmd)
+
+    noeuds, aretes = noeuds_publies(renvois)
     verifier_sans_boucle(noeuds)
 
     # -- Racine de chaque CMD : le seul nœud de sa première page que rien
