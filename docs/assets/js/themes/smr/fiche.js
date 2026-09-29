@@ -387,7 +387,9 @@ function trouver(smr, saisie) {
     const diag = smr.diagnostics._parCle.get(cle(brut));
     return { nature: "CIM-10", code: cle(brut), affiche: graphie(brut), connu: !!diag, diag };
   }
-  return { nature: null, code: brut, affiche: brut, connu: false };
+  // Saisie qui n'a la forme d'aucun code (« hémiplégie droite ») : montrée
+  // telle quelle, pas en capitales collées (« HÉMIPLÉGIEDROITE »).
+  return { nature: null, code: brut, affiche: String(saisie ?? "").trim(), connu: false };
 }
 
 // ==== Vue ====
