@@ -3,7 +3,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { codesGhm, couvre, couvreRacine, frontieresActes, frontieresDp, racinesAtteintes } from "../docs/assets/js/groupage_mco.js";
+import {
+  codesGhm,
+  couvre,
+  couvreRacine,
+  exclusionParDp,
+  frontieresActes,
+  frontieresDp,
+  ligneCma,
+  racinesAtteintes,
+} from "../docs/assets/js/groupage_mco.js";
 import { filtre, indexer, normaliser } from "../docs/assets/js/recherche.js";
 import { estExclue, graphie, normaliserActe } from "../docs/assets/js/smr.js";
 
@@ -33,6 +42,27 @@ test("couvreRacine : CMD, type de racine, sous-CMD, racine", () => {
   assert.equal(couvreRacine("Sous_CMD05_K", "05K06"), true);
   assert.equal(couvreRacine("Sous_CMD05_K", "06K06"), false);
   assert.equal(couvreRacine("05K06", "05K07"), false);
+});
+
+const exclusions = {
+  cma: [["A46", 3, 1, null], ["C16.1", 2, 2, 1], ["U82.100", 4, null, null]],
+  dp: { 1: ["A3-A4", "R05-R07"], 2: ["C15-C2", "C16"] },
+  racines: { 1: ["CMD06"] },
+};
+
+test("ligneCma : la ligne d'une CMA par son code, sans rien poser sur le jeu", () => {
+  assert.deepEqual(ligneCma(exclusions, "C16.1"), ["C16.1", 2, 2, 1]);
+  assert.equal(ligneCma(exclusions, "Z99"), undefined);
+  assert.deepEqual(Object.keys(exclusions), ["cma", "dp", "racines"]);
+});
+
+test("exclusionParDp : le premier élément de la liste de DP qui couvre le DP", () => {
+  assert.equal(exclusionParDp(exclusions, "A46", "A46"), "A3-A4");
+  assert.equal(exclusionParDp(exclusions, "A46", "R06.1"), "R05-R07");
+  assert.equal(exclusionParDp(exclusions, "C16.1", "C16.2"), "C15-C2"); // avant « C16 »
+  assert.equal(exclusionParDp(exclusions, "A46", "N18.5"), null);
+  assert.equal(exclusionParDp(exclusions, "U82.100", "A00"), null); // CMA sans liste de DP
+  assert.equal(exclusionParDp(exclusions, "Z99", "A00"), null); // pas une CMA
 });
 
 // ==== Arbre MCO ====

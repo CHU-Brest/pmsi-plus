@@ -1,7 +1,7 @@
 // Fonction groupage MCO — ce que plusieurs thèmes lisent de la même façon
 // dans l'arbre (arbre.json) et les listes : racines atteintes depuis un
-// nœud, codes GHM d'une case, codes et actes frontières, éléments des
-// listes d'exclusion des CMA (volume 1, annexes 4 et 5).
+// nœud, codes GHM d'une case, codes et actes frontières, ligne d'une CMA
+// et éléments de ses listes d'exclusion (volume 1, annexes 4 et 5).
 //
 // Rien ici ne touche au DOM : les fonctions reçoivent l'arbre et les jeux
 // chargés en argument. Pendant MCO de smr.js. Partagé par la fiche code,
@@ -186,4 +186,23 @@ export function couvreRacine(element, r) {
   if ((m = element.match(/^Racines_en_([CKMZ])$/))) return r[2] === m[1];
   if ((m = element.match(/^Sous_CMD(\d{2})_([CKMZ])$/))) return r.slice(0, 2) === m[1] && r[2] === m[2];
   return element === r;
+}
+
+// Index code → ligne de CMA, construit une fois par cma_exclusions.json
+// chargé : il reste ici, sans toucher à l'objet que partagent les thèmes.
+const lignesParJeu = new WeakMap();
+
+/** La ligne de la CMA `code` — [code, niveau, n° de liste de DP, n° de
+ *  liste de racines] —, undefined si le code n'est pas une CMA. */
+export function ligneCma(exclusions, code) {
+  if (!lignesParJeu.has(exclusions)) lignesParJeu.set(exclusions, new Map(exclusions.cma.map((c) => [c[0], c])));
+  return lignesParJeu.get(exclusions).get(code);
+}
+
+/** L'élément de sa liste de DP qui exclut la CMA `cma` quand `dp` est le
+ *  DP du séjour, null si ce DP ne l'exclut pas. */
+export function exclusionParDp(exclusions, cma, dp) {
+  const listeDp = ligneCma(exclusions, cma)?.[2];
+  if (listeDp == null) return null;
+  return exclusions.dp[listeDp].find((e) => couvre(e, dp)) ?? null;
 }

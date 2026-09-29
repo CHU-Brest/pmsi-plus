@@ -13,7 +13,7 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import { normaliser } from "../recherche.js";
 import { el, fraicheur, nombre } from "../interface.js";
-import { codesGhm, couvre, frontieresActes, frontieresDp, racinesAtteintes, sorties } from "../groupage_mco.js";
+import { codesGhm, exclusionParDp, frontieresActes, frontieresDp, ligneCma, racinesAtteintes, sorties } from "../groupage_mco.js";
 import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
 
 const SUGGESTIONS_MAX = 12;
@@ -392,7 +392,7 @@ function marquerAtteintes(arbre, etapes, cmds, parcours) {
 
 /** Trois pastilles pour lire la fiche d'un coup d'œil. */
 function resume(cmds, enDp, frontiere, exclusions, code) {
-  const fiche = exclusions.cma.find((c) => c[0] === code);
+  const fiche = ligneCma(exclusions, code);
   const etapes = `testé à ${enDp.length} étape${enDp.length > 1 ? "s" : ""}`;
   const dp = cmds.length
     ? `DP : CMD ${cmds.map((e) => e.n.cmd).join(" ou ")}, ${etapes}`
@@ -527,7 +527,7 @@ function blocFrontiere(code, frontiere, voisins) {
 }
 
 function blocCma(exclusions, code) {
-  const fiche = exclusions.cma.find((c) => c[0] === code);
+  const fiche = ligneCma(exclusions, code);
   if (!fiche) return el("p", { class: "message-info" }, `${code} n'est pas une CMA : en DAS, il ne modifie pas le niveau de sévérité.`);
   const [, niveau, listeDp, listeRacine] = fiche;
   const verdict = el("p", { class: "fiche-verdict", role: "status" });
@@ -541,7 +541,7 @@ function blocCma(exclusions, code) {
       verdict.innerHTML = "";
       verdict.className = "fiche-verdict";
       if (!dp) return;
-      const element = listeDp != null ? exclusions.dp[listeDp].find((e) => couvre(e, dp)) : null;
+      const element = exclusionParDp(exclusions, code, dp);
       verdict.classList.add(element ? "message-avertissement" : "message-succes");
       verdict.append(element ? `Exclue avec le DP ${dp} (élément « ${element} » de la liste ${listeDp}).` : `Retenue avec le DP ${dp}.`);
     },

@@ -10,7 +10,7 @@
 import { chargerJson, chargerJeu } from "../donnees.js";
 import { el, fraicheur } from "../interface.js";
 import { dessinerArbre } from "../arbre_vue.js";
-import { codesGhm, couvre, couvreRacine, racinesAtteintes } from "../groupage_mco.js";
+import { codesGhm, couvreRacine, exclusionParDp, ligneCma, racinesAtteintes } from "../groupage_mco.js";
 import { chargerTarifs, noteTarifs, parGhm, tableTarifs } from "../tarifs.js";
 
 const ORIENTATION = "orientation";
@@ -436,7 +436,6 @@ async function codesDeListe(code, nature, contexte) {
     console.error(erreur);
     return resultat;
   }
-  if (!exclusions.parCode) exclusions.parCode = new Map(exclusions.cma.map((c) => [c[0], c]));
   const dps = contexte?.dp ? resultat.map((r) => r.Code) : [];
   const racines = contexte?.racines ?? [];
   for (const r of resultat) r._cma = statutCma(exclusions, r.Code, dps, racines);
@@ -447,12 +446,12 @@ async function codesDeListe(code, nature, contexte) {
  *  toutes les racines atteignables, ou tous les DP possibles, l'excluent ;
  *  `partielle` si certains seulement ; `retenue` sinon. */
 function statutCma(exclusions, code, dps, racines) {
-  const fiche = exclusions.parCode.get(code);
+  const fiche = ligneCma(exclusions, code);
   if (!fiche) return null;
-  const [, niveau, listeDp, listeRacine] = fiche;
+  const [, niveau, , listeRacine] = fiche;
   const parRacine =
     listeRacine == null ? [] : racines.filter((r) => exclusions.racines[listeRacine].some((e) => couvreRacine(e, r)));
-  const parDp = listeDp == null ? [] : dps.filter((d) => exclusions.dp[listeDp].some((e) => couvre(e, d)));
+  const parDp = dps.filter((d) => exclusionParDp(exclusions, code, d));
   const toutes = (parRacine.length && parRacine.length === racines.length) || (parDp.length && parDp.length === dps.length);
   const statut = toutes ? "exclue" : parRacine.length || parDp.length ? "partielle" : "retenue";
   const details = [`CMA de niveau ${niveau}`];
