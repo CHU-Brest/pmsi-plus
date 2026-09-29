@@ -79,12 +79,19 @@ function teinte(iso, aujourdhui) {
   return "";
 }
 
-/** Un seul drapeau, portant le millésime le plus ancien des jeux passés.
- *  `jeux` : [{ libelle, millesime }] — `millesime` au format ISO `AAAA-MM-JJ`. */
-export function fraicheur(jeux) {
-  if (!jeux.length) return null;
+const MILLESIME_ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-  const dates = jeux.map((j) => j.millesime);
+/** Un seul drapeau, portant le millésime le plus ancien des jeux passés.
+ *  `jeux` : [{ libelle, millesime }] — `millesime` au format ISO `AAAA-MM-JJ`.
+ *  Un jeu sans millésime valide est ignoré. S'il n'en reste aucun, rend un
+ *  nœud texte vide plutôt que null : les appelants l'insèrent tel quel
+ *  (conteneur.append écrirait « null ») et les arbres le remplacent quand
+ *  les tarifs arrivent. */
+export function fraicheur(jeux) {
+  const valides = jeux.filter((j) => MILLESIME_ISO.test(j.millesime ?? ""));
+  if (!valides.length) return document.createTextNode("");
+
+  const dates = valides.map((j) => j.millesime);
   const plusAncien = dates.reduce((a, b) => (a < b ? a : b));
   const aujourdhui = new Date();
   aujourdhui.setHours(0, 0, 0, 0);
@@ -93,7 +100,7 @@ export function fraicheur(jeux) {
   const detailNecessaire = new Set(dates).size > 1;
   const infobulle = detailNecessaire
     ? "Le drapeau porte le millésime le plus ancien de la page.\n" +
-      jeux.map((j) => `${j.libelle} : ${jour(j.millesime)}`).join("\n")
+      valides.map((j) => `${j.libelle} : ${jour(j.millesime)}`).join("\n")
     : null;
 
   const classes = ["drapeau", teinte(plusAncien, aujourdhui)].filter(Boolean);

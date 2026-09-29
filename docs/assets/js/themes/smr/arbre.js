@@ -538,7 +538,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     .filter((j) => j.millesime);
   let drapeau = fraicheur(jeux);
   promesseTarifs.then((tarifs) => {
-    if (!tarifs || !drapeau?.isConnected) return;
+    if (!tarifs || !drapeau.isConnected) return;
     const complet = fraicheur([...jeux, { libelle: tarifs.libelle, millesime: tarifs.millesime }]);
     drapeau.replaceWith(complet);
     drapeau = complet;
