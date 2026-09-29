@@ -83,6 +83,8 @@ scripts/
   millesime.py                date du drapeau de fraîcheur, commune aux deux scripts
   requirements.txt
 
+tests/                        fonctions pures des scripts (unittest) et du site (node --test)
+
 docs/                         racine servie par GitHub Pages
   index.html                  coquille : barre latérale + zone de contenu
   assets/
@@ -95,6 +97,7 @@ docs/                         racine servie par GitHub Pages
       donnees.js               chargement JSON avec cache mémoire
       tarifs.js                tarifs des GHS : index par GHM, table compacte (thème, fiche code, algorithme)
       arbre_vue.js             dessin d'un arbre de décision, commun aux algorithmes MCO et SMR
+      groupage_mco.js          fonction groupage MCO : racines atteintes, codes GHM d'une case, codes et actes frontières, exclusions des CMA, sans DOM
       smr.js                   fonction groupage SMR : chargement des jeux, positions permises, exclusions des CMA, actes spécialisés, sans DOM
       smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tarifs d'un GME)
       themes/<module>.js       une vue par thème (`module` de registry.js)
@@ -287,6 +290,14 @@ codes ; quelques codes de `CIM_infos_SMR.xlsx` arrivent avec leur point (« U11.
 espace invisible ; pour sept couples acte CSAR / intervenant, la pondération du fichier CSAR
 diffère de celle du CSARR transcodé, que la fonction groupage retient — le thème
 « Transcodage CSAR ↔ CSARR » les signale.
+
+## Tests
+
+Les fonctions pures des scripts et du site ont leurs tests, sans autre dépendance que
+`scripts/requirements.txt` et Node 22 :
+
+    python -m unittest discover tests
+    node --test
 
 ## Déploiement
 
