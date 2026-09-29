@@ -202,8 +202,10 @@ function celluleIntervenants(k, codes, total, { autres = false } = {}) {
 /** Lignes de transcodage regroupées par transcodage identique — même
  *  modalité, même CSARR, mêmes pondérations — pour qu'un acte CSAR à 32
  *  intervenants tienne en quelques lignes. Groupes par modalité, le plus
- *  nombreux d'abord. */
-function regrouperTranscodage(lignes) {
+ *  nombreux d'abord. `parCsar` (code CSAR → toutes ses lignes) donne le
+ *  nombre d'intervenants de chaque acte CSAR, que `lignes` peut ne donner
+ *  qu'en partie (fiche d'un CSARR : les seules lignes transcodées en lui). */
+function regrouperTranscodage(lignes, parCsar) {
   const groupes = new Map();
   for (const l of lignes) {
     const clef = [l["Modalité"], l["Code CSARR"], l["Pondération CSARR"], l["Pondération CSAR"], l["Équivalent"]].join("|");
@@ -224,14 +226,10 @@ function regrouperTranscodage(lignes) {
   }
   // Nombre d'intervenants transcodés pour chaque acte et modalité : le
   // dénominateur de « tous les intervenants ».
-  const totaux = new Map();
-  for (const l of lignes) {
-    const clef = `${l["Code CSAR"]}|${l["Modalité"]}`;
-    if (!totaux.has(clef)) totaux.set(clef, new Set());
-    totaux.get(clef).add(l.Intervenant);
-  }
+  const total = (csar, modalite) =>
+    new Set(parCsar.get(csar).filter((l) => l["Modalité"] === modalite).map((l) => l.Intervenant)).size;
   return [...groupes.values()]
-    .map((g) => ({ ...g, ecart: g.ponderation !== g.fichierCsar, total: totaux.get(`${g.csar}|${g.modalite}`).size }))
+    .map((g) => ({ ...g, ecart: g.ponderation !== g.fichierCsar, total: total(g.csar, g.modalite) }))
     .sort((a, b) => (a.csar === b.csar ? 0 : a.csar < b.csar ? -1 : 1) || a.modalite - b.modalite || b.intervenants.length - a.intervenants.length);
 }
 
@@ -940,7 +938,7 @@ function ficheActe(smr, trouve) {
             : null,
         ]
       : []),
-    ...(nature === "CSARR" ? [el("h3", {}, "Actes CSAR transcodés en cet acte"), ...blocCsarVers(k, venus)] : []),
+    ...(nature === "CSARR" ? [el("h3", {}, "Actes CSAR transcodés en cet acte"), ...blocCsarVers(k, venus, smr.csar._parCode)] : []),
   ];
 }
 
@@ -1092,9 +1090,9 @@ function blocSpecialise(k, spe) {
   ];
 }
 
-function blocCsarVers(k, venus) {
+function blocCsarVers(k, venus, parCsar) {
   if (!venus.length) return [el("p", {}, "Aucun acte CSAR n'est transcodé en cet acte.")];
-  const groupes = regrouperTranscodage(venus);
+  const groupes = regrouperTranscodage(venus, parCsar);
   // La modalité n'a sa colonne que si elle varie d'une ligne à l'autre.
   const modalite = new Set(groupes.map((g) => g.modalite)).size > 1;
   return [
@@ -1141,7 +1139,7 @@ function ficheCsar(smr, { code: c, lignes }) {
   const k = smr.classification;
   const modalites = new Set(lignes.map((l) => l["Modalité"]));
   const [temps, l1, l2, l3] = k.csar.modulables[c] ?? [false, false, false, false];
-  const groupes = regrouperTranscodage(lignes);
+  const groupes = regrouperTranscodage(lignes, smr.csar._parCode);
   const ecarts = groupes.filter((g) => g.ecart);
   const equivalents = lignes.filter((l) => l["Équivalent"]).length;
   const csarrs = [...new Set(lignes.map((l) => l["Code CSARR"]))].sort();
