@@ -551,7 +551,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     // d'historique (replaceState ne lève pas `hashchange`) : comme la fiche
     // MCO, la page se partage et se recharge telle quelle.
     const cible = lienFiche(trouve.affiche);
-    if (trouve.affiche && location.hash !== cible) history.replaceState(null, "", cible);
+    if (trouve.affiche && zoneFiche.isConnected && location.hash !== cible) history.replaceState(null, "", cible);
     zoneFiche.innerHTML = "";
     zoneFiche.append(...fiche(smr, trouve).filter(Boolean));
     zoneFiche.querySelector("h2")?.focus({ preventScroll: lienProfond });

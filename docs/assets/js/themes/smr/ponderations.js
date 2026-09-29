@@ -215,7 +215,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     }
     resultats(zoneResultats, trouvees, { total: lignes.length });
     const cible = requete.trim() ? `#/smr/ponderations/${encodeURIComponent(requete.trim())}` : "#/smr/ponderations";
-    if (location.hash !== cible) history.replaceState(null, "", cible);
+    if (zoneResultats.isConnected && location.hash !== cible) history.replaceState(null, "", cible);
   }
   afficher();
 }

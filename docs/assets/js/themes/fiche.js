@@ -250,7 +250,9 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   async function ouvrir(code, { historique = true } = {}) {
     zoneSuggestions.innerHTML = "";
     saisie.value = code;
-    if (historique && location.hash !== `#/mco/fiche/${code}`) history.replaceState(null, "", `#/mco/fiche/${code}`);
+    if (historique && zoneFiche.isConnected && location.hash !== `#/mco/fiche/${code}`) {
+      history.replaceState(null, "", `#/mco/fiche/${code}`);
+    }
     zoneFiche.innerHTML = "";
     zoneFiche.append(el("p", { class: "compteur", role: "status" }, "Chargement…"));
     const contenu = RE_CCAM.test(code) ? await ficheActe(arbre, code) : await ficheDiagnostic(arbre, code);

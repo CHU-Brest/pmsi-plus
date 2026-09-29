@@ -215,7 +215,7 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
     // L'adresse suit la catégorie affichée, sans ajouter d'entrée
     // d'historique ni déclencher le routeur (replaceState ne lève pas
     // `hashchange`).
-    if (historique) {
+    if (historique && zoneArbre.isConnected) {
       const cible = `#/${P.champ}/arbre/${cmd}${noeud ? `/${noeud}` : ""}${noeud && cas != null ? `/${cas}` : ""}`;
       if (location.hash !== cible) history.replaceState(null, "", cible);
     }

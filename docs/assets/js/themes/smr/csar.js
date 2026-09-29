@@ -294,7 +294,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     // L'adresse suit la recherche, pour qu'elle se partage ou se signale
     // telle quelle (sans entrée d'historique).
     const cible = requete.trim() ? `#/smr/csar/${encodeURIComponent(requete.trim())}` : "#/smr/csar";
-    if (location.hash !== cible) history.replaceState(null, "", cible);
+    if (zoneActes.isConnected && location.hash !== cible) history.replaceState(null, "", cible);
   }
 
   afficher(demande);

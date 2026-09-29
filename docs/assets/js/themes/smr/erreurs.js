@@ -111,7 +111,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     const garde = recherche.filtre(requete);
     resultats(zoneResultats, lignes.filter((l) => garde(l) && (!bloquantesSeulement || l._bloquant)), { total: lignes.length });
     const cible = requete.trim() ? `#/smr/erreurs/${encodeURIComponent(requete.trim())}` : "#/smr/erreurs";
-    if (location.hash !== cible) history.replaceState(null, "", cible);
+    if (zoneResultats.isConnected && location.hash !== cible) history.replaceState(null, "", cible);
   }
   afficher();
 }
