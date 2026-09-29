@@ -246,6 +246,34 @@ export function estExclue(smr, cma, orientant) {
   return smr.exclusions.listes[index].some(([a, b]) => c >= a && c <= b);
 }
 
+// Nombre de codes de chaque liste d'exclusion, calculé une fois par jeu
+// d'exclusions et de diagnostics chargés, sans toucher aux objets que
+// partagent les thèmes.
+const taillesParJeu = new WeakMap();
+
+/** Nombre de codes de la liste d'exclusion `index` : les plages ont pour
+ *  bornes des clefs de CIM_infos_SMR, dans l'ordre trié (build_smr.py), on
+ *  compte les clefs comprises entre elles. Une plage dont une borne n'est
+ *  pas dans CIM_infos_SMR ne compte pas. */
+export function tailleListeExclusion(smr, index) {
+  const { diagnostics, exclusions } = smr;
+  if (!taillesParJeu.has(exclusions)) taillesParJeu.set(exclusions, new WeakMap());
+  const parDiagnostics = taillesParJeu.get(exclusions);
+  if (!parDiagnostics.has(diagnostics)) {
+    // Tri par unités de code, comme le `sorted` de Python : les clefs ne
+    // portent que des capitales, des chiffres et « + ».
+    const cles = [...diagnostics._parCle.keys()].sort();
+    const rang = new Map(cles.map((c, i) => [c, i]));
+    const taille = (plages) => {
+      let n = 0;
+      for (const [a, b] of plages) if (rang.has(a) && rang.has(b)) n += rang.get(b) - rang.get(a) + 1;
+      return n;
+    };
+    parDiagnostics.set(diagnostics, exclusions.listes.map(taille));
+  }
+  return parDiagnostics.get(diagnostics)[index];
+}
+
 /** Les GN sans niveau de sévérité 2 : leurs GME d'HC finissent tous par 1
  *  (5.2.3). En 2026, le seul GN 2303, soins palliatifs, comme le contrôle
  *  verifier_gme de build_smr.py. */

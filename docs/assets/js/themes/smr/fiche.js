@@ -35,6 +35,7 @@ import {
   libelleGroupe,
   orienteDansCm,
   positionAutorisee,
+  tailleListeExclusion,
 } from "../../smr.js";
 import { groupeLibelle, lienArbre, lienCma, lienCsar, lienFiche, lienGroupage, lienPonderations, sourceFg } from "../../smr_interface.js";
 
@@ -305,31 +306,6 @@ function testsParListe(k) {
     k._ficheTestsParListe = index;
   }
   return k._ficheTestsParListe;
-}
-
-/** Nombre de codes d'une liste d'exclusion : les plages sont des bornes de
- *  clefs dans l'ordre de CIM_infos_SMR trié (build_smr.py), on compte les
- *  clefs comprises entre elles. Rang et tailles gardés en cache. */
-function tailleListeExclusion(smr, index) {
-  const D = smr.diagnostics;
-  if (!D._ficheRang) {
-    // Tri par unités de code, comme le `sorted` de Python : les clefs ne
-    // portent que des capitales, des chiffres et « + ».
-    const cles = [...D._parCle.keys()].sort();
-    D._ficheRang = new Map(cles.map((c, i) => [c, i]));
-  }
-  const X = smr.exclusions;
-  if (!X._ficheTailles) X._ficheTailles = new Map();
-  if (!X._ficheTailles.has(index)) {
-    let n = 0;
-    for (const [a, b] of X.listes[index]) {
-      const ra = D._ficheRang.get(a);
-      const rb = D._ficheRang.get(b);
-      if (ra != null && rb != null) n += rb - ra + 1;
-    }
-    X._ficheTailles.set(index, n);
-  }
-  return X._ficheTailles.get(index);
 }
 
 /** Transcodage CSAR à rebours : code CSARR → lignes de csar.json. */

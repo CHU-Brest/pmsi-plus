@@ -21,27 +21,13 @@ import {
   libelleGroupe,
   normaliserActe,
   RE_CIM,
+  tailleListeExclusion,
 } from "../../smr.js";
 import { lienFiche, sourceFg } from "../../smr_interface.js";
-
-/** Nombre de codes de chaque liste d'exclusion : les plages ont pour bornes
- *  des codes de CIM_infos_SMR, dont le rang dans l'ordre trié donne la
- *  taille. Calculé une fois, gardé sur le jeu d'exclusions. */
-function taillesListes(exclusions, diagnostics) {
-  if (!exclusions._tailles) {
-    const cles = [...diagnostics._parCle.keys()].sort();
-    const rang = new Map(cles.map((c, i) => [c, i]));
-    exclusions._tailles = exclusions.listes.map((plages) =>
-      plages.reduce((somme, [a, b]) => somme + rang.get(b) - rang.get(a) + 1, 0)
-    );
-  }
-  return exclusions._tailles;
-}
 
 /** Lignes du tableau des CMA CIM-10, une fois par jeu. */
 function lignesCma(diagnostics, exclusions) {
   if (!diagnostics._cmaTableau) {
-    const tailles = taillesListes(exclusions, diagnostics);
     diagnostics._cmaTableau = diagnostics.lignes
       .filter((l) => l.CMA)
       .map((l) => {
@@ -49,7 +35,7 @@ function lignesCma(diagnostics, exclusions) {
         return {
           Code: l.Code,
           "Libellé": l["Libellé"],
-          "Codes qui l'excluent": index == null ? 0 : tailles[index],
+          "Codes qui l'excluent": index == null ? 0 : tailleListeExclusion({ diagnostics, exclusions }, index),
         };
       });
     recherche.indexer(diagnostics._cmaTableau, ["Code", "Libellé"]);
@@ -136,7 +122,7 @@ function verificateur(k, diagnostics, exclusions, candidatInitial) {
     }
     if (inconnus.length) lignes.push(` Codes inconnus, non vérifiés : ${inconnus.map(graphie).join(", ")}.`);
     const index = exclusions.cma[graphie(c)];
-    const taille = index == null ? 0 : taillesListes(exclusions, diagnostics)[index];
+    const taille = index == null ? 0 : tailleListeExclusion({ diagnostics, exclusions }, index);
     zone.append(
       el("p", { class: excluant.length ? "message-avertissement" : orientants.length && !inconnus.length ? "message-succes" : "message-info" }, ...lignes),
       el(

@@ -15,7 +15,7 @@ import {
   racinesDepuis,
 } from "../docs/assets/js/groupage_mco.js";
 import { filtre, indexer, normaliser } from "../docs/assets/js/recherche.js";
-import { estExclue, gnSansSeverite2, graphie, normaliserActe } from "../docs/assets/js/smr.js";
+import { estExclue, gnSansSeverite2, graphie, normaliserActe, tailleListeExclusion } from "../docs/assets/js/smr.js";
 
 // ==== Exclusions des CMA MCO (volume 1, annexe 5) ====
 
@@ -162,6 +162,16 @@ test("estExclue : plages de clefs, codes de CIM_infos_SMR seulement", () => {
   assert.equal(estExclue(smr, "A00.0", "A01.0"), false);
   assert.equal(estExclue(smr, "A00.0", "A00.5"), false); // absent de CIM_infos_SMR
   assert.equal(estExclue(smr, "B00.0", "A00.1"), false); // CMA sans liste
+});
+
+test("tailleListeExclusion : clefs de CIM_infos_SMR entre les bornes, plage à borne inconnue ignorée", () => {
+  const smr = {
+    exclusions: { cma: {}, listes: [[["A000", "A009"], ["B01", "B01"]], [["A000", "A005"], ["B01", "B01"]]] },
+    diagnostics: { _parCle: new Map([["B01", {}], ["A009", {}], ["A001", {}], ["A000", {}]]) },
+  };
+  assert.equal(tailleListeExclusion(smr, 0), 4); // A000, A001, A009 ; B01
+  assert.equal(tailleListeExclusion(smr, 1), 1); // A005 inconnue : seule B01 compte
+  assert.deepEqual(Object.keys(smr.exclusions), ["cma", "listes"]);
 });
 
 test("gnSansSeverite2 : GME d'HC en niveau 1 seulement", () => {
