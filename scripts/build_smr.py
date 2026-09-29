@@ -754,15 +754,6 @@ def lire_csar(ponderations, intervenants):
     for code, m in modalites.items():
         if "2" in m and m != {"2"}:
             raise ErreurDonnees(f"CSAR_infos.xlsx : {code} mêle la modalité 2 et les modalités 0 ou 1")
-    intervenants_csar = feuille("CSAR_infos.xlsx", "transcodage_intervenants", 1, ["Intervenants CSAR", "Intervenants CSARR transcodés"])
-    transposition = {}
-    for n, (csar, csarr) in enumerate(intervenants_csar, start=2):
-        a, b = texte(csar)[:2], texte(csarr)[:2]
-        if not (a.isdigit() and b.isdigit()):
-            raise ErreurDonnees(f"CSAR_infos.xlsx, transcodage_intervenants, ligne {n} : intervenant illisible")
-        if a != b:
-            transposition[a] = b
-            intervenants.setdefault(a, texte(csar)[3:].capitalize())
     modulateurs = feuille(
         "CSAR_infos.xlsx", "modulateur_modalite_extension", 1,
         ["Type", "Variable", "Modalite", "Niveau_ou_module_de_technicite", "Libelle", "Ponderation",
@@ -815,7 +806,22 @@ def lire_csar(ponderations, intervenants):
         if transcode is None:
             raise ErreurDonnees(f"ACTES_ponderations.xlsx : pas de pondération de {csarr} pour l'intervenant {iv}")
         t += [fichier, transcode]
-    return transcodage, transposition, temps, lieu, modulables
+    return transcodage, temps, lieu, modulables
+
+
+def lire_transposition():
+    """Intervenants CSAR transposés en un autre intervenant CSARR (code CSAR
+    → code CSARR), et le nom de chacun des intervenants CSAR transposés."""
+    lignes = feuille("CSAR_infos.xlsx", "transcodage_intervenants", 1, ["Intervenants CSAR", "Intervenants CSARR transcodés"])
+    transposition, noms = {}, {}
+    for n, (csar, csarr) in enumerate(lignes, start=2):
+        a, b = texte(csar)[:2], texte(csarr)[:2]
+        if not (a.isdigit() and b.isdigit()):
+            raise ErreurDonnees(f"CSAR_infos.xlsx, transcodage_intervenants, ligne {n} : intervenant illisible")
+        if a != b:
+            transposition[a] = b
+            noms.setdefault(a, texte(csar)[3:].capitalize())
+    return transposition, noms
 
 
 # ==== Erreurs ====
@@ -1073,7 +1079,11 @@ def main() -> None:
         actes_spe, listes_spe, gn_liste = lire_actes_spe(groupes, {a[0] for a in ponderations})
         cma_ccam = lire_cma_ccam()
         exclusions_cma, listes_exclusion = lire_exclusions(diagnostics)
-        transcodage, transposition, temps, lieu_csar, modulables = lire_csar(ponderations, intervenants)
+        transcodage, temps, lieu_csar, modulables = lire_csar(ponderations, intervenants)
+        transposition, noms_csar = lire_transposition()
+        # Le référentiel nomme aussi les intervenants CSAR transposés que
+        # ACTES_ponderations.xlsx ne connaît pas.
+        intervenants |= {code: nom for code, nom in noms_csar.items() if code not in intervenants}
         erreurs, actes_erreurs = lire_erreurs()
         campagne, tarifs = lire_tarifs(groupes)
         pages, ecarts_annexe = lire_pages_manuel(groupes, tests, gl)
