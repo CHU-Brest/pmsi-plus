@@ -67,7 +67,9 @@ JEUX: tuple[Jeu, ...] = (
 # codes CIM-10 sans point (« C169+0 ») et en-tête abrégé (« diag ; niv ;
 # libellé ») : relue sous les noms et la graphie des autres jeux, pour que le
 # site la croise code pour code avec les listes de la fonction groupage.
-COLONNES_CSV = {"cma.csv": ("Code", "Niveau", "Libellé")}
+# L'en-tête lu doit être celui du fichier, dont le « é » de « libellé »
+# arrive en caractère de substitution (0x1A).
+COLONNES_CSV = {"cma.csv": {"diag": "Code", "niv": "Niveau", "libell\x1a": "Libellé"}}
 
 
 def code_cim(code: str) -> str:
@@ -79,13 +81,23 @@ def code_cim(code: str) -> str:
 def lire_csv(chemin: Path) -> list[dict]:
     colonnes = COLONNES_CSV[chemin.name]
     texte = chemin.read_bytes().decode("cp1252")
-    lignes = list(csv.reader(texte.splitlines(), delimiter=";"))[1:]
+    lignes = list(csv.reader(texte.splitlines(), delimiter=";"))
+    entete = [v.strip() for v in lignes[0]] if lignes else []
+    if entete != list(colonnes):
+        raise ErreurDonnees(f"{chemin.name} : en-tête inattendu {entete}, attendu {list(colonnes)}")
+    noms = list(colonnes.values())
     resultat = []
-    for ligne in lignes:
+    for n, ligne in enumerate(lignes[1:], start=2):
         if not any(v.strip() for v in ligne):
             continue
+        if len(ligne) < 3:
+            raise ErreurDonnees(f"{chemin.name}, ligne {n} : moins de 3 champs")
         code, niveau, libelle = (v.strip() for v in ligne[:3])
-        resultat.append({colonnes[0]: code_cim(code), colonnes[1]: int(niveau), colonnes[2]: libelle})
+        try:
+            niveau = int(niveau)
+        except ValueError:
+            raise ErreurDonnees(f"{chemin.name}, ligne {n} : niveau illisible ({niveau!r})") from None
+        resultat.append({noms[0]: code_cim(code), noms[1]: niveau, noms[2]: libelle})
     return resultat
 
 # Colonnes techniques dont un null xlsx doit se lire comme une chaîne vide et
