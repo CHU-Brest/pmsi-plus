@@ -29,6 +29,17 @@ export function racinesAtteintes(arbre, depart, memo, suivre = sorties) {
   return resultat;
 }
 
+// Racines atteintes par toutes les sorties, mémorisées une fois par arbre
+// chargé, sans toucher à l'objet que partagent les thèmes : l'algorithme,
+// la fiche code et les frontières font le même parcours.
+const memosParArbre = new WeakMap();
+
+/** racinesAtteintes() par toutes les sorties, mémorisées par arbre. */
+export function racinesDepuis(arbre, depart) {
+  if (!memosParArbre.has(arbre)) memosParArbre.set(arbre, new Map());
+  return racinesAtteintes(arbre, depart, memosParArbre.get(arbre));
+}
+
 /** Codes GHM couverts par une case : « 1 » en bas vaut les niveaux 1 à 4,
  *  une lettre vaut elle-même ; la case du haut ajoute J ou T. */
 export function codesGhm(f) {
@@ -66,7 +77,6 @@ function calculerFrontieresDp(arbre, diagnostics) {
     codesDeListe.get(l.Liste).add(l.Code);
     libelleCode.set(l.Code, l["Libellé code"]);
   }
-  const memo = new Map();
   const lignes = [];
   for (const [id, n] of Object.entries(arbre.noeuds)) {
     if (n.genre !== "test" || n.symbole !== "DP" || n.branches.length < 2) continue;
@@ -88,7 +98,7 @@ function calculerFrontieresDp(arbre, diagnostics) {
     for (const [cat, codes] of parCategorie) {
       if (new Set(codes.map((c) => c.i)).size < 2) continue;
       for (const c of codes.sort((a, b) => a.code.localeCompare(b.code))) {
-        const racines = [...racinesAtteintes(arbre, n.branches[c.i].vers, memo)].sort();
+        const racines = [...racinesDepuis(arbre, n.branches[c.i].vers)].sort();
         lignes.push({
           CMD: n.cmd,
           Code: c.code,
@@ -129,7 +139,6 @@ function calculerFrontieresActes(arbre, actes) {
     codesDeListe.get(l.Liste).add(l.Code);
     libelleCode.set(l.Code, l["Libellé code"]);
   }
-  const memo = new Map();
   // CMD → code → { listes, racines } sur tous les tests d'actes qui le citent.
   const parCmd = new Map();
   for (const n of Object.values(arbre.noeuds)) {
@@ -137,7 +146,7 @@ function calculerFrontieresActes(arbre, actes) {
     if (!parCmd.has(n.cmd)) parCmd.set(n.cmd, new Map());
     const codes = parCmd.get(n.cmd);
     for (const b of n.branches) {
-      const racines = racinesAtteintes(arbre, b.vers, memo);
+      const racines = racinesDepuis(arbre, b.vers);
       for (const liste of b.listes) {
         for (const code of codesDeListe.get(liste) ?? []) {
           if (!codes.has(code)) codes.set(code, { listes: new Set(), racines: new Set() });

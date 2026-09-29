@@ -10,7 +10,7 @@
 import { chargerJson, chargerJeu } from "../donnees.js";
 import { el, fraicheur } from "../interface.js";
 import { dessinerArbre } from "../arbre_vue.js";
-import { codesGhm, couvreRacine, exclusionParDp, ligneCma, racinesAtteintes } from "../groupage_mco.js";
+import { codesGhm, couvreRacine, exclusionParDp, ligneCma, racinesDepuis } from "../groupage_mco.js";
 import { chargerTarifs, noteTarifs, parGhm, tableTarifs } from "../tarifs.js";
 
 const ORIENTATION = "orientation";
@@ -308,8 +308,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
    *  exclusions de CMA : les racines que sa branche peut atteindre, et, si
    *  c'est un test sur le DP, les DP possibles (les codes de la liste). */
   function contexteDeListe(n, b) {
-    if (!arbre._memoRacines) arbre._memoRacines = new Map();
-    const racines = [...racinesAtteintes(arbre, b.vers, arbre._memoRacines)].filter((r) => /^\d{2}[CKMZ]\d{2}$/.test(r));
+    const racines = [...racinesDepuis(arbre, b.vers)].filter((r) => /^\d{2}[CKMZ]\d{2}$/.test(r));
     return { racines, dp: n.genre === "test" && n.symbole === "DP" };
   }
 

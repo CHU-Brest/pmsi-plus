@@ -13,7 +13,7 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import { normaliser } from "../recherche.js";
 import { el, fraicheur, nombre } from "../interface.js";
-import { codesGhm, exclusionParDp, frontieresActes, frontieresDp, ligneCma, racinesAtteintes, sorties } from "../groupage_mco.js";
+import { codesGhm, exclusionParDp, frontieresActes, frontieresDp, ligneCma, racinesAtteintes, racinesDepuis, sorties } from "../groupage_mco.js";
 import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
 
 const SUGGESTIONS_MAX = 12;
@@ -92,9 +92,7 @@ function indexer(arbre) {
       }
     });
   }
-  // Parcours par toutes les sorties de chaque nœud, commun aux fiches ;
-  // celui d'un DP est propre à la fiche de son code (parcoursEnDp).
-  arbre._fiche = { parListe, parcours: { suivre: sorties, memo: new Map() } };
+  arbre._fiche = { parListe };
   return arbre._fiche;
 }
 
@@ -122,8 +120,11 @@ function parcoursEnDp(listes) {
   return { suivre, memo: new Map() };
 }
 
-function racinesDe(arbre, vers, parcours = indexer(arbre).parcours) {
-  return [...racinesAtteintes(arbre, vers, parcours.memo, parcours.suivre)].filter((r) => RE_RACINE.test(r)).sort();
+/** Les racines de GHM que le séjour peut atteindre depuis `vers` : par
+ *  toutes les sorties, ou selon le parcours d'un DP (parcoursEnDp). */
+function racinesDe(arbre, vers, parcours) {
+  const atteintes = parcours ? racinesAtteintes(arbre, vers, parcours.memo, parcours.suivre) : racinesDepuis(arbre, vers);
+  return [...atteintes].filter((r) => RE_RACINE.test(r)).sort();
 }
 
 /** Les racines que peuvent atteindre les étapes, sans doublon. */

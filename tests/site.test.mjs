@@ -12,6 +12,7 @@ import {
   frontieresDp,
   ligneCma,
   racinesAtteintes,
+  racinesDepuis,
 } from "../docs/assets/js/groupage_mco.js";
 import { filtre, indexer, normaliser } from "../docs/assets/js/recherche.js";
 import { estExclue, gnSansSeverite2, graphie, normaliserActe } from "../docs/assets/js/smr.js";
@@ -84,6 +85,14 @@ const arbre = {
 
 test("racinesAtteintes : GHM et renvois de toutes les sorties", () => {
   assert.deepEqual([...racinesAtteintes(arbre, "dp", new Map())].sort(), ["01C03", "01M04", "orientation CMD 02"]);
+});
+
+test("racinesDepuis : racinesAtteintes mémorisées par arbre, sans rien poser sur l'arbre", () => {
+  const racines = racinesDepuis(arbre, "dp");
+  assert.deepEqual([...racines].sort(), ["01C03", "01M04", "orientation CMD 02"]);
+  assert.equal(racinesDepuis(arbre, "dp"), racines);
+  assert.deepEqual([...racinesDepuis(arbre, "g2")], ["01M04"]);
+  assert.deepEqual(Object.keys(arbre), ["listes", "noeuds"]);
 });
 
 test("frontieresDp : deux codes d'une catégorie vers deux cas différents", () => {
