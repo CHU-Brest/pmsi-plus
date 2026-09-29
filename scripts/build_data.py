@@ -207,9 +207,7 @@ def verifier_tarifs(lignes: list[dict]) -> None:
     """Chaque ligne se lit sans rien deviner : un couple GHS-GHM unique, des
     bornes et montants lisibles et cohérents entre eux, un seul tarif par
     GHS (le même, quel que soit le GHM qu'il couvre), un seul libellé par
-    GHM. Et l'arrêté couvre la classification publiée : aucune racine
-    inconnue de racines.xlsx, aucune racine sans tarif hors de
-    RACINES_SANS_TARIF."""
+    GHM."""
     if not lignes:
         raise ErreurDonnees("tarifs.xlsx : aucune ligne de tarif")
     couples: set[tuple[int, str]] = set()
@@ -254,10 +252,15 @@ def verifier_tarifs(lignes: list[dict]) -> None:
         attendu = libelles.setdefault(ghm, libelle)
         if attendu != libelle:
             raise ErreurDonnees(f"{ou} : libellé {libelle!r} différent de {attendu!r}")
+
+
+def verifier_couverture_racines(lignes: list[dict], racines: set[str]) -> None:
+    """L'arrêté couvre la classification publiée (`racines`, celles de
+    racines.xlsx) : aucune racine inconnue, aucune racine sans tarif hors de
+    RACINES_SANS_TARIF."""
     # Un arrêté d'un autre millésime que la classification publiée : ses
     # racines nouvelles n'auraient ni libellé ni place dans l'arbre.
-    racines = {l["ListeRacineGHM"] for l in lire(DOSSIER_DONNEES / "groupage" / "racines.xlsx")}
-    tarifees = {ghm[:5] for ghm in libelles}
+    tarifees = {ligne["GHM"][:5] for ligne in lignes}
     inconnues = sorted(tarifees - racines)
     if inconnues:
         raise ErreurDonnees(f"tarifs.xlsx : {len(inconnues)} racine(s) absente(s) de racines.xlsx {inconnues[:10]}")
@@ -294,6 +297,9 @@ def convertir(jeu: Jeu) -> None:
     lignes = lire_csv(source) if source.suffix == ".csv" else lire(source, jeu.feuille)
     if jeu.fichier in VERIFICATIONS:
         VERIFICATIONS[jeu.fichier](lignes)
+    if jeu.fichier == "tarifs.xlsx":  # contrôle croisé avec un autre jeu
+        racines ={l["ListeRacineGHM"] for l in lire(DOSSIER_DONNEES / "groupage" / "racines.xlsx")}
+        verifier_couverture_racines(lignes, racines)
 
     dossier_sortie = DOSSIER_SORTIE / jeu.theme
     dossier_sortie.mkdir(parents=True, exist_ok=True)

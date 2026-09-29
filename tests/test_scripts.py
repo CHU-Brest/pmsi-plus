@@ -67,6 +67,22 @@ class VerifierTarifs(unittest.TestCase):
     def test_meme_ghs_deux_tarifs(self):
         self.assertIn("différents", self.verifier(ligne_tarif(), ligne_tarif(GHM="01C032", Tarif=1.0)))
 
+    def test_ligne_valide(self):
+        build_data.verifier_tarifs([ligne_tarif()])
+
+
+class CouvertureRacines(unittest.TestCase):
+    def test_racine_inconnue(self):
+        with self.assertRaisesRegex(build_data.ErreurDonnees, r"absente\(s\) de racines.xlsx \['01C03'\]"):
+            build_data.verifier_couverture_racines([ligne_tarif()], {"01C04"} | build_data.RACINES_SANS_TARIF)
+
+    def test_racine_sans_tarif(self):
+        with self.assertRaisesRegex(build_data.ErreurDonnees, r"sans aucun GHS \['01C04'\]"):
+            build_data.verifier_couverture_racines([ligne_tarif()], {"01C03", "01C04"})
+
+    def test_racines_sans_tarif_connues(self):
+        build_data.verifier_couverture_racines([ligne_tarif()], {"01C03"} | build_data.RACINES_SANS_TARIF)
+
 
 class RegleCombinee(unittest.TestCase):
     def test_tranches_continues(self):
