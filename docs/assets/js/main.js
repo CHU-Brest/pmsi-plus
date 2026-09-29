@@ -13,7 +13,8 @@
 import { CHAMPS, champParId, themeParDefaut, themeParSlug, themesDuChamp } from "./registry.js";
 import { el, squelette } from "./interface.js";
 
-const contenu = document.getElementById("contenu");
+// Remplacée à chaque rendu (cf. `nouvelleZone`).
+let contenu = document.getElementById("contenu");
 const nav = document.getElementById("nav-themes");
 const selecteurChamp = document.getElementById("champs-pmsi");
 const titreBarreHaute = document.querySelector(".barre-haute-titre");
@@ -192,10 +193,17 @@ function marquerChamp(champ) {
 
 // ==== Routage ====
 
-let dernierRendu = 0;
+/** Une zone de contenu neuve, à la place de l'ancienne. Un thème encore en
+ *  chargement quand on en ouvre un autre finit ainsi dans une zone retirée
+ *  de la page, au lieu d'écraser celui qu'on vient d'ouvrir. */
+function nouvelleZone() {
+  const zone = contenu.cloneNode(false);
+  contenu.replaceWith(zone);
+  contenu = zone;
+  return zone;
+}
 
 async function rendreTheme(theme, champ, premierRendu, chemin = []) {
-  const rendu = ++dernierRendu;
   const titreChamp = champParId(champ).titre;
   retenirChamp(champ);
   construireNav(champ);
@@ -210,19 +218,19 @@ async function rendreTheme(theme, champ, premierRendu, chemin = []) {
         ? `${theme.titre} · ${titreChamp} — PMSI+`
         : `${theme.titre} — PMSI+`;
 
-  contenu.innerHTML = "";
-  contenu.append(squelette());
+  const zone = nouvelleZone();
+  zone.append(squelette());
   let positionne = false;
   try {
     const module = await import(`./themes/${theme.module}.js`);
-    positionne = (await module.rendre(contenu, { chemin, champ })) === true;
+    positionne = (await module.rendre(zone, { chemin, champ })) === true;
     // Un thème propre à un champ le rappelle au-dessus de son titre : la
     // page ouverte depuis un lien, ou imprimée, dit de quel champ elle parle.
-    if (theme.champ && rendu === dernierRendu) contenu.prepend(el("p", { class: "champ-pmsi" }, titreChamp));
+    if (theme.champ) zone.prepend(el("p", { class: "champ-pmsi" }, titreChamp));
   } catch (erreur) {
     console.error(erreur);
-    contenu.innerHTML = "";
-    contenu.append(
+    zone.innerHTML = "";
+    zone.append(
       el(
         "div",
         { class: "message-erreur" },
@@ -231,13 +239,15 @@ async function rendreTheme(theme, champ, premierRendu, chemin = []) {
       )
     );
   }
+  // Un autre thème a été ouvert entre-temps : il a la main sur la page.
+  if (!zone.isConnected) return;
 
   // Naviguer d'un thème à l'autre ramène en haut et déplace le focus sur le
   // contenu : sans ça, le clavier reste dans la barre latérale et l'écran
   // garde le défilement de la page précédente.
   if (!premierRendu && !positionne) {
     window.scrollTo({ top: 0, behavior: "instant" });
-    contenu.focus({ preventScroll: true });
+    zone.focus({ preventScroll: true });
   }
 }
 
