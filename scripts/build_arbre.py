@@ -1178,8 +1178,25 @@ def construire(doc: pymupdf.Document) -> dict:
     noeuds, aretes = noeuds_publies(renvois)
     verifier_sans_boucle(noeuds)
 
-    # -- Racine de chaque CMD : le seul nœud de sa première page que rien
-    # n'atteint. --
+    cmds = decrire_cmd(pages, titres, noeuds, aretes)
+    marquer_rejoints(noeuds, aretes, [c["racine"] for c in cmds])
+
+    return {
+        "millesime": millesime(SOURCE),
+        "version": version,
+        "pageOrientation": PAGE_ORIENTATION,
+        "orientation": lire_orientation(doc),
+        "cmd": cmds,
+        "listes": decrire_listes(noeuds),
+        "noeuds": noeuds,
+    }
+
+
+def decrire_cmd(
+    pages: list[PageLue], titres: dict[str, str], noeuds: dict[str, dict], aretes: list[Arete]
+) -> list[dict]:
+    """Chaque CMD, avec son titre, ses pages et sa racine : le seul nœud de
+    sa première page que rien n'atteint."""
     atteints = {a.vers for a in aretes}
     cmds = []
     for cmd in dict.fromkeys(p.cmd for p in pages):
@@ -1197,15 +1214,19 @@ def construire(doc: pymupdf.Document) -> dict:
         if orphelins:
             raise ErreurExtraction(f"CMD {cmd} : nœud(s) que rien n'atteint {orphelins}")
         cmds.append({"cmd": cmd, "titre": titres.get(cmd), "pages": ses_pages, "racine": racines[0]})
+    return cmds
 
-    # -- Renvois internes : un nœud atteint par plusieurs traits n'est
-    # dessiné qu'à un endroit ; les autres traits le « rejoignent ». Le
-    # trait qui le porte est, dans l'ordre : celui qui n'arrive pas par une
-    # pointe de flèche, celui qui arrive par le haut (la colonne qui
-    # descend), puis le premier rencontré en descendant l'arbre. Les
-    # feuilles (GHM, erreurs, renvois) n'ont pas de suite : elles sont
-    # simplement répétées. --
-    ordre = ordre_de_parcours(noeuds, [c["racine"] for c in cmds])
+
+def marquer_rejoints(noeuds: dict[str, dict], aretes: list[Arete], racines: list[str]) -> None:
+    """Renvois internes : un nœud atteint par plusieurs traits n'est
+    dessiné qu'à un endroit ; les autres traits le « rejoignent » —
+    « rejoint » est posé sur leur lien publié (Arete.lien). Le trait qui le
+    porte est, dans l'ordre : celui qui n'arrive pas par une pointe de
+    flèche, celui qui arrive par le haut (la colonne qui descend), puis le
+    premier rencontré en descendant l'arbre depuis les `racines`. Les
+    feuilles (GHM, erreurs, renvois) n'ont pas de suite : elles sont
+    simplement répétées."""
+    ordre = ordre_de_parcours(noeuds, racines)
     entrants: dict[str, list[Arete]] = defaultdict(list)
     for a in aretes:
         entrants[a.vers].append(a)
@@ -1220,16 +1241,6 @@ def construire(doc: pymupdf.Document) -> dict:
         if noeuds[nid]["genre"] not in ("ghm", "erreur", "renvoi"):
             if sum(1 for a in liste if not a.lien.get("rejoint")) != 1:
                 raise ErreurExtraction(f"{nid} : aucun trait, ou plusieurs, pour porter cette étape")
-
-    return {
-        "millesime": millesime(SOURCE),
-        "version": version,
-        "pageOrientation": PAGE_ORIENTATION,
-        "orientation": lire_orientation(doc),
-        "cmd": cmds,
-        "listes": decrire_listes(noeuds),
-        "noeuds": noeuds,
-    }
 
 
 def decrire_listes(noeuds: dict[str, dict]) -> dict[str, dict]:

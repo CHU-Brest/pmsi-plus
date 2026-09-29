@@ -184,5 +184,24 @@ class RenvoisDePage(unittest.TestCase):
             renvois.resoudre(renvois.sorties[("t", "droite")][0])
 
 
+class Rejoints(unittest.TestCase):
+    def test_le_trait_a_pointe_de_fleche_rejoint(self):
+        oui, non = {"vers": "c"}, {"vers": "b"}
+        suite = {"vers": "c"}
+        noeuds = {
+            "a": {"genre": "test", "branches": [oui], "sinon": non},
+            "b": {"genre": "sans_relation", "suite": suite},
+            "c": {"genre": "test", "branches": [], "sinon": None},
+        }
+        aretes = [
+            build_arbre.Arete("a", "c", True, "oui", "gauche", oui),
+            build_arbre.Arete("a", "b", False, "non", "haut", non),
+            build_arbre.Arete("b", "c", False, "suite", "haut", suite),
+        ]
+        build_arbre.marquer_rejoints(noeuds, aretes, ["a"])
+        self.assertEqual(oui, {"vers": "c", "rejoint": True})
+        self.assertEqual(suite, {"vers": "c"})
+
+
 if __name__ == "__main__":
     unittest.main()
