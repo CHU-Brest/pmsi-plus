@@ -20,7 +20,6 @@ function el(tag, attrs = {}, ...enfants) {
   for (const [cle, valeur] of Object.entries(attrs)) {
     if (valeur == null) continue;
     if (cle === "class") noeud.className = valeur;
-    else if (cle === "html") noeud.innerHTML = valeur;
     else if (cle.startsWith("on")) noeud.addEventListener(cle.slice(2), valeur);
     else noeud.setAttribute(cle, valeur);
   }
@@ -359,7 +358,7 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible, fo
 // Ordre du dictionnaire : « Éther » avec les E, pas après « z ».
 const ORDRE_TEXTE = new Intl.Collator("fr");
 
-export function tableau(conteneur, lignes, { formats = {} } = {}) {
+function tableau(conteneur, lignes, { formats = {} } = {}) {
   conteneur.innerHTML = "";
   const colonnes = colonnesVisibles(lignes);
   if (!colonnes.length) return;

@@ -27,7 +27,7 @@ export const CHAMPS = [
   { id: "smr", titre: "SMR", libelle: "Soins médicaux et de réadaptation" },
 ];
 
-export const REGISTRY = [
+const REGISTRY = [
   {
     section: "PMSI+",
     slug: "accueil",

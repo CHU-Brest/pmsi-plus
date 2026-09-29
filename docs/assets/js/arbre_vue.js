@@ -174,8 +174,9 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
   const arbre = preparer(P);
   const categories = new Map(P.categories.map((c, i) => [c.id, { ...c, ordre: i }]));
   // Ce que le profil peut appeler en retour : ses vues et ses feuilles
-  // naviguent, montrent une étape, ouvrent un chemin.
-  const outils = { afficher, montrer, libelleAvecListes, marqueEntree, flecheVers, basculerChemin };
+  // naviguent, reprennent les marques de l'arbre (« non », flèche), ouvrent
+  // un chemin.
+  const outils = { afficher, marqueEntree, flecheVers, basculerChemin };
 
   conteneur.innerHTML = "";
   const etat = { cmd: null, requete: "" };
