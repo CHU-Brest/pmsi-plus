@@ -1,9 +1,10 @@
 // Fonction groupage SMR — chargement des jeux produits par
 // scripts/build_smr.py, et ce que plusieurs thèmes SMR lisent de la même
-// façon : graphie des codes, libellés des groupes, positions permises d'un
-// diagnostic et erreurs qu'il lève, exclusions des CMA, caractère spécialisé
-// d'un acte. Les règles du groupage elles-mêmes (volume 1 du Manuel des
-// GME, data/smr/groupage/manuel_gme_volume_1.pdf) sont présentées par
+// façon : graphie des codes, libellés des groupes et des modalités CSAR,
+// modulateurs de lieu CSARR, positions permises d'un diagnostic et erreurs
+// qu'il lève, exclusions des CMA, caractère spécialisé d'un acte. Les
+// règles du groupage elles-mêmes (volume 1 du Manuel des GME,
+// data/smr/groupage/manuel_gme_volume_1.pdf) sont présentées par
 // l'algorithme, themes/smr/arbre.js.
 //
 // Rien ici ne touche au DOM : les fonctions reçoivent les jeux chargés en
@@ -178,6 +179,13 @@ export const TYPES_READAPTATION = {
 };
 
 export const POSITIONS = ["MMP", "AE", "DAS"];
+
+// Colonne « acte_coll » de CSAR_infos.xlsx (lisez-moi).
+export const MODALITES = { 0: "individuel", 1: "collectif", 2: "individuel ou collectif" };
+
+// Modulateurs de lieu CSARR qui majorent la pondération (3.3.1.4) : les
+// seuls que note ACTES_ponderations, une colonne chacun.
+export const MODULATEURS_LIEU = ["HW", "LJ", "XH", "L3"];
 
 // ==== Diagnostics ====
 

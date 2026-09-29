@@ -26,6 +26,8 @@ import {
   RE_CSAR,
   RE_CSARR,
   POSITIONS,
+  MODALITES,
+  MODULATEURS_LIEU,
   controlerDiagnostics,
   estExclue,
   estSpecialise,
@@ -85,13 +87,9 @@ const CONDITIONS = {
     "Les 4 premiers caractères du code classant en DAS doivent être différents des 4 premiers caractères du code classant en MMP ou AE.",
 };
 
-// Colonne « acte_coll » de CSAR_infos.xlsx (lisez-moi).
-const MODALITES = { 0: "individuel", 1: "collectif", 2: "individuel ou collectif" };
-
 // Tableau 4 du volume 1 (3.3.1.4) : le modulateur de lieu CSARR que devient
 // chaque modulateur CSAR au transcodage.
 const LIEUX_TRANSCODES = { L1: "HW ou LJ", L2: "XH", L3: "L3" };
-const LIEUX_CSARR = ["HW", "LJ", "XH", "L3"];
 
 // ==== Petits composants ====
 
@@ -1028,7 +1026,7 @@ function resumePonderations(k, lignes) {
 
 function blocModulateurs(k, ligne) {
   const collectif = ligne.Type === "C";
-  const lignes = LIEUX_CSARR.map((m) => {
+  const lignes = MODULATEURS_LIEU.map((m) => {
     const [, libelle, individuel, coll] = k.modulateurs.find(([c]) => c === m) ?? [m, "", 0, null];
     const accepte = !!ligne[m];
     return el(
@@ -1047,7 +1045,7 @@ function blocModulateurs(k, ligne) {
   return [
     table([entete("Modulateur"), entete("Accepté"), entete("Majoration")], el("tbody", {}, ...lignes)),
     note(
-      LIEUX_CSARR.some((m) => ligne[m])
+      MODULATEURS_LIEU.some((m) => ligne[m])
         ? `Majoration ajoutée à la pondération ${collectif ? "d'un acte collectif (type C) : celle « en collectif »" : "d'un acte individuel : celle « en individuel »"}, sans effet pour un intervenant non attendu. `
         : "L'acte n'accepte aucun modulateur de lieu qui majore sa pondération. ",
       "Seuls les modulateurs qui majorent la pondération sont notés dans ACTES_ponderations. Volume 1, 3.3.1.4."

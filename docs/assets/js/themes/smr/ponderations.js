@@ -10,12 +10,11 @@
 
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
-import { chargerActes, chargerActesSpe, chargerClassification } from "../../smr.js";
+import { chargerActes, chargerActesSpe, chargerClassification, MODULATEURS_LIEU } from "../../smr.js";
 import { lienFiche } from "../../smr_interface.js";
 
 const COLONNES_CHERCHABLES = ["Code", "Libellé", "Spécialisé"];
 const NOMENCLATURES = ["CSARR", "CCAM"];
-const MODULATEURS_LIEU = ["HW", "LJ", "XH", "L3"];
 // Au-delà, la ligne de liens vers les fiches se tait : la recherche doit
 // d'abord être affinée.
 const LIENS_MAX = 12;
