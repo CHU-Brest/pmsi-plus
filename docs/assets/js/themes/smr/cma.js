@@ -10,7 +10,7 @@
 
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
-import { chargerClassification, chargerDiagnostics, chargerExclusions, cle, estExclue, graphie, normaliserActe } from "../../smr.js";
+import { chargerClassification, chargerDiagnostics, chargerExclusions, cle, estExclue, graphie, normaliserActe, RE_CIM } from "../../smr.js";
 import { lienFiche, sourceFg } from "../../smr_interface.js";
 
 /** Nombre de codes de chaque liste d'exclusion : les plages ont pour bornes
@@ -103,7 +103,10 @@ function verificateur(k, diagnostics, exclusions, candidatInitial) {
     const c = cle(saisie);
     const diag = D.get(c);
     if (!diag) {
-      zone.append(el("p", { class: "message-info" }, `${graphie(c)} : ni code CIM-10 de CIM_infos_SMR, ni acte CCAM CMA.`));
+      // Graphie CIM-10 pour un code qui en a la forme seulement : un acte
+      // garde la sienne (« AHQP002 », pas « AHQ.P002 »).
+      const affiche = RE_CIM.test(c) ? graphie(c) : normaliserActe(saisie);
+      zone.append(el("p", { class: "message-info" }, `${affiche} : ni code CIM-10 de CIM_infos_SMR, ni acte CCAM CMA.`));
       return;
     }
     if (!diag.CMA) {
