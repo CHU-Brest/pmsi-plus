@@ -1176,7 +1176,7 @@ def construire(doc: pymupdf.Document) -> dict:
     return {
         "millesime": millesime(SOURCE),
         "version": version,
-        "page_orientation": PAGE_ORIENTATION,
+        "pageOrientation": PAGE_ORIENTATION,
         "orientation": lire_orientation(doc),
         "cmd": cmds,
         "listes": decrire_listes(noeuds),
