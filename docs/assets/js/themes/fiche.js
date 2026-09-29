@@ -247,7 +247,9 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 
   // ---- Fiche ----
 
+  let ouverture = 0;
   async function ouvrir(code, { historique = true } = {}) {
+    const monOuverture = ++ouverture;
     zoneSuggestions.innerHTML = "";
     saisie.value = code;
     if (historique && zoneFiche.isConnected && location.hash !== `#/mco/fiche/${code}`) {
@@ -255,7 +257,15 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     }
     zoneFiche.innerHTML = "";
     zoneFiche.append(el("p", { class: "compteur", role: "status" }, "Chargement…"));
-    const contenu = RE_CCAM.test(code) ? await ficheActe(arbre, code) : await ficheDiagnostic(arbre, code);
+    let contenu;
+    try {
+      contenu = RE_CCAM.test(code) ? await ficheActe(arbre, code) : await ficheDiagnostic(arbre, code);
+    } catch (erreur) {
+      console.error(erreur);
+      contenu = [el("p", { class: "message-erreur" }, `Fiche indisponible pour le moment : ${erreur?.message ?? erreur}`)];
+    }
+    // Une autre fiche a été demandée entre-temps : c'est elle qui s'affiche.
+    if (monOuverture !== ouverture) return;
     zoneFiche.innerHTML = "";
     zoneFiche.append(...contenu.filter(Boolean));
     zoneFiche.querySelector("h2")?.focus?.();
