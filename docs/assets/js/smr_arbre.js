@@ -11,10 +11,8 @@
 //
 // Rien ici ne touche au DOM : le dessin est celui de themes/smr/arbre.js.
 
+import { nombre } from "./interface.js";
 import { libelleGroupe, TYPES_READAPTATION } from "./smr.js";
-
-const FORMAT_NOMBRE = new Intl.NumberFormat("fr-FR");
-const nombre = (n) => FORMAT_NOMBRE.format(n);
 
 export const ORIENTATION = "orientation";
 // CM 90 « Erreurs et recueils inclassables » : aucune liste n'y oriente,
