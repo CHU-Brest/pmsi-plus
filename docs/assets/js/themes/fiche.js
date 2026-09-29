@@ -13,10 +13,7 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import { normaliser } from "../recherche.js";
 import { el, fraicheur, nombre } from "../interface.js";
-import { racinesAtteintes, sorties, calculer as frontieresDp } from "./frontieres.js";
-import { calculer as frontieresActes } from "./actes_frontieres.js";
-import { couvre } from "./cma.js";
-import { codesGhm } from "./arbre.js";
+import { codesGhm, couvre, frontieresActes, frontieresDp, racinesAtteintes, sorties } from "../groupage_mco.js";
 import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
 
 const SUGGESTIONS_MAX = 12;

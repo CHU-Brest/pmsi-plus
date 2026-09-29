@@ -5,6 +5,7 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
+import { couvre, couvreRacine } from "../groupage_mco.js";
 
 const NIVEAUX = [2, 3, 4];
 
@@ -14,33 +15,6 @@ const NIVEAUX = [2, 3, 4];
 function graphie(saisie) {
   const c = saisie.trim().toUpperCase().replace(/[\s.]/g, "");
   return c.length <= 3 ? c : `${c.slice(0, 3)}.${c.slice(3)}`;
-}
-
-const cle = (code) => code.replace(/\./g, "");
-
-/** Un élément de liste de DP de l'annexe 5 couvre-t-il `code` ? « A00 »
- *  vaut A00 et toutes ses extensions ; « R05-R07 », tous les codes compris
- *  entre les deux dans l'ordre alphabétique, extensions de R07 comprises ;
- *  l'étoile (« M62.89* ») écarte l'extension 0 que le manuel en exclut. */
-export function couvre(element, code) {
-  const c = cle(code);
-  const dedans = (borne) => {
-    const etoile = borne.endsWith("*");
-    const b = cle(borne.replace("*", ""));
-    return c.startsWith(b) && !(etoile && c === `${b}0`);
-  };
-  if (!element.includes("-")) return dedans(element);
-  const [debut, fin] = element.split("-");
-  return c >= cle(debut.replace("*", "")) && (c <= cle(fin.replace("*", "")) || dedans(fin));
-}
-
-/** Un élément de liste de racines couvre-t-il la racine `r` (« 01C03 ») ? */
-export function couvreRacine(element, r) {
-  let m;
-  if ((m = element.match(/^CMD(\d{2})$/))) return r.slice(0, 2) === m[1];
-  if ((m = element.match(/^Racines_en_([CKMZ])$/))) return r[2] === m[1];
-  if ((m = element.match(/^Sous_CMD(\d{2})_([CKMZ])$/))) return r.slice(0, 2) === m[1] && r[2] === m[2];
-  return element === r;
 }
 
 function verifierCma(exclusions, das, dp, racine) {

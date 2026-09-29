@@ -10,8 +10,7 @@
 import { chargerJson, chargerJeu } from "../donnees.js";
 import { el, fraicheur } from "../interface.js";
 import { dessinerArbre } from "../arbre_vue.js";
-import { couvre, couvreRacine } from "./cma.js";
-import { racinesAtteintes } from "./frontieres.js";
+import { codesGhm, couvre, couvreRacine, racinesAtteintes } from "../groupage_mco.js";
 import { chargerTarifs, noteTarifs, parGhm, tableTarifs } from "../tarifs.js";
 
 const ORIENTATION = "orientation";
@@ -54,16 +53,6 @@ const COULEURS = {
   age: "l'âge intervient comme marqueur de sévérité",
   age_gestationnel: "l'âge gestationnel intervient comme marqueur de sévérité",
 };
-
-/** Codes GHM couverts par une case : « 1 » en bas vaut les niveaux 1 à 4,
- *  une lettre vaut elle-même ; la case du haut ajoute J ou T. */
-export function codesGhm(f) {
-  const codes = [];
-  if (f.bas === "1") codes.push(...["1", "2", "3", "4"].map((n) => f.racine + n));
-  else if (f.bas) codes.push(f.racine + f.bas);
-  if (f.haut) codes.push(f.racine + f.haut);
-  return codes;
-}
 
 function titreCmd(c) {
   const prefixe = ["15", "27"].includes(c.cmd) ? "CM" : "CMD";
