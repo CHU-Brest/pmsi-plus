@@ -147,28 +147,25 @@ def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
             feuille = classeur[nom_feuille]
         else:
             raise ErreurDonnees(f"{chemin.name} : pas de feuille « {nom_feuille} » ({', '.join(classeur.sheetnames)})")
-        verifie = chemin.name in COLONNES_XLSX
-        if verifie:
-            # En lecture seule, openpyxl s'arrête à l'étendue que le classeur
-            # déclare (balise <dimension>) : fausse, elle tronquerait la
-            # feuille sans rien dire. On lit jusqu'à la dernière cellule.
-            feuille.reset_dimensions()
+        # En lecture seule, openpyxl s'arrête à l'étendue que le classeur
+        # déclare (balise <dimension>) : fausse, elle tronquerait la
+        # feuille sans rien dire. On lit jusqu'à la dernière cellule.
+        feuille.reset_dimensions()
         ligne_entete = LIGNE_ENTETE.get(chemin.name, 1)
         lignes = feuille.iter_rows(min_row=ligne_entete, values_only=True)
         entetes = [str(c).strip() if c is not None else "" for c in next(lignes)]
-        if verifie:
+        if chemin.name in COLONNES_XLSX:
             entetes = renommer(chemin.name, entetes)
         resultat = []
         for n, ligne in enumerate(lignes, start=ligne_entete + 1):
             if all(v is None for v in ligne):
                 continue
-            if verifie:
-                # Sans étendue déclarée, une ligne s'arrête à sa dernière
-                # cellule remplie : on la complète, et une valeur au-delà de
-                # l'en-tête arrête la conversion au lieu d'être ignorée.
-                if any(v is not None for v in ligne[len(entetes):]):
-                    raise ErreurDonnees(f"{chemin.name}, ligne {n} : valeur hors des colonnes de l'en-tête")
-                ligne = (*ligne, *[None] * (len(entetes) - len(ligne)))
+            # Sans étendue déclarée, une ligne s'arrête à sa dernière
+            # cellule remplie : on la complète, et une valeur au-delà de
+            # l'en-tête arrête la conversion au lieu d'être ignorée.
+            if any(v is not None for v in ligne[len(entetes):]):
+                raise ErreurDonnees(f"{chemin.name}, ligne {n} : valeur hors des colonnes de l'en-tête")
+            ligne = (*ligne, *[None] * (len(entetes) - len(ligne)))
             enregistrement = {}
             for entete, v in zip(entetes, ligne):
                 if entete in COLONNES_TEXTE_VIDE_SI_NULLE and v is None:
