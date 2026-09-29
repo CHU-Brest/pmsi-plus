@@ -212,7 +212,7 @@ async function rendreTheme(theme, champ, premierRendu, chemin = []) {
   titreBarreHaute.textContent = `PMSI+ · ${titreChamp}`;
   ouvrirBarre(false);
   document.title =
-    theme.slug === "accueil"
+    theme.defaut
       ? "PMSI+ — Aide au codage PMSI"
       : theme.champ
         ? `${theme.titre} · ${titreChamp} — PMSI+`
