@@ -31,6 +31,7 @@ import {
   controlerDiagnostics,
   estExclue,
   estSpecialise,
+  gnSansSeverite2,
   libelleGroupe,
   orienteDansCm,
   positionAutorisee,
@@ -803,12 +804,16 @@ function blocCma(smr, diag, affiche) {
     return [el("p", {}, `${affiche} n'est pas une CMA : il n'est pas marqueur de sévérité.`)];
   }
   const index = smr.exclusions.cma[graphie(diag.Code)];
+  const k = smr.classification;
+  const sansNiveau2 = gnSansSeverite2(k);
   const blocs = [
     el(
       "p",
       {},
       el("strong", {}, "CMA. "),
-      "Codée en MMP ou en DAS, elle est marqueur de sévérité et classe un séjour d'hospitalisation complète en niveau 2, sauf si elle est exclue par un des codes ayant orienté un RHS du séjour dans le GN retenu, ou si le groupe n'a pas de niveau 2 (GN 2303, soins palliatifs). En hospitalisation à temps partiel, le niveau de sévérité est toujours 0."
+      "Codée en MMP ou en DAS, elle est marqueur de sévérité et classe un séjour d'hospitalisation complète en niveau 2, sauf si elle est exclue par un des codes ayant orienté un RHS du séjour dans le GN retenu, ou si le groupe n'a pas de niveau 2",
+      sansNiveau2.length ? ` (${sansNiveau2.map((gn) => `GN ${gn}, ${libelleGroupe(k, gn).toLowerCase()}`).join(" ; ")})` : "",
+      ". En hospitalisation à temps partiel, le niveau de sévérité est toujours 0."
     ),
     note("Volume 1, 5.1 et 5.2."),
   ];
@@ -879,6 +884,7 @@ function ficheActe(smr, trouve) {
   const nbGn = new Set(spe.flatMap((s) => s.gns)).size;
   const venus = nature === "CSARR" ? csarVers(smr, c) : [];
   const ecarts = venus.some((l) => l["Pondération CSAR"] !== l["Pondération CSARR"]);
+  const sansNiveau2 = gnSansSeverite2(k);
   return [
     el("h2", { tabindex: "-1" }, `${c} — ${libelle}`),
     el(
@@ -929,7 +935,9 @@ function ficheActe(smr, trouve) {
                 "p",
                 {},
                 el("strong", {}, "Acte CCAM CMA. "),
-                "Il est marqueur de sévérité et classe un séjour d'hospitalisation complète en niveau 2 si le groupe en a un (pas le GN 2303). Les listes d'exclusion ne portent que sur les codes CIM-10 : aucun code ne l'exclut."
+                "Il est marqueur de sévérité et classe un séjour d'hospitalisation complète en niveau 2 si le groupe en a un",
+                sansNiveau2.length ? ` (pas ${sansNiveau2.map((gn) => `le GN ${gn}`).join(" ni ")})` : "",
+                ". Les listes d'exclusion ne portent que sur les codes CIM-10 : aucun code ne l'exclut."
               )
             : el("p", {}, `${c} n'est pas une CMA : il n'est pas marqueur de sévérité.`),
           cma ? note("Volume 1, 5.2 ; liste de CMA_CCAM.") : null,

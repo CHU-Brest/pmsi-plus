@@ -2,10 +2,10 @@
 // scripts/build_smr.py, et ce que plusieurs thèmes SMR lisent de la même
 // façon : graphie des codes, libellés des groupes et des modalités CSAR,
 // modulateurs de lieu CSARR, positions permises d'un diagnostic et erreurs
-// qu'il lève, exclusions des CMA, caractère spécialisé d'un acte. Les
-// règles du groupage elles-mêmes (volume 1 du Manuel des GME,
-// data/smr/groupage/manuel_gme_volume_1.pdf) sont présentées par
-// l'algorithme, themes/smr/arbre.js.
+// qu'il lève, exclusions des CMA, GN sans niveau de sévérité 2, caractère
+// spécialisé d'un acte. Les règles du groupage elles-mêmes (volume 1 du
+// Manuel des GME, data/smr/groupage/manuel_gme_volume_1.pdf) sont
+// présentées par l'algorithme, themes/smr/arbre.js.
 //
 // Rien ici ne touche au DOM : les fonctions reçoivent les jeux chargés en
 // argument (`smr`, cf. chargerSmr). Partagé par les thèmes SMR : fiche code,
@@ -244,4 +244,14 @@ export function estExclue(smr, cma, orientant) {
   // inconnu compris entre deux bornes n'y figure pas pour autant.
   if (!smr.diagnostics._parCle.has(c)) return false;
   return smr.exclusions.listes[index].some(([a, b]) => c >= a && c <= b);
+}
+
+/** Les GN sans niveau de sévérité 2 : leurs GME d'HC finissent tous par 1
+ *  (5.2.3). En 2026, le seul GN 2303, soins palliatifs, comme le contrôle
+ *  verifier_gme de build_smr.py. */
+export function gnSansSeverite2(k) {
+  const gmes = Object.keys(k.groupes.GME);
+  return Object.keys(k.groupes.GN).filter(
+    (gn) => gmes.some((gme) => gme.startsWith(gn) && gme.endsWith("1")) && !gmes.some((gme) => gme.startsWith(gn) && gme.endsWith("2"))
+  );
 }

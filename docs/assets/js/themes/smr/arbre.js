@@ -24,6 +24,7 @@ import {
   chargerDiagnostics,
   chargerTarifsSmr,
   cle,
+  gnSansSeverite2,
   libelleGroupe,
   TYPES_READAPTATION,
 } from "../../smr.js";
@@ -744,8 +745,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
           }`
       )
     );
-    const sans2 = Object.keys(k.groupes.GL).some((gl) => gl.startsWith(gn) && TYPES_HC.includes(gl[4])) &&
-      !Object.keys(k.groupes.GME).some((gme) => gme.startsWith(gn) && gme.endsWith("2"));
+    const sans2 = gnSansSeverite2(k).includes(gn);
     notes.push(
       note(
         "Sévérité, en HC : le GME est le GL suivi du niveau 2 quand au moins un marqueur de sévérité est retenu — un code CIM-10 CMA " +

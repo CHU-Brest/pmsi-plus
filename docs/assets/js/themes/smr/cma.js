@@ -10,7 +10,18 @@
 
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
-import { chargerClassification, chargerDiagnostics, chargerExclusions, cle, estExclue, graphie, normaliserActe, RE_CIM } from "../../smr.js";
+import {
+  chargerClassification,
+  chargerDiagnostics,
+  chargerExclusions,
+  cle,
+  estExclue,
+  gnSansSeverite2,
+  graphie,
+  libelleGroupe,
+  normaliserActe,
+  RE_CIM,
+} from "../../smr.js";
 import { lienFiche, sourceFg } from "../../smr_interface.js";
 
 /** Nombre de codes de chaque liste d'exclusion : les plages ont pour bornes
@@ -176,7 +187,9 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     el(
       "p",
       {},
-      "Les complications ou morbidités associées (CMA) sont des codes CIM-10 et des actes CCAM marqueurs de la sévérité d'un séjour d'hospitalisation complète. Un séjour d'HC qui en compte au moins une est classé en niveau de sévérité 2 (le dernier chiffre du GME), sinon en niveau 1 ; le GN 2303, soins palliatifs, n'a pas de niveau 2, et l'hospitalisation à temps partiel est toujours en niveau 0 (volume 1, 5.1 et 5.2.3)."
+      "Les complications ou morbidités associées (CMA) sont des codes CIM-10 et des actes CCAM marqueurs de la sévérité d'un séjour d'hospitalisation complète. Un séjour d'HC qui en compte au moins une est classé en niveau de sévérité 2 (le dernier chiffre du GME), sinon en niveau 1",
+      ...gnSansSeverite2(k).map((gn) => ` ; le GN ${gn}, ${libelleGroupe(k, gn).toLowerCase()}, n'a pas de niveau 2`),
+      ", et l'hospitalisation à temps partiel est toujours en niveau 0 (volume 1, 5.1 et 5.2.3)."
     ),
     el(
       "ul",

@@ -14,7 +14,7 @@ import {
   racinesAtteintes,
 } from "../docs/assets/js/groupage_mco.js";
 import { filtre, indexer, normaliser } from "../docs/assets/js/recherche.js";
-import { estExclue, graphie, normaliserActe } from "../docs/assets/js/smr.js";
+import { estExclue, gnSansSeverite2, graphie, normaliserActe } from "../docs/assets/js/smr.js";
 
 // ==== Exclusions des CMA MCO (volume 1, annexe 5) ====
 
@@ -140,4 +140,14 @@ test("estExclue : plages de clefs, codes de CIM_infos_SMR seulement", () => {
   assert.equal(estExclue(smr, "A00.0", "A01.0"), false);
   assert.equal(estExclue(smr, "A00.0", "A00.5"), false); // absent de CIM_infos_SMR
   assert.equal(estExclue(smr, "B00.0", "A00.1"), false); // CMA sans liste
+});
+
+test("gnSansSeverite2 : GME d'HC en niveau 1 seulement", () => {
+  const k = {
+    groupes: {
+      GN: { "0103": [], "2303": [], "9999": [] },
+      GME: { "0103LA0": [], "0103SC1": [], "0103SC2": [], "2303LA0": [], "2303TA1": [], "2303UA1": [], "9999LA0": [] },
+    },
+  };
+  assert.deepEqual(gnSansSeverite2(k), ["2303"]); // 9999 : HTP seulement
 });
