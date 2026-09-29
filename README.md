@@ -299,6 +299,18 @@ Les fonctions pures des scripts et du site ont leurs tests, sans autre dépendan
     python -m unittest discover tests
     node --test
 
+Les scripts ont leur test de non-régression, le filet à passer avant tout changement
+d'un script. Sans modification des sources de `data/`, les JSON regénérés sont identiques
+à ceux qui sont commités, depuis un clone complet (voir `scripts/millesime.py`). Lancer
+les cinq scripts dans cet ordre, puis vérifier que `git diff` ne rend rien :
+
+    python scripts/build_data.py
+    python scripts/build_entrees.py
+    python scripts/build_cma.py
+    python scripts/build_arbre.py
+    python scripts/build_smr.py
+    git diff --exit-code docs/assets/data
+
 ## Déploiement
 
 Réglage unique, à faire une fois sur GitHub : **Settings → Pages → Build and deployment
