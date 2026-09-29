@@ -148,5 +148,41 @@ class ArbreSansBoucle(unittest.TestCase):
         build_arbre.verifier_sans_boucle(noeuds)
 
 
+def objet(oid: str, page: int, genre: str, texte: str = "") -> build_arbre.Objet:
+    rect = build_arbre.Rect(0, 0, 10, 10)
+    textes = [build_arbre.Texte(0, 0, 10, 10, texte, False, False, 8)] if texte else []
+    return build_arbre.Objet(oid, page, genre, None, False, rect, textes)
+
+
+class RenvoisDePage(unittest.TestCase):
+    """Un test page 10 mène au sablier « 1 » en bas de page ; le sablier
+    « 1 » de la page 11 reprend vers une case de GHM."""
+
+    def renvois(self, avec_suite: bool = True) -> build_arbre.Renvois:
+        objets = {o.id: o for o in [objet("t", 10, "test"), objet("r10", 10, "renvoi_page", "1"), objet("g", 11, "ghm")]}
+        sorties = {("t", "droite"): [build_arbre.Branche("DP dans D-001", "r10", False, 50, "haut")]}
+        if avec_suite:
+            objets["r11"] = objet("r11", 11, "renvoi_page", "1")
+            sorties[("r11", "bas")] = [build_arbre.Branche("", "g", True, 80, "gauche")]
+        cmd_de = {oid: "01" for oid in objets}
+        return build_arbre.Renvois(
+            objets,
+            cmd_de,
+            sorties,
+            build_arbre.entrees_de_page(objets, cmd_de, sorties),
+            build_arbre.entrees_de_cmd(objets, cmd_de, sorties),
+        )
+
+    def test_suit_le_sablier_jusqu_a_la_page_suivante(self):
+        renvois = self.renvois()
+        arrivee = renvois.resoudre(renvois.sorties[("t", "droite")][0])
+        self.assertEqual(arrivee, build_arbre.Branche("DP dans D-001", "g", True, 80, "gauche"))
+
+    def test_sablier_sans_suite(self):
+        renvois = self.renvois(avec_suite=False)
+        with self.assertRaisesRegex(build_arbre.ErreurExtraction, "sans suite"):
+            renvois.resoudre(renvois.sorties[("t", "droite")][0])
+
+
 if __name__ == "__main__":
     unittest.main()

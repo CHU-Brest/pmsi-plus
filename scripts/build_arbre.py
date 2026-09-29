@@ -907,6 +907,128 @@ def vocabulaire_de(doc: pymupdf.Document) -> Vocabulaire:
     return Vocabulaire(manuel | listes, listes)
 
 
+def entrees_de_page(
+    objets: dict[str, Objet], cmd_de: dict[str, str], sorties: dict[tuple[str, str], list[Branche]]
+) -> dict[tuple[str, int, str], str]:
+    """Renvois de page : un sablier numéroté en bas d'une page (entrée par
+    le haut) reprend sur le sablier de même numéro de la page suivante de
+    la même CMD (sortie par le bas). Rend les sabliers d'arrivée, par
+    (cmd, page, numéro)."""
+    entrees_page: dict[tuple[str, int, str], str] = {}  # (cmd, page, numéro) → objet
+    sorties_page: dict[tuple[str, int, str], str] = {}
+    for oid, o in objets.items():
+        if o.genre != "renvoi_page":
+            continue
+        if not o.texte():
+            raise ErreurExtraction(f"{oid} : renvoi de page sans numéro")
+        cle = (cmd_de[oid], o.page, o.texte())
+        registre = entrees_page if (oid, "bas") in sorties else sorties_page
+        if cle in registre:
+            raise ErreurExtraction(
+                f"{oid} et {registre[cle]} : deux renvois « {o.texte()} » dans le même sens page {o.page}"
+            )
+        registre[cle] = oid
+    return entrees_page
+
+
+def entrees_de_cmd(
+    objets: dict[str, Objet], cmd_de: dict[str, str], sorties: dict[tuple[str, str], list[Branche]]
+) -> dict[tuple[str, str], str]:
+    """Renvois vers une CM/CMD : celui qui nomme une entrée de la même
+    CMD (CM15 en bas de la page 15, CM15 en tête de la page 16) s'y
+    raccorde ; les autres sont des sorties vers une autre CMD. Rend les
+    entrées, par (cmd, texte)."""
+    entrees_cmd: dict[tuple[str, str], str] = {}
+    for oid, o in objets.items():
+        if o.genre != "renvoi_cmd":
+            continue
+        if not o.texte():
+            raise ErreurExtraction(f"{oid} : renvoi de CMD sans texte")
+        if any((oid, c) in sorties for c in SORTIES["renvoi_cmd"]):
+            cle = (cmd_de[oid], o.texte())
+            if cle in entrees_cmd:
+                raise ErreurExtraction(f"{oid} et {entrees_cmd[cle]} : deux entrées « {o.texte()} » dans la CMD {cle[0]}")
+            entrees_cmd[cle] = oid
+    return entrees_cmd
+
+
+@dataclass
+class Renvois:
+    """Les symboles de toutes les pages et leurs renvois, de quoi suivre un
+    trait par-delà les sabliers de page et les renvois internes de CMD."""
+
+    objets: dict[str, Objet]
+    cmd_de: dict[str, str]  # objet → CMD de sa page
+    sorties: dict[tuple[str, str], list[Branche]]  # (objet, côté) → cibles
+    entrees_page: dict[tuple[str, int, str], str]  # voir entrees_de_page
+    entrees_cmd: dict[tuple[str, str], str]  # voir entrees_de_cmd
+
+    def entree_de_page(self, oid: str) -> str:
+        o = self.objets[oid]
+        numero = o.texte()
+        candidates = sorted(
+            (page, eid)
+            for (cmd, page, n), eid in self.entrees_page.items()
+            if cmd == self.cmd_de[oid] and n == numero and page > o.page
+        )
+        if not candidates:
+            raise ErreurExtraction(f"{oid} : renvoi de page « {numero} » sans suite")
+        return candidates[0][1]
+
+    def suite_de_page(self, oid: str) -> Branche:
+        eid = self.entree_de_page(oid)
+        cible = self.sorties[(eid, "bas")]
+        if len(cible) != 1:
+            raise ErreurExtraction(f"{eid} : un renvoi de page doit mener à un seul symbole")
+        return cible[0]
+
+    def sortie_unique(self, oid: str) -> Branche:
+        cibles = [b for c in sorted(SORTIES[self.objets[oid].genre]) for b in self.sorties.get((oid, c), [])]
+        if len(cibles) != 1:
+            raise ErreurExtraction(f"{oid} : une seule sortie attendue, {len(cibles)} trouvée(s)")
+        return cibles[0]
+
+    def resoudre(self, b: Branche) -> Branche:
+        """Suit les renvois jusqu'au symbole qui porte vraiment la suite. La
+        branche rendue garde le libellé d'origine, mais arrive comme le
+        dernier trait suivi."""
+        vus = set()
+        fleche = b.fleche
+        while True:
+            oid = b.vers
+            if oid in vus:
+                raise ErreurExtraction(f"{oid} : boucle de renvois")
+            vus.add(oid)
+            o = self.objets[oid]
+            cle = (self.cmd_de[oid], o.texte())
+            if o.genre == "renvoi_page" and (oid, "bas") not in self.sorties:
+                suite = self.suite_de_page(oid)
+            elif o.genre == "renvoi_page":
+                suite = self.sortie_unique(oid)
+            elif o.genre == "renvoi_cmd" and cle in self.entrees_cmd and oid != self.entrees_cmd[cle]:
+                suite = self.sortie_unique(self.entrees_cmd[cle])
+            elif o.genre == "renvoi_cmd" and oid in self.entrees_cmd.values():
+                suite = self.sortie_unique(oid)
+            else:
+                return Branche(b.libelle, oid, fleche, b.y, b.arrivee)
+            if suite.libelle:
+                # Un libellé après un renvoi appartiendrait à un cas que la
+                # suite de page aurait dû porter (colonne continuée) : ne
+                # jamais le perdre en silence.
+                raise ErreurExtraction(f"{oid} : libellé « {suite.libelle} » après un renvoi")
+            fleche = fleche or suite.fleche
+            b = Branche(b.libelle, suite.vers, fleche, suite.y, suite.arrivee)
+
+
+def colonne(branches: list[Branche]) -> tuple[list[Branche], Branche | None]:
+    """Sépare d'une colonne de cas le trait nu qui la poursuit vers le bas,
+    s'il est seul : c'est le cas « aucun »."""
+    restes = [b for b in branches if b.arrivee == "haut" and not b.libelle]
+    if len(restes) != 1:
+        return branches, None
+    return [b for b in branches if b is not restes[0]], restes[0]
+
+
 def construire(doc: pymupdf.Document) -> dict:
     cache: dict[int, str] = {}
     vocabulaire = vocabulaire_de(doc)
@@ -936,100 +1058,9 @@ def construire(doc: pymupdf.Document) -> dict:
     cmd_de = {oid: p.cmd for p in pages for oid in p.objets}
     sorties = {cle: b for p in pages for cle, b in p.sorties.items()}
 
-    # -- Renvois de page : un sablier numéroté en bas d'une page (entrée par
-    # le haut) reprend sur le sablier de même numéro de la page suivante de
-    # la même CMD (sortie par le bas). --
-    entrees_page: dict[tuple[str, int, str], str] = {}  # (cmd, page, numéro) → objet
-    sorties_page: dict[tuple[str, int, str], str] = {}
-    for oid, o in objets.items():
-        if o.genre != "renvoi_page":
-            continue
-        if not o.texte():
-            raise ErreurExtraction(f"{oid} : renvoi de page sans numéro")
-        cle = (cmd_de[oid], o.page, o.texte())
-        registre = entrees_page if (oid, "bas") in sorties else sorties_page
-        if cle in registre:
-            raise ErreurExtraction(
-                f"{oid} et {registre[cle]} : deux renvois « {o.texte()} » dans le même sens page {o.page}"
-            )
-        registre[cle] = oid
-
-    def entree_de_page(oid: str) -> str:
-        o = objets[oid]
-        numero = o.texte()
-        candidates = sorted(
-            (page, eid)
-            for (cmd, page, n), eid in entrees_page.items()
-            if cmd == cmd_de[oid] and n == numero and page > o.page
-        )
-        if not candidates:
-            raise ErreurExtraction(f"{oid} : renvoi de page « {numero} » sans suite")
-        return candidates[0][1]
-
-    def suite_de_page(oid: str) -> Branche:
-        eid = entree_de_page(oid)
-        cible = sorties[(eid, "bas")]
-        if len(cible) != 1:
-            raise ErreurExtraction(f"{eid} : un renvoi de page doit mener à un seul symbole")
-        return cible[0]
-
-    # -- Renvois vers une CM/CMD : celui qui nomme une entrée de la même
-    # CMD (CM15 en bas de la page 15, CM15 en tête de la page 16) s'y
-    # raccorde ; les autres sont des sorties vers une autre CMD. --
-    entrees_cmd: dict[tuple[str, str], str] = {}
-    for oid, o in objets.items():
-        if o.genre != "renvoi_cmd":
-            continue
-        if not o.texte():
-            raise ErreurExtraction(f"{oid} : renvoi de CMD sans texte")
-        if any((oid, c) in sorties for c in SORTIES["renvoi_cmd"]):
-            cle = (cmd_de[oid], o.texte())
-            if cle in entrees_cmd:
-                raise ErreurExtraction(f"{oid} et {entrees_cmd[cle]} : deux entrées « {o.texte()} » dans la CMD {cle[0]}")
-            entrees_cmd[cle] = oid
-
-    def sortie_unique(oid: str) -> Branche:
-        cibles = [b for c in sorted(SORTIES[objets[oid].genre]) for b in sorties.get((oid, c), [])]
-        if len(cibles) != 1:
-            raise ErreurExtraction(f"{oid} : une seule sortie attendue, {len(cibles)} trouvée(s)")
-        return cibles[0]
-
-    def resoudre(b: Branche) -> Branche:
-        """Suit les renvois jusqu'au symbole qui porte vraiment la suite. La
-        branche rendue garde le libellé d'origine, mais arrive comme le
-        dernier trait suivi."""
-        vus = set()
-        fleche = b.fleche
-        while True:
-            oid = b.vers
-            if oid in vus:
-                raise ErreurExtraction(f"{oid} : boucle de renvois")
-            vus.add(oid)
-            o = objets[oid]
-            cle = (cmd_de[oid], o.texte())
-            if o.genre == "renvoi_page" and (oid, "bas") not in sorties:
-                suite = suite_de_page(oid)
-            elif o.genre == "renvoi_page":
-                suite = sortie_unique(oid)
-            elif o.genre == "renvoi_cmd" and cle in entrees_cmd and oid != entrees_cmd[cle]:
-                suite = sortie_unique(entrees_cmd[cle])
-            elif o.genre == "renvoi_cmd" and oid in entrees_cmd.values():
-                suite = sortie_unique(oid)
-            else:
-                return Branche(b.libelle, oid, fleche, b.y, b.arrivee)
-            if suite.libelle:
-                # Un libellé après un renvoi appartiendrait à un cas que la
-                # suite de page aurait dû porter (colonne continuée) : ne
-                # jamais le perdre en silence.
-                raise ErreurExtraction(f"{oid} : libellé « {suite.libelle} » après un renvoi")
-            fleche = fleche or suite.fleche
-            b = Branche(b.libelle, suite.vers, fleche, suite.y, suite.arrivee)
-
-    def colonne(branches: list[Branche]) -> tuple[list[Branche], Branche | None]:
-        restes = [b for b in branches if b.arrivee == "haut" and not b.libelle]
-        if len(restes) != 1:
-            return branches, None
-        return [b for b in branches if b is not restes[0]], restes[0]
+    entrees_page = entrees_de_page(objets, cmd_de, sorties)
+    entrees_cmd = entrees_de_cmd(objets, cmd_de, sorties)
+    renvois = Renvois(objets, cmd_de, sorties, entrees_page, entrees_cmd)
 
     # -- Nœuds de l'arbre publié --
     noeuds: dict[str, dict] = {}
@@ -1039,7 +1070,7 @@ def construire(doc: pymupdf.Document) -> dict:
         """Le lien publié vers la cible de `b`, écrit dans `publie` (créé au
         besoin) : c'est ce dictionnaire-là, et non une copie, que l'arête
         garde pour y poser « rejoint »."""
-        arrivee = resoudre(b)
+        arrivee = renvois.resoudre(b)
         publie = {} if publie is None else publie
         publie["vers"] = arrivee.vers
         aretes.append(Arete(de, arrivee.vers, arrivee.fleche, role, arrivee.arrivee, publie))
@@ -1103,9 +1134,9 @@ def construire(doc: pymupdf.Document) -> dict:
                     sinon is not None
                     and objets[sinon.vers].genre == "renvoi_page"
                     and (sinon.vers, "bas") not in sorties
-                    and any(b.libelle for b in sorties[(entree_de_page(sinon.vers), "bas")])
+                    and any(b.libelle for b in sorties[(renvois.entree_de_page(sinon.vers), "bas")])
                 ):
-                    suite, sinon = colonne(sorties[(entree_de_page(sinon.vers), "bas")])
+                    suite, sinon = colonne(sorties[(renvois.entree_de_page(sinon.vers), "bas")])
                     oui = oui + suite
             sans_libelle = [b for b in oui if not b.libelle]
             if len(oui) > 1 and sans_libelle:
