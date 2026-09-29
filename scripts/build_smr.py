@@ -42,7 +42,7 @@ Cibles, dans docs/assets/data/smr/, avec le même découpage :
 Les règles de l'algorithme (ordre des tests, seuils « par jour ET par
 séjour », pondération des actes CSAR…) ne sont pas dans ces fichiers mais
 dans le volume 1 du Manuel des GME (data/smr/groupage/manuel_gme_volume_1.pdf) : c'est
-l'algorithme du site (docs/assets/js/themes/smr/arbre.js) qui en fait des arbres.
+docs/assets/js/smr_arbre.js qui en fait les arbres de l'algorithme du site.
 
 Comme les autres scripts, celui-ci s'arrête plutôt que de deviner : un
 en-tête qui change, un test d'entrée en GN illisible, une liste citée mais

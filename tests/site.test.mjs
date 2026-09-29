@@ -2,6 +2,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import {
   codesGhm,
@@ -16,6 +17,7 @@ import {
 } from "../docs/assets/js/groupage_mco.js";
 import { filtre, indexer, normaliser } from "../docs/assets/js/recherche.js";
 import { estExclue, gnSansSeverite2, graphie, normaliserActe, tailleListeExclusion } from "../docs/assets/js/smr.js";
+import { casDeLourdeur, construire } from "../docs/assets/js/smr_arbre.js";
 
 // ==== Exclusions des CMA MCO (volume 1, annexe 5) ====
 
@@ -182,4 +184,59 @@ test("gnSansSeverite2 : GME d'HC en niveau 1 seulement", () => {
     },
   };
   assert.deepEqual(gnSansSeverite2(k), ["2303"]); // 9999 : HTP seulement
+});
+
+// ==== Arbres de la fonction groupage SMR (volume 1 du Manuel des GME) ====
+
+/** La classification réelle, assemblée comme le fait chargerClassification
+ *  (smr.js) : référentiel de la réadaptation, tests par CM, erreurs. */
+function classificationSmr() {
+  const lire = (chemin) => JSON.parse(fs.readFileSync(new URL(`../docs/assets/data/smr/${chemin}.json`, import.meta.url), "utf8"));
+  const k = lire("groupage/classification");
+  const r = lire("readaptation/referentiel");
+  Object.assign(k, r, { millesimes: { ...k.millesimes, ...r.millesimes } });
+  k._testsParCm = new Map();
+  for (const t of k.tests) {
+    if (!k._testsParCm.has(t.cm)) k._testsParCm.set(t.cm, []);
+    k._testsParCm.get(t.cm).push(t);
+  }
+  for (const liste of k._testsParCm.values()) liste.sort((a, b) => a.ordre - b.ordre);
+  k._cmaCcam = new Map(k.cmaCcam.map(([code, libelle]) => [code, libelle]));
+  k._erreurs = new Map(k.erreurs.map(([code, libelle, bloquant]) => [code, { code, libelle, bloquant }]));
+  k._listeSpeParGn = new Map(Object.entries(k.gnListeSpe).map(([gn, e]) => [gn, e.liste]));
+  return k;
+}
+
+test("construire : nœuds de l'orientation, des tests d'entrée et des GN, gardés sur la classification", () => {
+  const k = classificationSmr();
+  const { arbre, cms, gnsParCm, departs } = construire(k);
+  assert.equal(Object.keys(arbre.noeuds).length, 1880);
+  assert.equal(cms.length, 15);
+  assert.ok(!cms.includes("90")); // CM des erreurs : issue de l'orientation seulement
+  assert.equal(arbre.noeuds["o-cm-90"].erreur, 300);
+  assert.equal(arbre.listes["D-0103"].nature, "diagnostics");
+  assert.equal(construire(k), construire(k));
+  // GN 0103 : un seul type de réadaptation en HC, indifférencié en HTP.
+  assert.deepEqual(arbre.noeuds["0103"], { genre: "gn", cmd: "01", page: 50, code: "0103" });
+  assert.ok(gnsParCm.get("01").includes("0103"));
+  assert.deepEqual(departs.get("0103"), { hc: "0103S", htp: "0103LA", adultes: ["S"] });
+  assert.equal(arbre.noeuds["0103S"].unique, true);
+  // GN 1006 : type pédiatrique, puis scores ; en HTP, pédiatrique puis intensité.
+  assert.deepEqual(departs.get("1006"), { hc: "1006-hc-age", htp: "1006-htp-age", adultes: ["S", "T", "U"] });
+});
+
+test("casDeLourdeur : niveaux C puis B au-dessus du plancher, règles combinées avec l'âge", () => {
+  const k = classificationSmr();
+  assert.deepEqual(casDeLourdeur(k, "0103S"), { plancher: "C", niveaux: [] });
+  assert.deepEqual(casDeLourdeur(k, "0109T"), {
+    plancher: "A",
+    niveaux: [
+      { niveau: "C", conditions: ["dépendance physique de 13 à 16 et âge de 18 à 70 ans"] },
+      { niveau: "B", conditions: ["dépendance physique de 9 à 12 et âge de 18 à 70 ans", "dépendance physique de 13 à 16 et âge à partir de 71 ans"] },
+    ],
+  });
+  assert.deepEqual(casDeLourdeur(k, "1006P"), {
+    plancher: "A",
+    niveaux: [{ niveau: "B", conditions: ["âge de 0 à 12 ans", "dépendance physique de 9 à 16"] }],
+  });
 });

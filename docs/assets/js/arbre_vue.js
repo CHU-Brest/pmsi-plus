@@ -1,7 +1,7 @@
 // Dessin d'un arbre de décision de fonction groupage, commun aux deux
 // algorithmes : MCO (themes/arbre.js, les arbres du volume 3 du Manuel des
 // GHM relus par scripts/build_arbre.py) et SMR (themes/smr/arbre.js, ceux
-// du volume 1 du Manuel des GME, construits depuis la classification).
+// du volume 1 du Manuel des GME, construits par smr_arbre.js).
 //
 // Un arbre se lit comme dans le manuel : chaque test s'enchaîne sous le
 // précédent quand sa condition n'est pas satisfaite (« non », la colonne

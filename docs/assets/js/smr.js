@@ -5,7 +5,7 @@
 // qu'il lève, exclusions des CMA, GN sans niveau de sévérité 2, caractère
 // spécialisé d'un acte. Les règles du groupage elles-mêmes (volume 1 du
 // Manuel des GME, data/smr/groupage/manuel_gme_volume_1.pdf) sont
-// présentées par l'algorithme, themes/smr/arbre.js.
+// mises en arbres par smr_arbre.js, que dessine l'algorithme.
 //
 // Rien ici ne touche au DOM : les fonctions reçoivent les jeux chargés en
 // argument (`smr`, cf. chargerSmr). Partagé par les thèmes SMR : fiche code,

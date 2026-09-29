@@ -99,6 +99,7 @@ docs/                         racine servie par GitHub Pages
       arbre_vue.js             dessin d'un arbre de décision, commun aux algorithmes MCO et SMR
       groupage_mco.js          fonction groupage MCO : racines atteintes, codes GHM d'une case, codes et actes frontières, exclusions des CMA, sans DOM
       smr.js                   fonction groupage SMR : chargement des jeux, positions permises, exclusions des CMA, actes spécialisés, sans DOM
+      smr_arbre.js             arbres de décision du volume 1 du Manuel des GME (orientation, tests d'entrée en GN, arbre de chaque GN), sans DOM
       smr_interface.js         composants partagés par les thèmes SMR (liens, libellés, tarifs d'un GME)
       themes/<module>.js       une vue par thème (`module` de registry.js)
       themes/smr/<module>.js   les thèmes propres au SMR, dans le sous-dossier de leur champ
@@ -262,9 +263,9 @@ de la barre latérale.
 Les tables du groupage SMR viennent des fichiers associés au Manuel des GME, que l'ATIH
 publie à chaque version de la fonction groupage ; les règles qui les relient (ordre des
 tests, seuils « par jour ET par séjour », pondération des actes CSAR, exclusions des CMA…)
-viennent du volume 1 du manuel : l'algorithme (`themes/smr/arbre.js`) en fait des arbres
-de décision, dessinés par le même module que ceux du MCO (`arbre_vue.js`), chaque étape
-renvoyant à la page de l'annexe où elle se lit.
+viennent du volume 1 du manuel : `smr_arbre.js` en fait des arbres de décision, que
+l'algorithme (`themes/smr/arbre.js`) dessine par le même module que ceux du MCO
+(`arbre_vue.js`), chaque étape renvoyant à la page de l'annexe où elle se lit.
 
 1. Remplacer les fichiers de `data/smr/groupage/` et `data/smr/readaptation/` par ceux de
    la nouvelle version, sous les mêmes noms (ceux de l'ATIH ; `tarifs.xlsx` pour les
@@ -280,7 +281,7 @@ renvoyant à la page de l'annexe où elle se lit.
    règle du MCO : sa campagne est déclarée dans `CAMPAGNE_TARIFS`, avec l'empreinte que
    donne le message d'arrêt.
 3. Relire le volume 1 de la nouvelle version : une règle qui change se reporte dans
-   l'algorithme (`themes/smr/arbre.js`), et dans `smr.js` si elle touche aux positions
+   `smr_arbre.js` (les arbres de l'algorithme), et dans `smr.js` si elle touche aux positions
    permises, aux exclusions des CMA ou aux actes spécialisés.
 4. Committer les fichiers de l'ATIH et les JSON générés ensemble.
 
