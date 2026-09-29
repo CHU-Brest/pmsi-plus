@@ -172,8 +172,8 @@ test("tailleListeExclusion : clefs de CIM_infos_SMR entre les bornes, plage à b
     exclusions: { cma: {}, listes: [[["A000", "A009"], ["B01", "B01"]], [["A000", "A005"], ["B01", "B01"]]] },
     diagnostics: { _parCle: new Map([["B01", {}], ["A009", {}], ["A001", {}], ["A000", {}]]) },
   };
-  assert.equal(tailleListeExclusion(smr, 0), 4); // A000, A001, A009 ; B01
-  assert.equal(tailleListeExclusion(smr, 1), 1); // A005 inconnue : seule B01 compte
+  assert.equal(tailleListeExclusion(smr.diagnostics, smr.exclusions, 0), 4); // A000, A001, A009 ; B01
+  assert.equal(tailleListeExclusion(smr.diagnostics, smr.exclusions, 1), 1); // A005 inconnue : seule B01 compte
   assert.deepEqual(Object.keys(smr.exclusions), ["cma", "listes"]);
 });
 

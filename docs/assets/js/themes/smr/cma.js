@@ -35,7 +35,7 @@ function lignesCma(diagnostics, exclusions) {
         return {
           Code: l.Code,
           "Libellé": l["Libellé"],
-          "Codes qui l'excluent": index == null ? 0 : tailleListeExclusion({ diagnostics, exclusions }, index),
+          "Codes qui l'excluent": index == null ? 0 : tailleListeExclusion(diagnostics, exclusions, index),
         };
       });
     recherche.indexer(diagnostics._cmaTableau, ["Code", "Libellé"]);
@@ -122,7 +122,7 @@ function verificateur(k, diagnostics, exclusions, candidatInitial) {
     }
     if (inconnus.length) lignes.push(` Codes inconnus, non vérifiés : ${inconnus.map(graphie).join(", ")}.`);
     const index = exclusions.cma[graphie(c)];
-    const taille = index == null ? 0 : tailleListeExclusion({ diagnostics, exclusions }, index);
+    const taille = index == null ? 0 : tailleListeExclusion(diagnostics, exclusions, index);
     zone.append(
       el("p", { class: excluant.length ? "message-avertissement" : orientants.length && !inconnus.length ? "message-succes" : "message-info" }, ...lignes),
       el(

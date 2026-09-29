@@ -618,7 +618,7 @@ function blocCma(smr, diag, affiche) {
   if (index == null) {
     blocs.push(el("p", { class: "message-info" }, "Aucune liste d'exclusion : aucun code orientant ne l'exclut."));
   } else {
-    const n = tailleListeExclusion(smr, index);
+    const n = tailleListeExclusion(smr.diagnostics, smr.exclusions, index);
     blocs.push(
       el("p", { class: "fiche-sous-titre" }, `Liste d'exclusion : ${nombre(n)} code${n > 1 ? "s" : ""} l'excluent quand ils orientent le RHS dans le GN du séjour.`),
       verificateur(smr, diag, affiche)

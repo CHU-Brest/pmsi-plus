@@ -255,8 +255,7 @@ const taillesParJeu = new WeakMap();
  *  bornes des clefs de CIM_infos_SMR, dans l'ordre trié (build_smr.py), on
  *  compte les clefs comprises entre elles. Une plage dont une borne n'est
  *  pas dans CIM_infos_SMR ne compte pas. */
-export function tailleListeExclusion(smr, index) {
-  const { diagnostics, exclusions } = smr;
+export function tailleListeExclusion(diagnostics, exclusions, index) {
   if (!taillesParJeu.has(exclusions)) taillesParJeu.set(exclusions, new WeakMap());
   const parDiagnostics = taillesParJeu.get(exclusions);
   if (!parDiagnostics.has(diagnostics)) {
