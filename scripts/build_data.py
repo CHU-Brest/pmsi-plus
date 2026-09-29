@@ -298,7 +298,7 @@ def convertir(jeu: Jeu) -> None:
     if jeu.fichier in VERIFICATIONS:
         VERIFICATIONS[jeu.fichier](lignes)
     if jeu.fichier == "tarifs.xlsx":  # contrôle croisé avec un autre jeu
-        racines ={l["ListeRacineGHM"] for l in lire(DOSSIER_DONNEES / "groupage" / "racines.xlsx")}
+        racines = {l["ListeRacineGHM"] for l in lire(DOSSIER_DONNEES / "groupage" / "racines.xlsx")}
         verifier_couverture_racines(lignes, racines)
 
     dossier_sortie = DOSSIER_SORTIE / jeu.theme
