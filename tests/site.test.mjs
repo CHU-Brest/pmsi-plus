@@ -16,6 +16,7 @@ import {
   racinesDepuis,
 } from "../docs/assets/js/groupage_mco.js";
 import { filtre, indexer, normaliser } from "../docs/assets/js/recherche.js";
+import { casDesListes, cheminVers, noeudsCorrespondants, preparer, resumeResultat } from "../docs/assets/js/arbre_graphe.js";
 import { estExclue, gnSansSeverite2, graphie, normaliserActe, tailleListeExclusion } from "../docs/assets/js/smr.js";
 import { casDeLourdeur, construire } from "../docs/assets/js/smr_arbre.js";
 
@@ -184,6 +185,116 @@ test("gnSansSeverite2 : GME d'HC en niveau 1 seulement", () => {
     },
   };
   assert.deepEqual(gnSansSeverite2(k), ["2303"]); // 9999 : HTP seulement
+});
+
+// ==== Lecture d'un arbre de décision (arbre_graphe.js) ====
+
+/** Le profil MCO réduit à ce que lit arbre_graphe.js (cf. themes/arbre.js) ;
+ *  chaque symbole y est son propre texte (« D2 » au lieu de « D »). */
+function profilMco(arbre) {
+  const symboles = Object.values(arbre.noeuds).filter((n) => n.symbole);
+  return {
+    arbre,
+    symboles: Object.fromEntries(symboles.map((n) => [n.symbole, { texte: n.symbole, titre: n.symbole }])),
+    feuilles: new Set(["ghm", "erreur", "renvoi"]),
+    texteFeuille: (n) => n.racine ?? n.texte,
+    codesNoeud: (n) => (n.genre === "ghm" ? codesGhm(n) : n.genre === "erreur" ? [n.racine] : []),
+    groupeDeRequete: (compact) => (/^\d{2}[ckmz]\d{0,2}[a-z0-9]?$/.test(compact) ? compact : null),
+  };
+}
+
+/** DP dans D-001 (épilepsie) ou D-002 ; sinon 99Z02. Sous D-001, âge
+ *  < 18 ans vers 99M01, sinon renvoi vers la case de D-002. */
+function petitArbre() {
+  return {
+    listes: { "D-001": { libelle: "Épilepsie" }, "D-002": { libelle: "Migraine" } },
+    noeuds: {
+      a: {
+        genre: "test",
+        cmd: "99",
+        symbole: "DP",
+        branches: [
+          { libelle: "Épilepsie (D-001)", listes: ["D-001"], vers: "b" },
+          { libelle: "Migraine (D-002)", listes: ["D-002"], vers: "g2" },
+        ],
+        sinon: { vers: "g3" },
+      },
+      b: {
+        genre: "critere",
+        cmd: "99",
+        variable: "Âge",
+        branches: [{ libelle: "<18 ans", listes: [], vers: "g1" }],
+        sinon: { vers: "g2", rejoint: true },
+      },
+      g1: { genre: "ghm", cmd: "99", racine: "99M01", haut: null, bas: "Z" },
+      g2: { genre: "ghm", cmd: "99", racine: "99M02", haut: null, bas: "Z" },
+      g3: { genre: "ghm", cmd: "99", racine: "99Z02", haut: null, bas: "Z" },
+    },
+  };
+}
+
+const lien = (e) => `${e.de}:${e.role}${e.i ?? ""}`;
+const entree = (e) => `${e.n._id}/${e.i}`;
+
+test("preparer : parents de chaque nœud, calculés une fois par arbre", () => {
+  const arbre = petitArbre();
+  const P = profilMco(arbre);
+  assert.equal(preparer(P), arbre);
+  assert.deepEqual(arbre._parents.get("g2"), [
+    { de: "a", role: "oui", i: 1, rejoint: false },
+    { de: "b", role: "non", rejoint: true },
+  ]);
+  assert.equal(arbre.noeuds.b._id, "b");
+  const parents = arbre._parents;
+  preparer(P);
+  assert.equal(arbre._parents, parents);
+});
+
+test("cheminVers : de la racine au trait, par le trait qui porte chaque étape", () => {
+  const arbre = petitArbre();
+  preparer(profilMco(arbre));
+  assert.deepEqual(cheminVers(arbre, { de: "b", role: "oui", i: 0 }).map(lien), ["a:oui0", "b:oui0"]);
+  // Le renvoi vers g2 (le « non » de b) passe par b, non par le cas D-002.
+  assert.deepEqual(cheminVers(arbre, { de: "b", role: "non", rejoint: true }).map(lien), ["a:oui0", "b:non"]);
+  assert.deepEqual(cheminVers(arbre, { de: "a", role: "non" }).map(lien), ["a:non"]);
+  assert.deepEqual(cheminVers(arbre, null), []);
+});
+
+test("noeudsCorrespondants : code de liste, code de groupe, texte", () => {
+  const arbre = petitArbre();
+  const P = profilMco(arbre);
+  preparer(P);
+  assert.deepEqual(noeudsCorrespondants(P, "d 001").map(entree), ["a/0"]);
+  assert.deepEqual(noeudsCorrespondants(P, "99M").map(entree), ["g1/null", "g2/null"]);
+  assert.deepEqual(noeudsCorrespondants(P, "99z02").map(entree), ["g3/null"]);
+  // Un texte : le cas d'une colonne de cas qui répond, plutôt que tout le test.
+  assert.deepEqual(noeudsCorrespondants(P, "migraine").map(entree), ["a/1"]);
+  assert.deepEqual(noeudsCorrespondants(P, "age").map(entree), ["b/null"]);
+  // Les listes qui contiennent un code, sans les cas déjà trouvés.
+  const deja = noeudsCorrespondants(P, "migraine");
+  assert.deepEqual(casDesListes(arbre, new Set(["D-001", "D-002"]), deja).map(entree), ["a/0"]);
+  assert.equal(resumeResultat(P, arbre.noeuds.g1, null), "99M01 (99M01Z) — Épilepsie (D-001) · Âge <18 ans");
+  assert.equal(resumeResultat(P, arbre.noeuds.a, 1), "DP Migraine (D-002) → 99M02");
+});
+
+test("arbre.json : chemin d'une case jusqu'à la racine de sa CMD, recherche d'une liste et d'un GHM", () => {
+  const arbre = JSON.parse(fs.readFileSync(new URL("../docs/assets/data/groupage/arbre.json", import.meta.url), "utf8"));
+  const P = profilMco(arbre);
+  preparer(P);
+  // 28Z01 : quatre tests « oui » depuis la racine de la CMD 28, page 10.
+  const depuis = arbre._parents.get("p10-5")[0];
+  assert.deepEqual(cheminVers(arbre, depuis).map(lien), ["p10-1:oui0", "p10-2:oui0", "p10-3:oui0", "p10-4:oui0"]);
+  // 01M24 : depuis la racine de la CMD 01, par le 3e cas du DP (D-0103), puis l'âge.
+  const chemin = cheminVers(arbre, arbre._parents.get("p21-20")[0]).map(lien);
+  assert.equal(chemin[0], "p20-1:oui0");
+  assert.deepEqual(chemin.slice(-2), ["p21-16:oui2", "p21-19:oui0"]);
+  assert.deepEqual(noeudsCorrespondants(P, "D-0103").map(entree), ["p21-16/2"]);
+  assert.deepEqual(noeudsCorrespondants(P, "01M24").map(entree), ["p21-20/null"]);
+  assert.deepEqual(noeudsCorrespondants(P, "a180").map(entree), ["p10-4/null"]);
+  assert.equal(
+    resumeResultat(P, arbre.noeuds["p21-20"], null),
+    "01M24 (01M241, 01M242, 01M243, 01M244, 01M24T) — Épilepsie (D-0103) · Âge <18 ans"
+  );
 });
 
 // ==== Arbres de la fonction groupage SMR (volume 1 du Manuel des GME) ====

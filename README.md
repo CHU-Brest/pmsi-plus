@@ -97,6 +97,7 @@ docs/                         racine servie par GitHub Pages
       donnees.js               chargement JSON avec cache mémoire
       tarifs.js                tarifs des GHS : index par GHM, table compacte (thème, fiche code, algorithme)
       arbre_vue.js             dessin d'un arbre de décision, commun aux algorithmes MCO et SMR
+      arbre_graphe.js          lecture d'un arbre de décision : parents, chemin jusqu'à la racine, recherche des étapes, sans DOM
       groupage_mco.js          fonction groupage MCO : racines atteintes, codes GHM d'une case, codes et actes frontières, exclusions des CMA, sans DOM
       smr.js                   fonction groupage SMR : chargement des jeux, positions permises, exclusions des CMA, actes spécialisés, sans DOM
       smr_arbre.js             arbres de décision du volume 1 du Manuel des GME (orientation, tests d'entrée en GN, arbre de chaque GN), sans DOM
