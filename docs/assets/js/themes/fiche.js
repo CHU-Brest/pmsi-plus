@@ -49,6 +49,16 @@ const jeux = {
   racines: () => chargerJeu("groupage", "racines", "libellés des racines de GHM"),
 };
 
+// Libellés normalisés de chaque jeu, calculés une fois : les recalculer à
+// chaque frappe, sur les 74 000 lignes des quatre jeux, prenait 100 à 250 ms.
+const normalisesParJeu = new WeakMap();
+function libellesNormalises(jeu) {
+  if (!normalisesParJeu.has(jeu)) {
+    normalisesParJeu.set(jeu, jeu.lignes.map((l) => normaliser(l["Libellé code"] ?? l["Libellé"])));
+  }
+  return normalisesParJeu.get(jeu);
+}
+
 // Libellé de chaque racine de GHM, chargé à l'ouverture de la page : il
 // permet au codeur de vérifier d'un coup d'œil la cohérence du classement.
 let libellesRacines = new Map();
@@ -215,16 +225,18 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         : ["diagnostics", "cma", "entrees", "actes"];
     const trouves = new Map();
     const mots = normaliser(q).split(/\s+/).filter(Boolean);
+    const prefixe = code.replace(/\./g, "");
     for (const nom of aChercher) {
-      const { lignes } = await jeux[nom]();
+      if (trouves.size >= SUGGESTIONS_MAX) break;
+      const jeu = await jeux[nom]();
       if (monJeton !== jeton) return;
-      for (const l of lignes) {
+      const normalises = libellesNormalises(jeu);
+      for (const [i, l] of jeu.lignes.entries()) {
         const c = nom === "actes" ? codeCcam(l.Code) : l.Code;
         if (trouves.has(c)) continue;
-        const libelle = l["Libellé code"] ?? l["Libellé"];
-        const parCode = c.replace(/\./g, "").startsWith(code.replace(/\./g, ""));
-        const parTexte = !parCode && mots.length && mots.every((m) => normaliser(libelle).includes(m));
-        if (parCode || (parTexte && q.length >= 3)) trouves.set(c, libelle);
+        const parCode = c.replace(/\./g, "").startsWith(prefixe);
+        const parTexte = !parCode && q.length >= 3 && mots.length && mots.every((m) => normalises[i].includes(m));
+        if (parCode || parTexte) trouves.set(c, l["Libellé code"] ?? l["Libellé"]);
         if (trouves.size >= SUGGESTIONS_MAX) break;
       }
     }
