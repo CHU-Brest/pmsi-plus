@@ -1029,6 +1029,16 @@ def colonne(branches: list[Branche]) -> tuple[list[Branche], Branche | None]:
     return [b for b in branches if b is not restes[0]], restes[0]
 
 
+def arete_vers(renvois: Renvois, de: str, b: Branche, role: str, publie: dict | None = None) -> Arete:
+    """L'arête de `de` vers la cible de `b`, renvois suivis. Le lien publié
+    est écrit dans `publie` (créé au besoin) : c'est ce dictionnaire-là, et
+    non une copie, que l'arête garde pour y poser « rejoint »."""
+    arrivee = renvois.resoudre(b)
+    publie = {} if publie is None else publie
+    publie["vers"] = arrivee.vers
+    return Arete(de, arrivee.vers, arrivee.fleche, role, arrivee.arrivee, publie)
+
+
 def construire(doc: pymupdf.Document) -> dict:
     cache: dict[int, str] = {}
     vocabulaire = vocabulaire_de(doc)
@@ -1066,16 +1076,6 @@ def construire(doc: pymupdf.Document) -> dict:
     noeuds: dict[str, dict] = {}
     aretes: list[Arete] = []
 
-    def lien(de: str, b: Branche, role: str, publie: dict | None = None) -> dict:
-        """Le lien publié vers la cible de `b`, écrit dans `publie` (créé au
-        besoin) : c'est ce dictionnaire-là, et non une copie, que l'arête
-        garde pour y poser « rejoint »."""
-        arrivee = renvois.resoudre(b)
-        publie = {} if publie is None else publie
-        publie["vers"] = arrivee.vers
-        aretes.append(Arete(de, arrivee.vers, arrivee.fleche, role, arrivee.arrivee, publie))
-        return publie
-
     for oid, o in objets.items():
         if o.genre in ("renvoi_page",) or oid in entrees_cmd.values():
             continue
@@ -1099,7 +1099,9 @@ def construire(doc: pymupdf.Document) -> dict:
             noeud = {"genre": o.genre, **base}
             if cibles[0].libelle:
                 noeud["libelle"] = cibles[0].libelle
-            noeud["suite"] = lien(oid, cibles[0], "suite")
+            arete = arete_vers(renvois, oid, cibles[0], "suite")
+            aretes.append(arete)
+            noeud["suite"] = arete.lien
             noeuds[oid] = noeud
         elif o.genre in ("test", "critere"):
             oui = sorties.get((oid, "droite"), [])
@@ -1115,7 +1117,9 @@ def construire(doc: pymupdf.Document) -> dict:
             if not oui and o.code == "DRDP" and sinon:
                 # Inversion DP/DR sans sortie à droite (page 14) : l'inversion
                 # s'applique s'il y a lieu, et le parcours continue dessous.
-                noeuds[oid] = {"genre": "inversion", **base, "suite": lien(oid, sinon, "suite")}
+                arete = arete_vers(renvois, oid, sinon, "suite")
+                aretes.append(arete)
+                noeuds[oid] = {"genre": "inversion", **base, "suite": arete.lien}
                 continue
             if not oui:
                 raise ErreurExtraction(f"{oid} ({o.code}) : aucune sortie « oui » en {o.rect.arrondi()}")
@@ -1151,10 +1155,17 @@ def construire(doc: pymupdf.Document) -> dict:
                 noeud["variable"] = (
                     "Inversion DP/DR" if o.code == "Inversion" else VARIABLES.get(o.texte(), o.texte())
                 )
-            noeud["branches"] = [
-                lien(oid, b, "oui", {"libelle": b.libelle, "listes": listes_de(b.libelle)}) for b in oui
+            aretes_oui = [
+                arete_vers(renvois, oid, b, "oui", {"libelle": b.libelle, "listes": listes_de(b.libelle)}) for b in oui
             ]
-            noeud["sinon"] = lien(oid, sinon, "non") if sinon else None
+            aretes.extend(aretes_oui)
+            noeud["branches"] = [a.lien for a in aretes_oui]
+            if sinon:
+                arete_non = arete_vers(renvois, oid, sinon, "non")
+                aretes.append(arete_non)
+                noeud["sinon"] = arete_non.lien
+            else:
+                noeud["sinon"] = None
             noeuds[oid] = noeud
         else:
             raise ErreurExtraction(f"{oid} : genre {o.genre} non géré")
