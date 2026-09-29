@@ -11,7 +11,7 @@
 // ramène alors pas en haut de page.
 
 import { CHAMPS, champParId, themeParDefaut, themeParSlug, themesDuChamp } from "./registry.js";
-import { el, squelette } from "./interface.js";
+import { el, installerRaccourciRecherche, squelette } from "./interface.js";
 
 // Remplacée à chaque rendu (cf. `nouvelleZone`).
 let contenu = document.getElementById("contenu");
@@ -283,5 +283,6 @@ document.querySelector(".lien-evitement")?.addEventListener("click", (e) => {
   contenu.focus();
 });
 
+installerRaccourciRecherche();
 window.addEventListener("hashchange", () => auChangementHash());
 auChangementHash(true);

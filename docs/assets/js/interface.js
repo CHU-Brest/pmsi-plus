@@ -111,18 +111,20 @@ export function fraicheur(jeux) {
 // d'une même saisie ne sert à rien : on laisse retomber la frappe.
 const DELAI_FRAPPE = 120;
 
-// « / » ramène au premier champ de recherche de la page, sauf si l'on est
-// déjà en train de saisir quelque part. L'écouteur est posé une seule fois
-// pour tout le site : un thème rendu deux fois ne doit pas en empiler deux.
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
-  const cible = e.target;
-  if (cible instanceof HTMLInputElement || cible instanceof HTMLTextAreaElement) return;
-  const champ = document.querySelector("#contenu input[type='search']");
-  if (!champ) return;
-  e.preventDefault();
-  champ.focus();
-});
+/** « / » ramène au premier champ de recherche de la page, sauf si l'on est
+ *  déjà en train de saisir quelque part. À poser une seule fois pour tout le
+ *  site (main.js) : un thème rendu deux fois ne doit pas en empiler deux. */
+export function installerRaccourciRecherche() {
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+    const cible = e.target;
+    if (cible instanceof HTMLInputElement || cible instanceof HTMLTextAreaElement) return;
+    const champ = document.querySelector("#contenu input[type='search']");
+    if (!champ) return;
+    e.preventDefault();
+    champ.focus();
+  });
+}
 
 /** Champ de recherche : loupe, bouton d'effacement, raccourci clavier « / »
  *  pour y revenir sans la souris. Un champ secondaire de la page (filtre
