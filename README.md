@@ -15,7 +15,7 @@ individuelle — sont repris ici :
 | MCO | HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
 | MCO | HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
 | MCO | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
-| MCO | Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : CMD où il oriente le séjour en DP (d'après sa liste D-CCnn), étapes de l'arbre qui le testent, racines possibles et leurs tarifs, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
+| MCO | Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : CMD où il oriente le séjour en DP (d'après les diagnostics d'entrée du volume 2), étapes de l'arbre qui le testent, racines possibles et leurs tarifs, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
 | MCO | Groupage | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
 | MCO | Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes ; chemin et tarifs de chaque case de GHM |
 | MCO | Groupage | Tarifs des GHS | arrêté tarifaire MCO, secteur public : tarif de chaque GHS, bornes basse et haute, extrêmes bas et haut |
@@ -64,6 +64,7 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   groupage/cma.csv            liste des CMA de l'ATIH, telle que livrée (csv ; Windows-1252)
   groupage/manuel_ghm_volume_1_annexe_{4,5}.pdf   CMA × listes d'exclusion (ATIH)
   groupage/manuel_ghm_volume_3.pdf   Manuel des GHM, volume 3, tel que livré par l'ATIH
+  groupage/volume_2/          Manuel des GHM, volume 2 : les « Diagnostics d entrée dans la CMD n°XX.csv », sous leur nom (csv ; Windows-1252)
   medicaments/{rh,les}.png    captures VIDAL Hoptimal, sans donnée tabulée
   smr/groupage/               fichiers associés au Manuel des GME qui décrivent la classification
                               (CIM_infos_SMR, GN_liste_tests, GR_infos, GL_infos, TOTAL_listes_groupes,
@@ -77,6 +78,7 @@ scripts/
   build_data.py               xlsx (et cma.csv) → JSON, seule dépendance : openpyxl
   build_arbre.py              PDF du manuel → arbre.json, seule dépendance : pymupdf
   build_cma.py                annexes 4 et 5 du volume 1 → cma_exclusions.json (pymupdf)
+  build_entrees.py            diagnostics d'entrée du volume 2 → entrees.json (bibliothèque standard)
   build_smr.py                data/smr/<section>/ → docs/assets/data/smr/<section>/*.json (openpyxl ; pymupdf pour les pages du manuel)
   millesime.py                date du drapeau de fraîcheur, commune aux deux scripts
   requirements.txt
@@ -99,6 +101,7 @@ docs/                         racine servie par GitHub Pages
       themes/smr/<module>.js   les thèmes propres au SMR, dans le sous-dossier de leur champ
     data/<theme>/<jeu>.json    généré par build_data.py, ne pas éditer à la main
     data/groupage/arbre.json   généré par build_arbre.py, ne pas éditer à la main
+    data/groupage/entrees.json   généré par build_entrees.py, ne pas éditer à la main
     data/smr/<section>/<jeu>.json   généré par build_smr.py, ne pas éditer à la main
     img/{rh,les}.png           copies de data/medicaments/ servies par le site
     img/chu-brest.jpg          logo institutionnel, fourni par la charte — jamais redessiné
@@ -234,6 +237,14 @@ est lisible, et que les niveaux sont ceux de `cma.csv`.
 La page d'orientation (page 9) n'emploie aucun des symboles des autres pages : ses six
 étapes sont transcrites dans `ORIENTATION` du script, qui vérifie contre le texte de la
 page le test et le libellé de chacune, la CM/CMD écrite face à ce libellé, et leur ordre.
+
+La CMD d'un DP se lit dans les diagnostics d'entrée de chaque CMD, donnés par le volume 2 :
+les listes D-CCnn n'en contiennent qu'une partie dans certaines CMD (I21.00 en CMD 05,
+O80.0 en CMD 14, Z38.0 en CMD 15…). Remplacer les fichiers de `data/groupage/volume_2/`
+par les « Diagnostics d entrée dans la CMD n°XX.csv » du nouveau volume 2, sous le même
+nom, puis lancer `python scripts/build_entrees.py`, après `build_data.py`. Le script
+vérifie que chaque ligne se lit (code, libellé), qu'aucun code n'est en double dans une
+CMD, et que tout code d'une liste D-CCnn est un diagnostic d'entrée de la CMD CC.
 
 Ajouter un thème : créer `data/<theme>/`, une ligne dans `JEUX` de `build_data.py`, un
 fichier `docs/assets/js/themes/<module>.js` (`themes/smr/` pour un thème propre au SMR)
