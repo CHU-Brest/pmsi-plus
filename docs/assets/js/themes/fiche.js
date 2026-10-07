@@ -11,10 +11,11 @@
 // GHS.
 
 import { chargerJeu, chargerJson } from "../donnees.js";
-import { normaliser } from "../recherche.js";
 import { el, fraicheur, nombre } from "../interface.js";
 import {
   RE_CCAM,
+  SUGGESTIONS_MAX,
+  chercher,
   codeCcam,
   decompte,
   etapeCmd,
@@ -24,6 +25,7 @@ import {
   ghmDeRacineDansArbre,
   graphie,
   indexer,
+  jeuxOuChercher,
   libellesRacines,
   ligneCma,
   lignesEtapes,
@@ -32,8 +34,6 @@ import {
   racinesDesEtapes,
 } from "../groupage_mco.js";
 import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
-
-const SUGGESTIONS_MAX = 12;
 
 // ==== Données ====
 
@@ -44,16 +44,6 @@ const jeux = {
   entrees: () => chargerJeu("groupage", "entrees", "diagnostics d'entrée des CMD (volume 2)"),
   racines: () => chargerJeu("groupage", "racines", "libellés des racines de GHM"),
 };
-
-// Libellés normalisés de chaque jeu, calculés une fois : les recalculer à
-// chaque frappe, sur les 74 000 lignes des quatre jeux, prenait 100 à 250 ms.
-const normalisesParJeu = new WeakMap();
-function libellesNormalises(jeu) {
-  if (!normalisesParJeu.has(jeu)) {
-    normalisesParJeu.set(jeu, jeu.lignes.map((l) => normaliser(l["Libellé code"] ?? l["Libellé"])));
-  }
-  return normalisesParJeu.get(jeu);
-}
 
 // Libellés des racines de GHM (racine → libellé), chargés à l'ouverture de
 // la page et passés aux fonctions qui les affichent : ils permettent au
@@ -135,29 +125,13 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     const q = valeur.trim();
     zoneSuggestions.innerHTML = "";
     if (q.length < 2) return;
-    const code = graphie(q);
-    const ccam = /^[a-z]{4}\d/i.test(q.replace(/\s+/g, ""));
-    const aChercher = ccam
-      ? ["actes"]
-      : /^[a-z]\d/i.test(q)
-        ? ["diagnostics", "cma", "entrees"]
-        : ["diagnostics", "cma", "entrees", "actes"];
+    // Les jeux se chargent un à un, jusqu'à ce que les suggestions suffisent.
     const trouves = new Map();
-    const mots = normaliser(q).split(/\s+/).filter(Boolean);
-    const prefixe = code.replace(/\./g, "");
-    for (const nom of aChercher) {
+    for (const nom of jeuxOuChercher(q)) {
       if (trouves.size >= SUGGESTIONS_MAX) break;
       const jeu = await jeux[nom]();
       if (monJeton !== jeton) return;
-      const normalises = libellesNormalises(jeu);
-      for (const [i, l] of jeu.lignes.entries()) {
-        const c = nom === "actes" ? codeCcam(l.Code) : l.Code;
-        if (trouves.has(c)) continue;
-        const parCode = c.replace(/\./g, "").startsWith(prefixe);
-        const parTexte = !parCode && q.length >= 3 && mots.length && mots.every((m) => normalises[i].includes(m));
-        if (parCode || parTexte) trouves.set(c, l["Libellé code"] ?? l["Libellé"]);
-        if (trouves.size >= SUGGESTIONS_MAX) break;
-      }
+      chercher(q, nom, jeu, trouves);
     }
     if (monJeton !== jeton) return;
     zoneSuggestions.innerHTML = "";

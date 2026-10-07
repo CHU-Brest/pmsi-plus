@@ -10,6 +10,8 @@
 // chargés en argument. Pendant MCO de smr.js. Partagé par la fiche code,
 // l'algorithme, les CMA, les codes et actes frontières.
 
+import { normaliser } from "./recherche.js";
+
 // ==== Graphie des codes ====
 
 /** Un code CCAM : quatre lettres, trois chiffres. */
@@ -428,4 +430,52 @@ export function decompte(racines) {
     return n ? [`${n} ${nom}${n > 1 ? "s" : ""}`] : [];
   });
   return `${racines.length} racines : ${parType.join(", ")}`;
+}
+
+// ==== Suggestions de la fiche code ====
+
+/** Au plus tant de codes suggérés pour une saisie. */
+export const SUGGESTIONS_MAX = 12;
+
+// Libellés normalisés de chaque jeu, calculés une fois : les recalculer à
+// chaque frappe, sur les 74 000 lignes des quatre jeux, prenait 100 à 250 ms.
+const normalisesParJeu = new WeakMap();
+function libellesNormalises(jeu) {
+  if (!normalisesParJeu.has(jeu)) {
+    normalisesParJeu.set(jeu, jeu.lignes.map((l) => normaliser(l["Libellé code"] ?? l["Libellé"])));
+  }
+  return normalisesParJeu.get(jeu);
+}
+
+/** Les jeux où chercher la saisie `q`, dans l'ordre : un début de code
+ *  CCAM dans les actes ; un début de code CIM-10 dans les diagnostics, les
+ *  CMA et les diagnostics d'entrée des CMD ; des mots dans les quatre. */
+export function jeuxOuChercher(q) {
+  const ccam = /^[a-z]{4}\d/i.test(q.replace(/\s+/g, ""));
+  return ccam
+    ? ["actes"]
+    : /^[a-z]\d/i.test(q)
+      ? ["diagnostics", "cma", "entrees"]
+      : ["diagnostics", "cma", "entrees", "actes"];
+}
+
+/** Ajoute à `trouves` (code → libellé) les codes du jeu `nom` qui
+ *  répondent à la saisie `q`, sans doublon, jusqu'à SUGGESTIONS_MAX : ceux
+ *  dont le code commence par la saisie ou, dès trois caractères, dont le
+ *  libellé contient tous ses mots. Un acte des listes est ramené à son
+ *  code CCAM. */
+export function chercher(q, nom, jeu, trouves) {
+  const code = graphie(q);
+  const mots = normaliser(q).split(/\s+/).filter(Boolean);
+  const prefixe = code.replace(/\./g, "");
+  const normalises = libellesNormalises(jeu);
+  for (const [i, l] of jeu.lignes.entries()) {
+    const c = nom === "actes" ? codeCcam(l.Code) : l.Code;
+    if (trouves.has(c)) continue;
+    const parCode = c.replace(/\./g, "").startsWith(prefixe);
+    const parTexte = !parCode && q.length >= 3 && mots.length && mots.every((m) => normalises[i].includes(m));
+    if (parCode || parTexte) trouves.set(c, l["Libellé code"] ?? l["Libellé"]);
+    if (trouves.size >= SUGGESTIONS_MAX) break;
+  }
+  return trouves;
 }
