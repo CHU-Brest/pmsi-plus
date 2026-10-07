@@ -1,8 +1,9 @@
 // Tarifs des GHS — la feuille « Tarifs public » de l'arrêté tarifaire MCO,
 // convertie par scripts/build_data.py. Partagés par le thème Tarifs,
 // l'algorithme de la fonction groupage et la fiche code : chargement, index
-// par GHM, mise en forme des montants, et la table compacte qui donne les
-// GHS d'un groupe de GHM (une case de l'arbre, une racine).
+// par GHM, mise en forme des montants, et les GHS d'un groupe de GHM (une
+// case de l'arbre, une racine), en données (groupesTarifs) puis en table
+// compacte.
 //
 // Un GHM a le plus souvent plusieurs GHS : le GHS facturé dépend de
 // conditions de l'arrêté « prestations » (GHS intermédiaire d'un séjour de
@@ -65,8 +66,9 @@ export function noteTarifs(lien) {
 
 /** GHS communs à tous les GHM tarifés du groupe, s'il y en a au moins deux
  *  et que chacun garde au moins un GHS à lui : sans quoi un GHM
- *  disparaîtrait du tableau derrière la ligne commune. */
-function ghsCommuns(index, tarifes) {
+ *  disparaîtrait du tableau derrière la ligne commune. `index` est celui
+ *  de parGhm, `tarifes` des GHM qui y figurent. */
+export function ghsCommuns(index, tarifes) {
   if (tarifes.length < 2) return new Set();
   let communs = new Set(index.get(tarifes[0]).map((l) => l.GHS));
   for (const g of tarifes.slice(1)) {
@@ -81,7 +83,7 @@ function ghsCommuns(index, tarifes) {
  *  passent après les GHS propres à un GHM, même quand celui-ci est seul
  *  dans son tableau : la première ligne n'est jamais le GHS d'un cas
  *  particulier commun à toute la racine. */
-function ghsCommunsRacine(jeu, racine) {
+export function ghsCommunsRacine(jeu, racine) {
   if (!jeu._communsRacine) jeu._communsRacine = new Map();
   if (!jeu._communsRacine.has(racine)) {
     jeu._communsRacine.set(racine, ghsCommuns(parGhm(jeu), ghmDeRacine(jeu, racine)));
@@ -89,19 +91,49 @@ function ghsCommunsRacine(jeu, racine) {
   return jeu._communsRacine.get(racine);
 }
 
-const celluleMontant = (n) => el("td", { class: "nombre" }, euros(n));
-const celluleJours = (n) => el("td", { class: "nombre" }, jours(n));
-
-/** Les GHS d'un groupe de GHM : un groupe de lignes par GHM, une ligne par
- *  GHS. Un GHS commun à tous les GHM du groupe n'est donné qu'une fois, en
- *  dernier groupe, au lieu d'être répété sous chaque niveau. */
-export function tableTarifs(jeu, ghms) {
+/** Les GHS d'un groupe de GHM, en données : un groupe de lignes par GHM,
+ *  une ligne de l'arrêté par GHS. Un GHS commun à tous les GHM du groupe
+ *  n'est donné qu'une fois, en dernier groupe, au lieu d'être répété sous
+ *  chaque niveau. Rend `{ avecForfait, groupes }` : dans l'ordre de `ghms`,
+ *  `{ ghm, lignes }`, ou `{ ghm, sansTarif: true, lignes: [] }` pour un
+ *  GHM absent de l'arrêté ; puis, s'il y a des GHS communs, `{ ghms,
+ *  libelle, lignes }`, `ghms` étant les GHM tarifés du groupe. */
+export function groupesTarifs(jeu, ghms) {
   const index = parGhm(jeu);
   const tarifes = ghms.filter((g) => index.has(g));
   const communs = ghsCommuns(index, tarifes);
   // Le forfait EXB est le plus souvent nul (il l'est sur toutes les lignes
   // de l'arrêté 2026) : sa colonne n'apparaît que si une ligne en porte un.
   const avecForfait = tarifes.some((g) => index.get(g).some((l) => l["Forfait EXB"]));
+
+  const groupes = [];
+  for (const g of ghms) {
+    if (!index.has(g)) {
+      groupes.push({ ghm: g, sansTarif: true, lignes: [] });
+      continue;
+    }
+    const derniers = ghsCommunsRacine(jeu, g.slice(0, 5));
+    const lignes = index
+      .get(g)
+      .filter((l) => !communs.has(l.GHS))
+      .sort((a, b) => derniers.has(a.GHS) - derniers.has(b.GHS) || a.GHS - b.GHS);
+    groupes.push({ ghm: g, lignes });
+  }
+  if (communs.size) {
+    const libelle = tarifes.length < ghms.length ? "Tous les GHM tarifés" : "Tous les GHM";
+    const lignes = index.get(tarifes[0]).filter((l) => communs.has(l.GHS));
+    groupes.push({ ghms: tarifes, libelle, lignes });
+  }
+  return { avecForfait, groupes };
+}
+
+const celluleMontant = (n) => el("td", { class: "nombre" }, euros(n));
+const celluleJours = (n) => el("td", { class: "nombre" }, jours(n));
+
+/** La table des GHS d'un groupe de GHM (cf. groupesTarifs) : un <tbody>
+ *  par groupe. */
+export function tableTarifs(jeu, ghms) {
+  const { avecForfait, groupes } = groupesTarifs(jeu, ghms);
   const nbColonnes = avecForfait ? 8 : 7;
 
   const ligne = (entete, l) =>
@@ -132,35 +164,22 @@ export function tableTarifs(jeu, ghms) {
       )
     );
 
-  const corps = [];
-  for (const g of ghms) {
-    if (!index.has(g)) {
-      corps.push(
+  const corps = groupes.map((g) => {
+    if (g.sansTarif) {
+      return el(
+        "tbody",
+        {},
         el(
-          "tbody",
+          "tr",
           {},
-          el(
-            "tr",
-            {},
-            el("th", { scope: "rowgroup" }, g),
-            el("td", { class: "sans-tarif", colspan: String(nbColonnes - 1) }, "Pas de tarif dans l'arrêté")
-          )
+          el("th", { scope: "rowgroup" }, g.ghm),
+          el("td", { class: "sans-tarif", colspan: String(nbColonnes - 1) }, "Pas de tarif dans l'arrêté")
         )
       );
-      continue;
     }
-    const derniers = ghsCommunsRacine(jeu, g.slice(0, 5));
-    const lignes = index
-      .get(g)
-      .filter((l) => !communs.has(l.GHS))
-      .sort((a, b) => derniers.has(a.GHS) - derniers.has(b.GHS) || a.GHS - b.GHS);
-    corps.push(groupe(g, lignes));
-  }
-  if (communs.size) {
-    const libelle = tarifes.length < ghms.length ? "Tous les GHM tarifés" : "Tous les GHM";
-    const lignes = index.get(tarifes[0]).filter((l) => communs.has(l.GHS));
-    corps.push(groupe(libelle, lignes, { class: "tous", title: tarifes.join(", ") }));
-  }
+    if (g.ghms) return groupe(g.libelle, g.lignes, { class: "tous", title: g.ghms.join(", ") });
+    return groupe(g.ghm, g.lignes);
+  });
 
   const entete = (texte, titre, numerique = false) =>
     el("th", { scope: "col", class: numerique ? "nombre" : undefined, title: titre }, texte);
