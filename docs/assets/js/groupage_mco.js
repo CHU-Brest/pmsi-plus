@@ -404,6 +404,20 @@ export function ficheCma(exclusions, code) {
   return { niveau, listeDp, listeRacine, elementsDp, elementsRacines };
 }
 
+/** Le vérificateur des CMA : `das` est-il une CMA (`cma`) ; si oui, son
+ *  niveau, ses numéros de listes d'exclusion, et l'élément de chacune qui
+ *  l'exclut avec le DP `dp` (`parDp`) ou dans la racine `racine`
+ *  (`parRacine`), s'il y en a ; `dp` et `racine` peuvent manquer. */
+export function verifierCma(exclusions, das, dp, racine) {
+  const fiche = ligneCma(exclusions, das);
+  if (!fiche) return { cma: false };
+  const [, niveau, listeDp, listeRacine] = fiche;
+  const parDp = dp ? exclusionParDp(exclusions, das, dp) : null;
+  const parRacine =
+    racine && listeRacine != null ? exclusions.racines[listeRacine].find((e) => couvreRacine(e, racine)) : null;
+  return { cma: true, niveau, listeDp, listeRacine, parDp, parRacine };
+}
+
 // ==== Algorithme : légende et profil de l'arbre ====
 
 /** « CMD 01 », mais « CM 15 » et « CM 27 », comme les nomme le volume 3. */

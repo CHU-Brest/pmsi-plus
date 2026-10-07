@@ -5,21 +5,9 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
-import { couvreRacine, exclusionParDp, graphie, graphieRacine, ligneCma } from "../groupage_mco.js";
+import { graphie, graphieRacine, verifierCma } from "../groupage_mco.js";
 
 const NIVEAUX = [2, 3, 4];
-
-// ==== Exclusions (volume 1, annexes 4 et 5) ====
-
-function verifierCma(exclusions, das, dp, racine) {
-  const fiche = ligneCma(exclusions, das);
-  if (!fiche) return { cma: false };
-  const [, niveau, listeDp, listeRacine] = fiche;
-  const parDp = dp ? exclusionParDp(exclusions, das, dp) : null;
-  const parRacine =
-    racine && listeRacine != null ? exclusions.racines[listeRacine].find((e) => couvreRacine(e, racine)) : null;
-  return { cma: true, niveau, listeDp, listeRacine, parDp, parRacine };
-}
 
 export async function rendre(conteneur) {
   const [jeu, exclusions] = await Promise.all([
