@@ -4,60 +4,30 @@
 //
 // Le dessin (colonnes, étapes, renvois, panneaux, recherche) est celui de
 // arbre_vue.js, commun avec l'algorithme SMR ; ce thème y apporte ce qui
-// est propre au MCO : symboles du volume 3, orientation vers les CM et CMD,
-// cases de GHM, exclusions des CMA dans les listes, tarifs des GHS.
+// est propre au MCO : symboles du volume 3 (légende et profil de l'arbre,
+// tenus par groupage_mco.js), orientation vers les CM et CMD, cases de
+// GHM, exclusions des CMA dans les listes, tarifs des GHS.
 
 import { chargerJson, chargerJeu } from "../donnees.js";
 import { el, fraicheur } from "../interface.js";
 import { dessinerArbre } from "../arbre_vue.js";
-import { codesGhm, couvreRacine, exclusionParDp, ligneCma, racinesDepuis } from "../groupage_mco.js";
+import {
+  COULEURS,
+  PROFIL_MCO,
+  SYMBOLES,
+  VARIABLES,
+  cmdsDuDp,
+  codesGhm,
+  couvreRacine,
+  exclusionParDp,
+  libellesRacines,
+  ligneCma,
+  racinesDepuis,
+  titreCmd,
+} from "../groupage_mco.js";
 import { chargerTarifs, noteTarifs, parGhm, tableTarifs } from "../tarifs.js";
 
 const ORIENTATION = "orientation";
-
-// Légende du volume 3, pages 6 à 8.
-const SYMBOLES = {
-  DP: { texte: "DP", titre: "Le diagnostic principal du RSS" },
-  DR: { texte: "DR", titre: "Le diagnostic relié au DP du RSS" },
-  DAS: { texte: "DAS", titre: "L'un au moins des diagnostics associés significatifs du RSS" },
-  D: { texte: "D", titre: "L'un au moins des diagnostics du RSS" },
-  D2: { texte: "D", titre: "Deux au moins des diagnostics du RSS", variante: "double" },
-  Dtous: { texte: "D", titre: "Tous les diagnostics du RSS", variante: "epais" },
-  A: { texte: "A", titre: "L'un au moins des actes du RSS" },
-  A2: { texte: "A", titre: "Deux au moins des actes du RSS", variante: "double" },
-  Atous: { texte: "A", titre: "Tous les actes du RSS", variante: "epais" },
-  AG: { texte: "AG", titre: "Anesthésie générale" },
-  DRDP: { texte: "DR/DP", titre: "Inversion du diagnostic principal avec le diagnostic relié", variante: "inversion" },
-  DRbarre: {
-    texte: "DR",
-    titre: "Au moins un diagnostic parmi le DP et les DAS, sauf le DR",
-    variante: "barre",
-  },
-};
-
-const VARIABLES = {
-  DS: "durée de séjour",
-  MS: "mode de sortie",
-  ME: "mode d'entrée",
-  Dest: "destination",
-  Âge: "âge à l'entrée",
-  Poids: "poids à l'entrée dans l'unité médicale",
-  GNN: "groupe de nouveau-nés",
-  Durée: "durée de séjour",
-  Sexe: "sexe",
-  "Nb Séances": "nombre de séances",
-  "Inversion DP/DR": "y a-t-il eu inversion du DP et du DR ?",
-};
-
-const COULEURS = {
-  age: "l'âge intervient comme marqueur de sévérité",
-  age_gestationnel: "l'âge gestationnel intervient comme marqueur de sévérité",
-};
-
-function titreCmd(c) {
-  const prefixe = ["15", "27"].includes(c.cmd) ? "CM" : "CMD";
-  return `${prefixe} ${c.cmd}`;
-}
 
 function pages(c) {
   const [premiere, derniere] = [c.pages[0], c.pages[c.pages.length - 1]];
@@ -130,7 +100,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   const cmds = new Map(arbre.cmd.map((c) => [c.cmd, c]));
   // Libellé de chaque racine, pour l'infobulle des cases de GHM et le titre
   // du chemin qui y mène.
-  const libelles = new Map((racines?.lignes ?? []).map((l) => [l.ListeRacineGHM, l["Libellé liste"]]));
+  const libelles = libellesRacines(racines?.lignes ?? []);
 
   // Le drapeau prend la date des tarifs quand ils arrivent.
   const jeuArbre = { libelle: "arbre de décision de la fonction groupage", millesime: arbre.millesime };
@@ -169,15 +139,13 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         : el(
             "span",
             { class: "grille-cmd" },
-            ...arbre.cmd
-              .filter((c) => Number(c.cmd) <= 23 && c.cmd !== "15")
-              .map((c) =>
-                el(
-                  "button",
-                  { type: "button", class: "renvoi-cmd", title: c.titre, onclick: () => afficher(c.cmd) },
-                  titreCmd(c)
-                )
+            ...cmdsDuDp(arbre).map((c) =>
+              el(
+                "button",
+                { type: "button", class: "renvoi-cmd", title: c.titre, onclick: () => afficher(c.cmd) },
+                titreCmd(c)
               )
+            )
           );
       ol.append(
         el(
@@ -315,6 +283,8 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   return dessinerArbre(
     conteneur,
     {
+      // Légende, feuilles, codes de GHM et recherche : groupage_mco.js.
+      ...PROFIL_MCO,
       champ: "mco",
       arbre,
       parDefaut: ORIENTATION,
@@ -348,30 +318,25 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       },
       recherche: { id: "arbre_recherche", exemple: "ex. : 01M24, D-0103, G40.9, épilepsie" },
       titrePage: "Page du volume 3 du Manuel des GHM",
-      symboles: SYMBOLES,
-      variables: VARIABLES,
       special: {
         sans_relation: {
-          court: "Actes sans relation avec le diagnostic principal",
+          ...PROFIL_MCO.special.sans_relation,
           intitule: () => [
             "Actes sans relation avec le diagnostic principal",
             el("span", { class: "etape-precision" }, " — tests spéciaux, volume 3 page 8"),
           ],
         },
         gnn: {
-          court: "Détermination du groupe du nouveau-né",
+          ...PROFIL_MCO.special.gnn,
           intitule: () => ["Détermination du groupe du nouveau-né (GNN)"],
         },
         inversion: {
-          court: "Inversion DP/DR",
+          ...PROFIL_MCO.special.inversion,
           intitule: () => ["Inversion du DP et du DR, s'il y a lieu"],
         },
       },
       pictogramme,
-      feuilles: new Set(["ghm", "erreur", "renvoi"]),
       feuille,
-      texteFeuille: (n) => n.racine ?? n.texte,
-      codesNoeud: (n) => (n.genre === "ghm" ? codesGhm(n) : n.genre === "erreur" ? [n.racine] : []),
       nomFeuille: ["GHM", "GHM"],
       titreChemin,
       origineChemin: (n) => `Chemin depuis la racine de la ${titreCmd(cmds.get(n.cmd))} :`,
@@ -384,8 +349,6 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
           : undefined,
       titreCma:
         "Niveau de CMA en diagnostic associé, et ses exclusions à cette étape : par les racines que la branche peut atteindre et, pour un test sur le DP, par les DP de la liste",
-      groupeDeRequete: (compact) => (RE_REQUETE_GHM.test(compact) ? compact : null),
-      natureDeCode,
       listesDuCode,
     },
     chemin
@@ -458,17 +421,6 @@ function statutCma(exclusions, code, dps, racines) {
   if (parDp.length) details.push(`exclue avec ${parDp.length === dps.length ? "tous les" : `${parDp.length} des ${dps.length}`} DP de cette liste`);
   if (statut === "retenue") details.push(racines.length || dps.length ? "retenue à cette étape" : "exclusions non évaluées ici");
   return { niveau, statut, detail: details.join(" ; ") };
-}
-
-/** Une racine de GHM ou un code de GHM, entier ou en partie. */
-const RE_REQUETE_GHM = /^\d{2}[ckmz]\d{0,2}[a-z0-9]?$/;
-
-/** « G40.9 » ou « g409 » → diagnostics ; « AAFA001 » → actes. */
-function natureDeCode(requete) {
-  const r = requete.trim().toUpperCase().replace(/\s+/g, "");
-  if (/^[A-Z]{4}\d{3}/.test(r)) return "actes";
-  if (/^[A-Z]\d{2}(\.?\d*)?[+]?\d*$/.test(r)) return "diagnostics";
-  return null;
 }
 
 function cleDeCode(code) {

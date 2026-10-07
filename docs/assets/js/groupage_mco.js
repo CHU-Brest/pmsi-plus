@@ -404,6 +404,91 @@ export function ficheCma(exclusions, code) {
   return { niveau, listeDp, listeRacine, elementsDp, elementsRacines };
 }
 
+// ==== Algorithme : légende et profil de l'arbre ====
+
+/** « CMD 01 », mais « CM 15 » et « CM 27 », comme les nomme le volume 3. */
+export function titreCmd(c) {
+  const prefixe = ["15", "27"].includes(c.cmd) ? "CM" : "CMD";
+  return `${prefixe} ${c.cmd}`;
+}
+
+/** Les CMD que détermine le DP, dernière étape de l'orientation : de 01 à
+ *  23, sauf la CM 15, que l'orientation teste avant. */
+export const cmdsDuDp = (arbre) => arbre.cmd.filter((c) => Number(c.cmd) <= 23 && c.cmd !== "15");
+
+// Légende du volume 3, pages 6 à 8.
+export const SYMBOLES = {
+  DP: { texte: "DP", titre: "Le diagnostic principal du RSS" },
+  DR: { texte: "DR", titre: "Le diagnostic relié au DP du RSS" },
+  DAS: { texte: "DAS", titre: "L'un au moins des diagnostics associés significatifs du RSS" },
+  D: { texte: "D", titre: "L'un au moins des diagnostics du RSS" },
+  D2: { texte: "D", titre: "Deux au moins des diagnostics du RSS", variante: "double" },
+  Dtous: { texte: "D", titre: "Tous les diagnostics du RSS", variante: "epais" },
+  A: { texte: "A", titre: "L'un au moins des actes du RSS" },
+  A2: { texte: "A", titre: "Deux au moins des actes du RSS", variante: "double" },
+  Atous: { texte: "A", titre: "Tous les actes du RSS", variante: "epais" },
+  AG: { texte: "AG", titre: "Anesthésie générale" },
+  DRDP: { texte: "DR/DP", titre: "Inversion du diagnostic principal avec le diagnostic relié", variante: "inversion" },
+  DRbarre: {
+    texte: "DR",
+    titre: "Au moins un diagnostic parmi le DP et les DAS, sauf le DR",
+    variante: "barre",
+  },
+};
+
+// Les données non médicales que testent les critères (losanges).
+export const VARIABLES = {
+  DS: "durée de séjour",
+  MS: "mode de sortie",
+  ME: "mode d'entrée",
+  Dest: "destination",
+  Âge: "âge à l'entrée",
+  Poids: "poids à l'entrée dans l'unité médicale",
+  GNN: "groupe de nouveau-nés",
+  Durée: "durée de séjour",
+  Sexe: "sexe",
+  "Nb Séances": "nombre de séances",
+  "Inversion DP/DR": "y a-t-il eu inversion du DP et du DR ?",
+};
+
+// Ce que dit la couleur d'une case de GHM.
+export const COULEURS = {
+  age: "l'âge intervient comme marqueur de sévérité",
+  age_gestationnel: "l'âge gestationnel intervient comme marqueur de sévérité",
+};
+
+/** Une racine de GHM ou un code de GHM, entier ou en partie. */
+const RE_REQUETE_GHM = /^\d{2}[ckmz]\d{0,2}[a-z0-9]?$/;
+
+/** « G40.9 » ou « g409 » → diagnostics ; « AAFA001 » → actes. */
+export function natureDeCode(requete) {
+  const r = requete.trim().toUpperCase().replace(/\s+/g, "");
+  if (RE_CCAM.test(r)) return "actes";
+  if (/^[A-Z]\d{2}(\.?\d*)?[+]?\d*$/.test(r)) return "diagnostics";
+  return null;
+}
+
+/** Ce que l'arbre MCO apporte au profil de arbre_graphe.js et de
+ *  arbre_vue.js (cf. dessinerArbre), hors dessin : légende des symboles et
+ *  des variables, intitulé court des étapes propres au MCO, genres des
+ *  feuilles et leur texte, codes de GHM que porte un nœud, requête lue
+ *  comme un code de GHM, nature d'un code cherché. Le thème Algorithme y
+ *  ajoute l'arbre chargé et le dessin. */
+export const PROFIL_MCO = {
+  symboles: SYMBOLES,
+  variables: VARIABLES,
+  special: {
+    sans_relation: { court: "Actes sans relation avec le diagnostic principal" },
+    gnn: { court: "Détermination du groupe du nouveau-né" },
+    inversion: { court: "Inversion DP/DR" },
+  },
+  feuilles: new Set(["ghm", "erreur", "renvoi"]),
+  texteFeuille: (n) => n.racine ?? n.texte,
+  codesNoeud: (n) => (n.genre === "ghm" ? codesGhm(n) : n.genre === "erreur" ? [n.racine] : []),
+  groupeDeRequete: (compact) => (RE_REQUETE_GHM.test(compact) ? compact : null),
+  natureDeCode,
+};
+
 // ==== Fiche code ====
 
 /** Ce que teste chaque symbole du volume 3, en clair, dans la colonne
