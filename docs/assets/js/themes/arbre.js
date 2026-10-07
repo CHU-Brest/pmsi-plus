@@ -16,13 +16,13 @@ import {
   PROFIL_MCO,
   SYMBOLES,
   VARIABLES,
+  cmaDesCodes,
   cmdsDuDp,
+  codesDeListe,
   codesGhm,
-  couvreRacine,
-  exclusionParDp,
+  contexteDeListe,
   libellesRacines,
-  ligneCma,
-  racinesDepuis,
+  listesDuCode,
   titreCmd,
 } from "../groupage_mco.js";
 import { chargerTarifs, noteTarifs, parGhm, tableTarifs } from "../tarifs.js";
@@ -272,14 +272,6 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     return [zone];
   }
 
-  /** Le test d'où la liste est ouverte, et ce qu'il en découle pour les
-   *  exclusions de CMA : les racines que sa branche peut atteindre, et, si
-   *  c'est un test sur le DP, les DP possibles (les codes de la liste). */
-  function contexteDeListe(n, b) {
-    const racines = [...racinesDepuis(arbre, b.vers)].filter((r) => /^\d{2}[CKMZ]\d{2}$/.test(r));
-    return { racines, dp: n.genre === "test" && n.symbole === "DP" };
-  }
-
   return dessinerArbre(
     conteneur,
     {
@@ -341,53 +333,39 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       titreChemin,
       origineChemin: (n) => `Chemin depuis la racine de la ${titreCmd(cmds.get(n.cmd))} :`,
       complementChemin: blocTarifs,
-      codesDeListe,
-      contexteDeListe,
+      codesDeListe: chargerCodesDeListe,
+      contexteDeListe: (n, b) => contexteDeListe(arbre, n, b),
       listeAbsente: (code) =>
         code === "A-001"
           ? "A-001 désigne l'ensemble des actes classants opératoires : elle ne figure pas parmi les listes publiées de la fonction groupage."
           : undefined,
       titreCma:
         "Niveau de CMA en diagnostic associé, et ses exclusions à cette étape : par les racines que la branche peut atteindre et, pour un test sur le DP, par les DP de la liste",
-      listesDuCode,
+      listesDuCode: chargerListesDuCode,
     },
     chemin
   );
 }
 
 /** Les listes de la fonction groupage qui contiennent les codes commençant
- *  par la requête (un code CIM-10 ou CCAM, entier ou en partie). */
-async function listesDuCode(requete, nature) {
+ *  par la requête (listesDuCode), lues dans le jeu de sa nature. */
+async function chargerListesDuCode(requete, nature) {
   const { lignes } = await chargerJeu(
     "groupage",
     nature,
     nature === "actes" ? "listes d'actes de la fonction groupage" : "listes de diagnostics de la fonction groupage"
   );
-  const cle = cleDeCode(requete);
-  const parCode = new Map();
-  for (const l of lignes) {
-    if (!cleDeCode(l.Code).startsWith(cle)) continue;
-    if (!parCode.has(l.Code)) parCode.set(l.Code, { libelle: l["Libellé code"], listes: new Set() });
-    parCode.get(l.Code).listes.add(l.Liste);
-  }
-  return parCode;
+  return listesDuCode(lignes, requete);
 }
 
-/** Les codes d'une liste, sans doublon : une même liste apparaît sous
- *  plusieurs CMD dans les listes publiées, avec le même contenu. */
-async function codesDeListe(code, nature, contexte) {
+/** Les codes d'une liste (codesDeListe), lus dans le jeu de sa nature. */
+async function chargerCodesDeListe(code, nature, contexte) {
   const { lignes } = await chargerJeu(
     "groupage",
     nature,
     nature === "actes" ? "listes d'actes de la fonction groupage" : "listes de diagnostics de la fonction groupage"
   );
-  const vus = new Set();
-  const resultat = [];
-  for (const l of lignes) {
-    if (l.Liste !== code || vus.has(l.Code)) continue;
-    vus.add(l.Code);
-    resultat.push({ Code: l.Code, "Libellé code": l["Libellé code"] });
-  }
+  const resultat = codesDeListe(lignes, code);
   if (nature !== "diagnostics") return resultat;
   // Le niveau de CMA de chaque diagnostic et ses exclusions à cette étape
   // (volume 1, annexes 4 et 5), chargés à la première liste ouverte.
@@ -398,33 +376,7 @@ async function codesDeListe(code, nature, contexte) {
     console.error(erreur);
     return resultat;
   }
-  const dps = contexte?.dp ? resultat.map((r) => r.Code) : [];
-  const racines = contexte?.racines ?? [];
-  for (const r of resultat) r._cma = statutCma(exclusions, r.Code, dps, racines);
-  return resultat;
-}
-
-/** Niveau d'une CMA et ce qu'en retiennent les exclusions : `exclue` si
- *  toutes les racines atteignables, ou tous les DP possibles, l'excluent ;
- *  `partielle` si certains seulement ; `retenue` sinon. */
-function statutCma(exclusions, code, dps, racines) {
-  const fiche = ligneCma(exclusions, code);
-  if (!fiche) return null;
-  const [, niveau, , listeRacine] = fiche;
-  const parRacine =
-    listeRacine == null ? [] : racines.filter((r) => exclusions.racines[listeRacine].some((e) => couvreRacine(e, r)));
-  const parDp = dps.filter((d) => exclusionParDp(exclusions, code, d));
-  const toutes = (parRacine.length && parRacine.length === racines.length) || (parDp.length && parDp.length === dps.length);
-  const statut = toutes ? "exclue" : parRacine.length || parDp.length ? "partielle" : "retenue";
-  const details = [`CMA de niveau ${niveau}`];
-  if (parRacine.length) details.push(`exclue dans ${parRacine.length === racines.length ? "toutes les racines atteignables" : parRacine.join(", ")}`);
-  if (parDp.length) details.push(`exclue avec ${parDp.length === dps.length ? "tous les" : `${parDp.length} des ${dps.length}`} DP de cette liste`);
-  if (statut === "retenue") details.push(racines.length || dps.length ? "retenue à cette étape" : "exclusions non évaluées ici");
-  return { niveau, statut, detail: details.join(" ; ") };
-}
-
-function cleDeCode(code) {
-  return String(code).toUpperCase().replace(/[\s.]/g, "");
+  return cmaDesCodes(exclusions, resultat, contexte);
 }
 
 // ==== Légende ====

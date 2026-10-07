@@ -489,6 +489,77 @@ export const PROFIL_MCO = {
   natureDeCode,
 };
 
+// ==== Algorithme : listes ouvertes depuis l'arbre ====
+
+/** Le test d'où la liste est ouverte, et ce qu'il en découle pour les
+ *  exclusions de CMA : les racines que sa branche `b` peut atteindre, et,
+ *  si `n` est un test sur le DP, les DP possibles (les codes de la liste). */
+export function contexteDeListe(arbre, n, b) {
+  const racines = [...racinesDepuis(arbre, b.vers)].filter((r) => RE_RACINE.test(r));
+  return { racines, dp: n.genre === "test" && n.symbole === "DP" };
+}
+
+/** Les codes de la liste `code`, sans doublon, d'après les lignes des
+ *  listes publiées : une même liste y apparaît sous plusieurs CMD, avec le
+ *  même contenu. */
+export function codesDeListe(lignes, code) {
+  const vus = new Set();
+  const resultat = [];
+  for (const l of lignes) {
+    if (l.Liste !== code || vus.has(l.Code)) continue;
+    vus.add(l.Code);
+    resultat.push({ Code: l.Code, "Libellé code": l["Libellé code"] });
+  }
+  return resultat;
+}
+
+/** Le niveau de CMA de chaque diagnostic d'une liste (codesDeListe) et ses
+ *  exclusions à l'étape d'où elle est ouverte (`contexte`, cf.
+ *  contexteDeListe), posés en `_cma` sur sa ligne (statutCma). */
+export function cmaDesCodes(exclusions, resultat, contexte) {
+  const dps = contexte?.dp ? resultat.map((r) => r.Code) : [];
+  const racines = contexte?.racines ?? [];
+  for (const r of resultat) r._cma = statutCma(exclusions, r.Code, dps, racines);
+  return resultat;
+}
+
+/** Niveau d'une CMA et ce qu'en retiennent les exclusions : `exclue` si
+ *  toutes les racines atteignables, ou tous les DP possibles, l'excluent ;
+ *  `partielle` si certains seulement ; `retenue` sinon. */
+export function statutCma(exclusions, code, dps, racines) {
+  const fiche = ligneCma(exclusions, code);
+  if (!fiche) return null;
+  const [, niveau, , listeRacine] = fiche;
+  const parRacine =
+    listeRacine == null ? [] : racines.filter((r) => exclusions.racines[listeRacine].some((e) => couvreRacine(e, r)));
+  const parDp = dps.filter((d) => exclusionParDp(exclusions, code, d));
+  const toutes = (parRacine.length && parRacine.length === racines.length) || (parDp.length && parDp.length === dps.length);
+  const statut = toutes ? "exclue" : parRacine.length || parDp.length ? "partielle" : "retenue";
+  const details = [`CMA de niveau ${niveau}`];
+  if (parRacine.length) details.push(`exclue dans ${parRacine.length === racines.length ? "toutes les racines atteignables" : parRacine.join(", ")}`);
+  if (parDp.length) details.push(`exclue avec ${parDp.length === dps.length ? "tous les" : `${parDp.length} des ${dps.length}`} DP de cette liste`);
+  if (statut === "retenue") details.push(racines.length || dps.length ? "retenue à cette étape" : "exclusions non évaluées ici");
+  return { niveau, statut, detail: details.join(" ; ") };
+}
+
+/** Les listes qui contiennent les codes commençant par la requête (un code
+ *  CIM-10 ou CCAM, entier ou en partie), d'après les lignes des listes
+ *  publiées : code → { libelle, listes }. */
+export function listesDuCode(lignes, requete) {
+  const cle = cleDeCode(requete);
+  const parCode = new Map();
+  for (const l of lignes) {
+    if (!cleDeCode(l.Code).startsWith(cle)) continue;
+    if (!parCode.has(l.Code)) parCode.set(l.Code, { libelle: l["Libellé code"], listes: new Set() });
+    parCode.get(l.Code).listes.add(l.Liste);
+  }
+  return parCode;
+}
+
+function cleDeCode(code) {
+  return String(code).toUpperCase().replace(/[\s.]/g, "");
+}
+
 // ==== Fiche code ====
 
 /** Ce que teste chaque symbole du volume 3, en clair, dans la colonne
