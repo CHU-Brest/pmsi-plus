@@ -262,6 +262,35 @@ export function controlerDiagnostics(smr, rhs) {
   return erreurs.map((e) => ({ ...e, libelle: k._erreurs.get(e.code)?.libelle ?? "" }));
 }
 
+// ==== Erreurs de la fonction groupage (FG_erreurs) ====
+
+const COLONNES_ERREURS = ["Code", "Libellé"];
+
+/** Une ligne par code erreur de FG_erreurs, une fois par classification :
+ *  code, libellé, gravité. */
+export function lignesErreurs(k) {
+  if (!k._erreursTableau) {
+    k._erreursTableau = k.erreurs.map(([code, libelle, bloquant]) => ({
+      Code: String(code),
+      "Libellé": libelle,
+      "Gravité": bloquant ? "bloquante" : "non bloquante",
+      _bloquant: bloquant,
+    }));
+    recherche.indexer(k._erreursTableau, COLONNES_ERREURS);
+  }
+  return k._erreursTableau;
+}
+
+/** Les erreurs dont FG_erreurs donne la liste des actes concernés (162,
+ *  163) : [{ code, libelle, actes }], `actes` en couples [acte, libellé]. */
+export function actesDesErreurs(k) {
+  return Object.entries(k.actesErreurs).map(([code, actes]) => ({
+    code,
+    libelle: k._erreurs.get(Number(code))?.libelle ?? "",
+    actes,
+  }));
+}
+
 // ==== Actes spécialisés (volume 1, 3.2) ====
 
 /** L'acte (CSARR, CCAM, ou CSAR transcodé) est-il spécialisé pour ce GN ? */
@@ -438,6 +467,48 @@ export function transpositionCsar(k) {
     intervenants: Object.keys(k.csar.transposition),
     cibles: [...new Set(Object.values(k.csar.transposition))],
   };
+}
+
+// ==== Pondérations des actes (volume 1, 3.3) ====
+
+const COLONNES_PONDERATIONS = ["Code", "Libellé", "Spécialisé"];
+
+/** Les modulateurs de lieu qui majorent la pondération (3.3.1.4), dans
+ *  l'ordre du référentiel ; les autres (EZ, ME, plateaux techniques…) sont
+ *  sans effet sur elle. */
+export function modulateursMajorants(k) {
+  return k.modulateurs.filter(([code]) => MODULATEURS_LIEU.includes(code));
+}
+
+/** Une ligne par acte du thème Pondérations, une fois par jeu (nom
+ *  préfixé : le jeu est partagé avec la fiche code) : pondération, unique
+ *  ou de min à max selon l'intervenant, listes d'actes spécialisés,
+ *  modulateurs de lieu acceptés, validité. */
+export function lignesPonderations(actes, spe, k) {
+  if (!actes._ponderationsTableau) {
+    actes._ponderationsTableau = [...actes._parCode.entries()]
+      .map(([code, lignes]) => {
+        const l = lignes[0];
+        const valeurs = lignes.map((x) => x["Pondération"]);
+        const min = Math.min(...valeurs);
+        const max = Math.max(...valeurs);
+        const listes = [...(spe._parCode.get(code) ?? [])].sort();
+        return {
+          Code: code,
+          Nomenclature: l.Nomenclature,
+          Type: l.Type,
+          "Pondération": lignes.length === 1 || min === max ? String(min) : `${min} à ${max} selon l'intervenant`,
+          "Spécialisé": listes.map((liste) => k.listesSpe[liste]?.libelle ?? liste).join(", "),
+          "Lieu": MODULATEURS_LIEU.filter((m) => l[m]).join(" "),
+          "Validité": l.Valide ? "valide" : l.Fin ? `supprimé en ${l.Fin}` : "supprimé",
+          "Libellé": l["Libellé"],
+          _valide: l.Valide,
+        };
+      })
+      .sort((a, b) => (a.Code < b.Code ? -1 : 1));
+    recherche.indexer(actes._ponderationsTableau, COLONNES_PONDERATIONS);
+  }
+  return actes._ponderationsTableau;
 }
 
 // ==== CMA (volume 1, 5.2) ====

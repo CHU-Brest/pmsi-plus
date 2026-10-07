@@ -5,30 +5,15 @@
 // Une erreur bloquante empêche le groupage du RHS ou du séjour ; une erreur
 // non bloquante est signalée sans l'arrêter. L'adresse
 // #/smr/erreurs/<recherche> pré-remplit le champ (« 162 », « intervenant »).
+// Les lignes sont lues par smr.js (lignesErreurs, actesDesErreurs).
 
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../../interface.js";
-import { chargerClassification } from "../../smr.js";
+import { actesDesErreurs, chargerClassification, lignesErreurs } from "../../smr.js";
 import { lienErreurs, lienFiche, sourceFg } from "../../smr_interface.js";
 
-const COLONNES_CHERCHABLES = ["Code", "Libellé"];
-
-function lignesTableau(k) {
-  if (!k._erreursTableau) {
-    k._erreursTableau = k.erreurs.map(([code, libelle, bloquant]) => ({
-      Code: String(code),
-      "Libellé": libelle,
-      "Gravité": bloquant ? "bloquante" : "non bloquante",
-      _bloquant: bloquant,
-    }));
-    recherche.indexer(k._erreursTableau, COLONNES_CHERCHABLES);
-  }
-  return k._erreursTableau;
-}
-
 /** Les actes concernés par une erreur, liens vers leur fiche. */
-function blocActes(k, code, actes) {
-  const libelle = k._erreurs.get(Number(code))?.libelle ?? "";
+function blocActes({ code, libelle, actes }) {
   return el(
     "section",
     { "aria-labelledby": `erreur_${code}_titre` },
@@ -54,7 +39,7 @@ function blocActes(k, code, actes) {
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
   const k = await chargerClassification();
-  const lignes = lignesTableau(k);
+  const lignes = lignesErreurs(k);
   conteneur.innerHTML = "";
 
   const [demande = ""] = chemin;
@@ -104,7 +89,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       )
     ),
     zoneResultats,
-    ...Object.entries(k.actesErreurs).map(([code, actes]) => blocActes(k, code, actes))
+    ...actesDesErreurs(k).map(blocActes)
   );
 
   function afficher() {

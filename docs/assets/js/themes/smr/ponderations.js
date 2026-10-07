@@ -6,14 +6,14 @@
 //
 // Le détail d'un acte différencié selon l'intervenant — une pondération par
 // intervenant, 0 pour un intervenant non attendu — est dans sa fiche code.
-// L'adresse #/smr/ponderations/<recherche> pré-remplit le champ.
+// L'adresse #/smr/ponderations/<recherche> pré-remplit le champ. Les lignes
+// du tableau sont calculées par smr.js (lignesPonderations).
 
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
-import { chargerActes, chargerActesSpe, chargerClassification, MODULATEURS_LIEU } from "../../smr.js";
+import { chargerActes, chargerActesSpe, chargerClassification, lignesPonderations, modulateursMajorants } from "../../smr.js";
 import { lienCsar, lienFiche, lienPonderations } from "../../smr_interface.js";
 
-const COLONNES_CHERCHABLES = ["Code", "Libellé", "Spécialisé"];
 const NOMENCLATURES = ["CSARR", "CCAM"];
 // Au-delà, la ligne de liens vers les fiches se tait : la recherche doit
 // d'abord être affinée.
@@ -29,39 +29,9 @@ const TYPES = {
   CCAM: "acte CCAM de réadaptation",
 };
 
-/** Une ligne par acte, une fois par jeu (nom préfixé : le jeu est partagé
- *  avec la fiche code). */
-function lignesTableau(actes, spe, k) {
-  if (!actes._ponderationsTableau) {
-    actes._ponderationsTableau = [...actes._parCode.entries()]
-      .map(([code, lignes]) => {
-        const l = lignes[0];
-        const valeurs = lignes.map((x) => x["Pondération"]);
-        const min = Math.min(...valeurs);
-        const max = Math.max(...valeurs);
-        const listes = [...(spe._parCode.get(code) ?? [])].sort();
-        return {
-          Code: code,
-          Nomenclature: l.Nomenclature,
-          Type: l.Type,
-          "Pondération": lignes.length === 1 || min === max ? String(min) : `${min} à ${max} selon l'intervenant`,
-          "Spécialisé": listes.map((liste) => k.listesSpe[liste]?.libelle ?? liste).join(", "),
-          "Lieu": MODULATEURS_LIEU.filter((m) => l[m]).join(" "),
-          "Validité": l.Valide ? "valide" : l.Fin ? `supprimé en ${l.Fin}` : "supprimé",
-          "Libellé": l["Libellé"],
-          _valide: l.Valide,
-        };
-      })
-      .sort((a, b) => (a.Code < b.Code ? -1 : 1));
-    recherche.indexer(actes._ponderationsTableau, COLONNES_CHERCHABLES);
-  }
-  return actes._ponderationsTableau;
-}
-
 function tableModulateurs(k) {
-  // Seuls les modulateurs qui majorent la pondération (3.3.1.4) ; les
-  // autres (EZ, ME, plateaux techniques…) sont sans effet sur elle.
-  const majorants = k.modulateurs.filter(([code]) => MODULATEURS_LIEU.includes(code));
+  // Seuls les modulateurs qui majorent la pondération (3.3.1.4).
+  const majorants = modulateursMajorants(k);
   const ligne = (...cellules) => el("tr", {}, ...cellules);
   return el(
     "div",
@@ -95,7 +65,7 @@ function tableModulateurs(k) {
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
   const [actes, spe, k] = await Promise.all([chargerActes(), chargerActesSpe(), chargerClassification()]);
-  const lignes = lignesTableau(actes, spe, k);
+  const lignes = lignesPonderations(actes, spe, k);
   conteneur.innerHTML = "";
 
   const [demande = ""] = chemin;
