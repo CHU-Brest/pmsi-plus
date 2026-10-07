@@ -354,6 +354,16 @@ export function couvre(element, code) {
   return c >= cle(debut.replace("*", "")) && (c <= cle(fin.replace("*", "")) || dedans(fin));
 }
 
+/** Un élément de liste de DP de l'annexe 5 en clair, pour son infobulle :
+ *  ce qu'il couvre (couvre). */
+export function titreElement(e) {
+  if (e.includes("-")) {
+    const [a, b] = e.split("-");
+    return `Tous les codes de ${a} à ${b.replace("*", "")}${b.endsWith("*") ? " (sauf l'extension 0)" : ", extensions comprises"}`;
+  }
+  return e.endsWith("*") ? `${e.slice(0, -1)} et ses extensions, sauf l'extension 0` : `${e} et toutes ses extensions`;
+}
+
 /** Un élément de liste de racines couvre-t-il la racine `r` (« 01C03 ») ? */
 export function couvreRacine(element, r) {
   let m;
@@ -380,6 +390,18 @@ export function exclusionParDp(exclusions, cma, dp) {
   const listeDp = ligneCma(exclusions, cma)?.[2];
   if (listeDp == null) return null;
   return exclusions.dp[listeDp].find((e) => couvre(e, dp)) ?? null;
+}
+
+/** La CMA `code` et ses listes d'exclusion : son niveau, ses numéros de
+ *  liste de DP et de liste de racines (null si elle n'en a pas) et leurs
+ *  éléments ; null si le code n'est pas une CMA. */
+export function ficheCma(exclusions, code) {
+  const fiche = ligneCma(exclusions, code);
+  if (!fiche) return null;
+  const [, niveau, listeDp, listeRacine] = fiche;
+  const elementsDp = listeDp != null ? exclusions.dp[listeDp] : [];
+  const elementsRacines = listeRacine != null ? exclusions.racines[listeRacine] : [];
+  return { niveau, listeDp, listeRacine, elementsDp, elementsRacines };
 }
 
 // ==== Fiche code ====
@@ -430,6 +452,98 @@ export function decompte(racines) {
     return n ? [`${n} ${nom}${n > 1 ? "s" : ""}`] : [];
   });
   return `${racines.length} racines : ${parType.join(", ")}`;
+}
+
+// Au plus tant de voisins dans l'encadré d'un code ou d'un acte frontière :
+// les vues d'ensemble des frontières les donnent tous.
+export const VOISINS_MAX = 15;
+
+/** Les listes d'un code, chacune avec son libellé : celui de l'arbre, à
+ *  défaut celui des lignes du code dans les listes publiées. */
+function listesLibellees(arbre, listes, lignes) {
+  return listes.map((l) => ({ liste: l, libelle: arbre.listes[l]?.libelle ?? lignes.find((x) => x.Liste === l)?.["Libellé liste"] ?? "" }));
+}
+
+/** La fiche d'un diagnostic, en données, d'après les lignes des jeux
+ *  chargés (`diagnostics`, listes de la fonction groupage ; `cma` ;
+ *  `entrees`, diagnostics d'entrée des CMD) et `exclusions`
+ *  (cma_exclusions.json). Son libellé est lu dans les listes, à défaut
+ *  parmi les CMA, puis parmi les diagnostics d'entrée ; null s'il n'est
+ *  nulle part. En DP : les CMD dont il est un diagnostic d'entrée, les
+ *  étapes (lignesEtapes) de ces CMD puis des tests sur le DP, et les
+ *  racines que le séjour peut atteindre par celles qu'il prend ; ses lignes
+ *  de codes frontières, et les codes voisins de sa catégorie qui mènent à
+ *  d'autres racines (VOISINS_MAX, et combien en plus). En DAS : sa CMA
+ *  (ficheCma). Puis les autres tests de l'arbre sur ce diagnostic, et ses
+ *  listes. */
+export function donneesFicheDiagnostic(arbre, code, { diagnostics, cma, entrees, exclusions }) {
+  const lignes = diagnostics.filter((l) => l.Code === code);
+  const entreesDuCode = entrees.filter((l) => l.Code === code);
+  const libelle =
+    lignes[0]?.["Libellé code"] ?? cma.find((l) => l.Code === code)?.["Libellé"] ?? entreesDuCode[0]?.["Libellé"];
+  if (!libelle) return null;
+  const listes = [...new Set(lignes.map((l) => l.Liste))].sort();
+  const { parListe } = indexer(arbre);
+  const etapes = listes.flatMap((l) => (parListe.get(l) ?? []).map((e) => ({ ...e, liste: l })));
+  const surLeDp = (e) => e.n.genre === "test" && e.n.symbole === "DP";
+  const cmds = entreesDuCode.map((e) => etapeCmd(arbre, e.CMD)).filter(Boolean);
+  const parcours = parcoursEnDp(listes);
+  const enDp = [...cmds, ...marquerAtteintes(arbre, etapes.filter(surLeDp), cmds, parcours)];
+  const autres = etapes.filter((e) => !surLeDp(e));
+
+  const frontieres = frontieresDp(arbre, diagnostics);
+  const frontiere = frontieres.filter((f) => f.Code === code);
+  const voisins = frontiere.length
+    ? frontieres.filter(
+        (f) => f._categorie === code.slice(0, 3) && frontiere.some((x) => x.CMD === f.CMD) && f.Code !== code
+      )
+    : [];
+  const racinesDuCode = new Set(frontiere.flatMap((f) => f.Racines.split(", ")));
+  const ailleurs = voisins.filter((v) => v.Racines.split(", ").some((r) => !racinesDuCode.has(r)));
+
+  return {
+    libelle,
+    cmds: cmds.map((e) => e.n.cmd),
+    enDp: lignesEtapes(arbre, enDp, parcours),
+    frontiere,
+    voisins: ailleurs.slice(0, VOISINS_MAX),
+    voisinsEnPlus: Math.max(0, ailleurs.length - VOISINS_MAX),
+    racines: racinesDesEtapes(arbre, enDp.filter((e) => !e.nonAtteinte), parcours),
+    cma: ficheCma(exclusions, code),
+    autres: lignesEtapes(arbre, autres),
+    listes: listesLibellees(arbre, listes, lignes),
+  };
+}
+
+/** La fiche d'un acte, en données, d'après les lignes des listes d'actes
+ *  de la fonction groupage (`actes`), dont le code est ramené à son code
+ *  CCAM : son libellé, null s'il n'est dans aucune liste ; les étapes qui
+ *  le testent (lignesEtapes) et les racines qu'elles peuvent atteindre ;
+ *  ses lignes d'actes frontières, et si le type de GHM y change ; les actes
+ *  voisins (même CMD, mêmes 4 lettres) qui mènent à d'autres racines
+ *  (VOISINS_MAX, et combien en plus) ; ses listes. */
+export function donneesFicheActe(arbre, code, actes) {
+  const lignes = actes.filter((l) => codeCcam(l.Code) === code);
+  if (!lignes.length) return null;
+  const libelle = lignes[0]["Libellé code"];
+  const listes = [...new Set(lignes.map((l) => l.Liste))].sort();
+  const { parListe } = indexer(arbre);
+  const etapes = listes.flatMap((l) => (parListe.get(l) ?? []).map((e) => ({ ...e, liste: l })));
+  const frontieres = frontieresActes(arbre, actes);
+  const moi = frontieres.filter((f) => codeCcam(f.Code) === code);
+  const voisins = frontieres.filter(
+    (f) => moi.some((m) => m.CMD === f.CMD && m._famille === f._famille && m.Racines !== f.Racines) && codeCcam(f.Code) !== code
+  );
+  return {
+    libelle,
+    etapes: lignesEtapes(arbre, etapes),
+    frontiere: moi,
+    typeChange: moi.some((m) => m._typeChange),
+    voisins: voisins.slice(0, VOISINS_MAX),
+    voisinsEnPlus: Math.max(0, voisins.length - VOISINS_MAX),
+    racines: racinesDesEtapes(arbre, etapes),
+    listes: listesLibellees(arbre, listes, lignes),
+  };
 }
 
 // ==== Suggestions de la fiche code ====
