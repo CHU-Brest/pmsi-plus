@@ -15,17 +15,20 @@ import { normaliser } from "../recherche.js";
 import { el, fraicheur, nombre } from "../interface.js";
 import {
   RE_CCAM,
-  RE_RACINE,
   codeCcam,
-  codesGhm,
+  etapeCmd,
   exclusionParDp,
   frontieresActes,
   frontieresDp,
+  ghmDeRacineDansArbre,
   graphie,
+  indexer,
+  libellesRacines,
   ligneCma,
-  racinesAtteintes,
-  racinesDepuis,
-  sorties,
+  marquerAtteintes,
+  parcoursEnDp,
+  racinesDe,
+  racinesDesEtapes,
 } from "../groupage_mco.js";
 import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
 
@@ -81,78 +84,11 @@ const racinesEnClair = (libelles, racines) =>
     .map((r) => (libelleRacine(libelles, r) ? `${r} ${libelleRacine(libelles, r)}` : r))
     .join(" ; ");
 
-function indexer(arbre) {
-  if (arbre._fiche) return arbre._fiche;
-  const parListe = new Map(); // liste → [{ id, n, i }]
-  for (const [id, n] of Object.entries(arbre.noeuds)) {
-    (n.branches ?? []).forEach((b, i) => {
-      for (const l of b.listes) {
-        if (!parListe.has(l)) parListe.set(l, []);
-        parListe.get(l).push({ id, n, i });
-      }
-    });
-  }
-  arbre._fiche = { parListe };
-  return arbre._fiche;
-}
-
-/** Le parcours d'un séjour dont le code est le DP. Un test sur le DP ne
- *  suit que le premier cas qui contient le code, ou son « sinon » ; un test
- *  sur l'un des diagnostics du RSS (D, ou DP et DAS sauf DR) que le code
- *  satisfait ne va pas au-delà de son cas ; l'inversion du DP et du DR n'a
- *  pas eu lieu, puisque le code est resté le DP. Les autres tests (actes,
- *  autres diagnostics, âge, durée de séjour…) restent ouverts. */
-function parcoursEnDp(listes) {
-  const contient = (b) => b.listes.some((l) => listes.includes(l));
-  const suivre = (n) => {
-    const branches = n.branches ?? [];
-    if (n.genre === "test" && n.symbole === "DP") {
-      const b = branches.find(contient);
-      return [b ? b.vers : n.sinon?.vers].filter(Boolean);
-    }
-    if (n.genre === "test" && (n.symbole === "D" || n.symbole === "DRbarre")) {
-      const i = branches.findIndex(contient);
-      if (i >= 0) return branches.slice(0, i + 1).map((b) => b.vers);
-    }
-    if (n.genre === "critere" && n.variable === "Inversion DP/DR") return [n.sinon.vers];
-    return sorties(n);
-  };
-  return { suivre, memo: new Map() };
-}
-
-/** Les racines de GHM que le séjour peut atteindre depuis `vers` : par
- *  toutes les sorties, ou selon le parcours d'un DP (parcoursEnDp). */
-function racinesDe(arbre, vers, parcours) {
-  const atteintes = parcours ? racinesAtteintes(arbre, vers, parcours.memo, parcours.suivre) : racinesDepuis(arbre, vers);
-  return [...atteintes].filter((r) => RE_RACINE.test(r)).sort();
-}
-
-/** Les racines que peuvent atteindre les étapes, sans doublon. */
-function racinesDesEtapes(arbre, etapes, parcours) {
-  return [...new Set(etapes.flatMap((e) => racinesDe(arbre, e.n.branches[e.i].vers, parcours)))].sort();
-}
-
-/** Les GHM d'une racine d'après les cases de l'arbre, y compris ceux que
- *  l'arrêté ne tarife pas (09Z02A) : ils doivent figurer, sans tarif, dans
- *  le tableau de leur racine plutôt que d'en disparaître. */
-function ghmDeRacineDansArbre(arbre, racine) {
-  if (!arbre._ghmParRacine) {
-    const index = new Map();
-    for (const n of Object.values(arbre.noeuds)) {
-      if (n.genre !== "ghm") continue;
-      if (!index.has(n.racine)) index.set(n.racine, new Set());
-      for (const g of codesGhm(n)) index.get(n.racine).add(g);
-    }
-    arbre._ghmParRacine = index;
-  }
-  return [...(arbre._ghmParRacine.get(racine) ?? [])].sort();
-}
-
 // ==== Vue ====
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
   const [arbre, racines] = await Promise.all([chargerJson("groupage", "arbre"), jeux.racines().catch(() => null)]);
-  const libelles = new Map((racines?.lignes ?? []).map((l) => [l.ListeRacineGHM, l["Libellé liste"]]));
+  const libelles = libellesRacines(racines?.lignes ?? []);
   conteneur.innerHTML = "";
 
   const saisie = el("input", {
@@ -362,35 +298,6 @@ async function ficheDiagnostic(arbre, code, libelles) {
   ];
 }
 
-/** L'étape qui oriente le séjour en DP vers une CMD dont le code est un
- *  diagnostic d'entrée (volume 2) : la racine de l'arbre de la CMD. Un code
- *  des appareils génitaux entre dans deux CMD, 12 et 13, selon le sexe. La
- *  ligne dit « DP » même en CMD 15, dont la racine teste l'âge. */
-function etapeCmd(arbre, cmd) {
-  const c = arbre.cmd.find((x) => x.cmd === cmd);
-  return c ? { id: c.racine, n: arbre.noeuds[c.racine], i: 0, test: `DP : CMD ${c.cmd} ${c.titre}` } : null;
-}
-
-/** Marque `nonAtteinte` les étapes sur le DP dont le séjour ne prend pas le
- *  cas avec ce DP. L'orientation (séances, transplantation, traumatismes
- *  multiples, VIH, nouveau-nés) précède la CMD du DP ; hors d'elle, une
- *  étape n'est atteinte que depuis cette CMD. Sans CMD connue, rien n'est
- *  marqué. */
-function marquerAtteintes(arbre, etapes, cmds, parcours) {
-  if (!cmds.length) return etapes;
-  const orientation = new Set(arbre.orientation.map((o) => o.cmd));
-  const atteints = new Set();
-  const pile = cmds.map((e) => e.n.branches[e.i].vers);
-  while (pile.length) {
-    const id = pile.pop();
-    if (atteints.has(id)) continue;
-    atteints.add(id);
-    pile.push(...parcours.suivre(arbre.noeuds[id]));
-  }
-  const prise = (e) => atteints.has(e.id) && parcours.suivre(e.n).includes(e.n.branches[e.i].vers);
-  return etapes.map((e) => (orientation.has(e.n.cmd) || prise(e) ? e : { ...e, nonAtteinte: true }));
-}
-
 /** Trois pastilles pour lire la fiche d'un coup d'œil. */
 function resume(cmds, enDp, frontiere, exclusions, code) {
   const fiche = ligneCma(exclusions, code);
@@ -487,8 +394,7 @@ function blocTarifs(arbre, libelles, tarifs, racines) {
     fraicheur([{ libelle: tarifs.libelle, millesime: tarifs.millesime }]),
     noteTarifs("#/mco/tarifs"),
     ...racines.map((r) => {
-      const dansArbre = ghmDeRacineDansArbre(arbre, r);
-      const ghms = dansArbre.length ? dansArbre : ghmDeRacine(tarifs, r);
+      const ghms = ghmDeRacineDansArbre(arbre, r, ghmDeRacine(tarifs, r));
       const n = nombreGhs(tarifs, ghms);
       return el(
         "details",
