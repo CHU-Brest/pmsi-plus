@@ -15,12 +15,21 @@
 // (CMD, CM, GN…) où le nœud est dessiné. Un test (genre « test », un
 // `symbole`) et un critère (« critere », une `variable`) se dessinent ici ;
 // les autres étapes et les feuilles, par le profil du champ (cf.
-// dessinerArbre). Ce qui se lit sur le graphe sans DOM (parents, chemin,
-// recherche) est dans arbre_graphe.js.
+// dessinerArbre). Ce qui se lit sur le graphe sans DOM (parents, chemin et
+// libellé de ses étapes, recherche) est dans arbre_graphe.js.
 
 import * as recherche from "./recherche.js";
 import { el, champMotsClefs, nombre } from "./interface.js";
-import { casDesListes, cheminVers, noeudsCorrespondants, preparer, resume, resumeResultat } from "./arbre_graphe.js";
+import {
+  casDesListes,
+  cheminVers,
+  issue,
+  libelleEtape,
+  noeudsCorrespondants,
+  preparer,
+  resume,
+  resumeResultat,
+} from "./arbre_graphe.js";
 
 // Un code de liste dans un libellé, avec ses parenthèses s'il en a : la
 // puce cliquable qui le remplace tient lieu de parenthèses.
@@ -558,7 +567,7 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
             "li",
             { "data-noeud": e.de },
             P.pictogramme(noeud),
-            el("span", { class: "chemin-libelle" }, ...libelleEtape(noeud, e)),
+            el("span", { class: "chemin-libelle" }, ...libelleEtapeAvecListes(noeud, e)),
             el("span", { class: `issue ${e.role === "non" ? "non" : "oui"}` }, issue(e))
           )
         );
@@ -574,26 +583,15 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
     });
   }
 
-  function libelleEtape(n, e) {
-    const b = n.branches ?? [];
-    if (e.role === "oui" && (n.genre === "test" || n.genre === "critere")) {
-      const prefixe = n.genre === "critere" ? [el("strong", {}, n.variable), " "] : [];
-      return [...prefixe, ...libelleAvecListes(b[e.i].libelle || P.symboles[n.symbole]?.titre || "")];
-    }
-    if (e.role === "non" && b.length === 1) {
-      const prefixe = n.genre === "critere" ? [el("strong", {}, n.variable), " "] : [];
-      return [...prefixe, ...libelleAvecListes(b[0].libelle || P.symboles[n.symbole]?.titre || "")];
-    }
-    if (e.role === "non") {
-      return [`${resume(P, n)} : aucun des cas (${b.map((x) => x.listes.join(", ") || x.libelle).join(" ; ")})`];
-    }
-    return intitule(n);
-  }
-
-  function issue(e) {
-    if (e.role === "non") return "non";
-    if (e.role === "suite") return "puis";
-    return "oui";
+  /** Le libellé d'une étape du chemin (cf. libelleEtape) : la variable
+   *  d'un critère en gras, les codes de liste en puces ; à défaut,
+   *  l'intitulé de l'étape. */
+  function libelleEtapeAvecListes(n, e) {
+    const libelle = libelleEtape(P, n, e);
+    if (!libelle) return intitule(n);
+    if (libelle.texte != null) return [libelle.texte];
+    const prefixe = libelle.variable != null ? [el("strong", {}, libelle.variable), " "] : [];
+    return [...prefixe, ...libelleAvecListes(libelle.libelle)];
   }
 
   // ---- Aller à une étape ----

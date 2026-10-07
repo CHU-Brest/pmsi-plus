@@ -1,8 +1,9 @@
 // Lecture d'un arbre de décision de fonction groupage, sans DOM : index des
-// parents, chemin d'un nœud jusqu'à la racine, recherche des étapes et des
-// feuilles, textes d'une ligne. Le dessin est celui de arbre_vue.js, qui
-// passe ici le profil du champ (`P`, cf. dessinerArbre) : l'arbre et ce que
-// le champ sait de ses nœuds (symboles, feuilles, codes de groupe…).
+// parents, chemin d'un nœud jusqu'à la racine et libellé de ses étapes,
+// recherche des étapes et des feuilles, textes d'une ligne. Le dessin est
+// celui de arbre_vue.js, qui passe ici le profil du champ (`P`, cf.
+// dessinerArbre) : l'arbre et ce que le champ sait de ses nœuds (symboles,
+// feuilles, codes de groupe…).
 
 import * as recherche from "./recherche.js";
 
@@ -120,6 +121,39 @@ function texteEtape(P, n, e) {
   if (e.role === "oui") return `${prefixe}${b[e.i]?.libelle ?? ""}`.trim();
   if (e.role === "non") return `${prefixe}${b.length === 1 ? b[0].libelle : resume(P, n)} : non`.trim();
   return intituleCourt(P, n);
+}
+
+/** Le libellé d'une étape `e` (cf. cheminVers) dans le panneau du chemin
+ *  d'une feuille, en données que arbre_vue.js dessine :
+ *  - `{ variable, libelle }`, une condition : celle du cas pris (« oui »)
+ *    d'un test ou d'un critère, ou la seule d'une étape quittée par
+ *    « non » ; `variable` est celle du critère, null pour un test ; les
+ *    codes de liste du libellé deviennent des puces au dessin ;
+ *  - `{ texte }`, le « non » d'une colonne de cas, qui énumère les cas
+ *    écartés ;
+ *  - null : l'étape se lit à son intitulé (étape propre au champ, « puis »). */
+export function libelleEtape(P, n, e) {
+  const b = n.branches ?? [];
+  if (e.role === "oui" && (n.genre === "test" || n.genre === "critere")) {
+    const variable = n.genre === "critere" ? n.variable : null;
+    return { variable, libelle: b[e.i].libelle || P.symboles[n.symbole]?.titre || "" };
+  }
+  if (e.role === "non" && b.length === 1) {
+    const variable = n.genre === "critere" ? n.variable : null;
+    return { variable, libelle: b[0].libelle || P.symboles[n.symbole]?.titre || "" };
+  }
+  if (e.role === "non") {
+    return { texte: `${resume(P, n)} : aucun des cas (${b.map((x) => x.listes.join(", ") || x.libelle).join(" ; ")})` };
+  }
+  return null;
+}
+
+/** Ce qui suit une étape du chemin, au bout de sa ligne : « non », « puis »
+ *  (la suite d'une étape sans condition) ou « oui ». */
+export function issue(e) {
+  if (e.role === "non") return "non";
+  if (e.role === "suite") return "puis";
+  return "oui";
 }
 
 // ==== Recherche ====
