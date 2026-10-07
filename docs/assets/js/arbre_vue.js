@@ -82,7 +82,8 @@ function optionsDuSelecteur(categories) {
  *   d'une feuille ;
  * - `codesDeListe(code, nature, contexte)` → promesse des lignes `{ Code,
  *   « Libellé code », _cma? }` ; `contexteDeListe?(n, branche)` ;
- *   `listeAbsente?(code)` ; `titreCma` ;
+ *   `listeAbsente?(code)` ; `titreCma` ; `listesNommees?` : `{ libellé :
+ *   { libelle, nature } }`, les listes qu'un libellé nomme à lui seul ;
  * - `groupeDeRequete(compact)` : la requête lue comme un code de groupe, ou
  *   null ; `natureDeCode?(requete)` : « actes », « diagnostics » ou null ;
  *   `listesDuCode(requete, nature)` → promesse d'une Map code → `{ libelle,
@@ -349,6 +350,7 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
   }
 
   function libelleAvecListes(texte) {
+    if (P.listesNommees?.[texte]) return [puceListe(texte)];
     const morceaux = [];
     let fin = 0;
     for (const m of texte.matchAll(RE_LISTE)) {
@@ -360,11 +362,19 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
     return morceaux;
   }
 
+  /** Une liste citée par l'arbre, ou nommée par un libellé du profil. */
+  function ficheListe(code) {
+    return arbre.listes[code] ?? P.listesNommees?.[code];
+  }
+
   function puceListe(code) {
-    const fiche = arbre.listes[code];
-    const titre = fiche?.libelle
-      ? `${fiche.libelle} — ${nombre(fiche.codes)} ${fiche.nature === "actes" ? "acte" : "diagnostic"}${fiche.codes > 1 ? "s" : ""}`
-      : "Liste absente des listes publiées de la fonction groupage";
+    const fiche = ficheListe(code);
+    // Une liste nommée ne dit son nombre de codes qu'une fois ouverte.
+    const compte =
+      fiche?.codes == null
+        ? ""
+        : ` — ${nombre(fiche.codes)} ${fiche.nature === "actes" ? "acte" : "diagnostic"}${fiche.codes > 1 ? "s" : ""}`;
+    const titre = fiche?.libelle ? `${fiche.libelle}${compte}` : "Liste absente des listes publiées de la fonction groupage";
     const bouton = el(
       "button",
       {
@@ -433,7 +443,7 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
   function basculerListe(bouton, code) {
     const contexte = contexteDeListe(bouton, code);
     basculerPanneau(bouton, (fermer) => {
-      const fiche = arbre.listes[code];
+      const fiche = ficheListe(code);
       const nature = fiche?.nature ?? (code.startsWith("A") ? "actes" : "diagnostics");
       const zone = el("div", {}, el("p", { class: "compteur" }, "Chargement de la liste…"));
       const panneau = el(
@@ -467,7 +477,7 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
                 "div",
                 { class: "filtre-liste" },
                 champMotsClefs({
-                  id: `liste_${code}_${Math.floor(performance.now())}`,
+                  id: `liste_${code.replace(/\s/g, "")}_${Math.floor(performance.now())}`,
                   libelle: `Filtrer la liste ${code} :`,
                   raccourci: false,
                   exemple: nature === "actes" ? "ex. : arthroscopie" : "ex. : sans précision",
