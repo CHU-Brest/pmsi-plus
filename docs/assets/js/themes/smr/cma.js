@@ -6,7 +6,8 @@
 // Un vérificateur applique la règle du manuel : une CMA codée en MMP ou en
 // DAS est un marqueur de sévérité, sauf si un code ayant orienté un RHS du
 // séjour dans le GN retenu l'exclut. L'adresse #/smr/cma/<code> y pré-remplit
-// le code candidat (la fiche code y renvoie).
+// le code candidat (la fiche code y renvoie). Le verdict et les lignes du
+// tableau sont calculés par smr.js (evaluerCma, lignesCma).
 
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
@@ -14,45 +15,18 @@ import {
   chargerClassification,
   chargerDiagnostics,
   chargerExclusions,
-  cle,
-  estExclue,
+  evaluerCma,
   gnSansSeverite2,
   graphie,
   libelleGroupe,
-  normaliserActe,
-  RE_CIM,
-  tailleListeExclusion,
+  lignesCma,
 } from "../../smr.js";
 import { lienFiche, sourceFg } from "../../smr_interface.js";
 
-/** Lignes du tableau des CMA CIM-10, une fois par jeu. */
-function lignesCma(diagnostics, exclusions) {
-  if (!diagnostics._cmaTableau) {
-    diagnostics._cmaTableau = diagnostics.lignes
-      .filter((l) => l.CMA)
-      .map((l) => {
-        const index = exclusions.cma[l.Code];
-        return {
-          Code: l.Code,
-          "Libellé": l["Libellé"],
-          "Codes qui l'excluent": index == null ? 0 : tailleListeExclusion(diagnostics, exclusions, index),
-        };
-      });
-    recherche.indexer(diagnostics._cmaTableau, ["Code", "Libellé"]);
-  }
-  return diagnostics._cmaTableau;
-}
-
 // ==== Vérificateur ====
 
-/** Codes saisis, séparés par des espaces, des virgules ou des points-virgules. */
-const codesSaisis = (texte) =>
-  String(texte ?? "")
-    .split(/[\s,;]+/)
-    .filter(Boolean);
-
 function verificateur(k, diagnostics, exclusions, candidatInitial) {
-  const D = diagnostics._parCle;
+  const smr = { classification: k, diagnostics, exclusions };
   const zone = el("div", { class: "verdict-cma", role: "status", "aria-live": "polite" });
   const champ = (id, libelle, exemple, valeur, aide) =>
     el(
@@ -80,13 +54,16 @@ function verificateur(k, diagnostics, exclusions, candidatInitial) {
   );
 
   function evaluer() {
-    const saisie = document.getElementById("smr_cma_candidat").value.trim();
-    const orientants = codesSaisis(document.getElementById("smr_cma_orientants").value).map(cle);
+    const verdict = evaluerCma(
+      smr,
+      document.getElementById("smr_cma_candidat").value,
+      document.getElementById("smr_cma_orientants").value
+    );
     zone.replaceChildren();
-    if (!saisie) return;
+    if (!verdict) return;
 
-    const acte = normaliserActe(saisie).slice(0, 7);
-    if (k._cmaCcam.has(acte)) {
+    if (verdict.cas === "acteCma") {
+      const acte = verdict.code;
       zone.append(
         el(
           "p",
@@ -97,21 +74,15 @@ function verificateur(k, diagnostics, exclusions, candidatInitial) {
       );
       return;
     }
-    const c = cle(saisie);
-    const diag = D.get(c);
-    if (!diag) {
-      // Graphie CIM-10 pour un code qui en a la forme seulement : un acte
-      // garde la sienne (« AHQP002 », pas « AHQ.P002 »).
-      const affiche = RE_CIM.test(c) ? graphie(c) : normaliserActe(saisie);
-      zone.append(el("p", { class: "message-info" }, `${affiche} : ni code CIM-10 de CIM_infos_SMR, ni acte CCAM CMA.`));
+    if (verdict.cas === "inconnu") {
+      zone.append(el("p", { class: "message-info" }, `${verdict.code} : ni code CIM-10 de CIM_infos_SMR, ni acte CCAM CMA.`));
       return;
     }
-    if (!diag.CMA) {
-      zone.append(el("p", { class: "message-info" }, `${graphie(c)} n'est pas une CMA : il ne modifie pas le niveau de sévérité.`));
+    if (verdict.cas === "pasCma") {
+      zone.append(el("p", { class: "message-info" }, `${graphie(verdict.code)} n'est pas une CMA : il ne modifie pas le niveau de sévérité.`));
       return;
     }
-    const inconnus = orientants.filter((o) => !D.has(o));
-    const excluant = orientants.filter((o) => D.has(o) && estExclue({ diagnostics, exclusions }, c, o));
+    const { code: c, orientants, inconnus, excluant, taille, exclueParElleMeme } = verdict;
     const lignes = [el("strong", {}, `${graphie(c)} : CMA. `)];
     if (excluant.length) {
       lignes.push(`Exclue par ${excluant.map(graphie).join(", ")} : elle ne compte pas comme marqueur de sévérité dans ce GN.`);
@@ -121,15 +92,13 @@ function verificateur(k, diagnostics, exclusions, candidatInitial) {
       lignes.push("Saisir les codes ayant orienté le RHS dans le GN pour vérifier ses exclusions.");
     }
     if (inconnus.length) lignes.push(` Codes inconnus, non vérifiés : ${inconnus.map(graphie).join(", ")}.`);
-    const index = exclusions.cma[graphie(c)];
-    const taille = index == null ? 0 : tailleListeExclusion(diagnostics, exclusions, index);
     zone.append(
       el("p", { class: excluant.length ? "message-avertissement" : orientants.length && !inconnus.length ? "message-succes" : "message-info" }, ...lignes),
       el(
         "p",
         { class: "sous-titre" },
         taille
-          ? `Sa liste d'exclusion compte ${nombre(taille)} codes${D.has(c) && estExclue({ diagnostics, exclusions }, c, c) ? ", dont lui-même : s'il a orienté le RHS dans le GN, il ne compte pas comme CMA" : ""}. `
+          ? `Sa liste d'exclusion compte ${nombre(taille)} codes${exclueParElleMeme ? ", dont lui-même : s'il a orienté le RHS dans le GN, il ne compte pas comme CMA" : ""}. `
           : "Aucune liste d'exclusion : aucun code orientant ne l'exclut. ",
         el("a", { class: "lien-texte", href: lienFiche(graphie(c)) }, "Fiche du code")
       )

@@ -391,6 +391,72 @@ export function gnSansSeverite2(k) {
   );
 }
 
+/** Lignes du tableau des CMA CIM-10, une fois par jeu : code, libellé et
+ *  nombre de codes de sa liste d'exclusion (« Codes qui l'excluent »). */
+export function lignesCma(diagnostics, exclusions) {
+  if (!diagnostics._cmaTableau) {
+    diagnostics._cmaTableau = diagnostics.lignes
+      .filter((l) => l.CMA)
+      .map((l) => {
+        const index = exclusions.cma[l.Code];
+        return {
+          Code: l.Code,
+          "Libellé": l["Libellé"],
+          "Codes qui l'excluent": index == null ? 0 : tailleListeExclusion(diagnostics, exclusions, index),
+        };
+      });
+    recherche.indexer(diagnostics._cmaTableau, ["Code", "Libellé"]);
+  }
+  return diagnostics._cmaTableau;
+}
+
+/** Codes saisis, séparés par des espaces, des virgules ou des points-virgules. */
+export const codesSaisis = (texte) =>
+  String(texte ?? "")
+    .split(/[\s,;]+/)
+    .filter(Boolean);
+
+/** Verdict du vérificateur « Cette CMA compte-t-elle ? » (5.2) sur les
+ *  saisies : `candidat`, code CIM-10 ou acte CCAM ; `orientants`, les codes
+ *  ayant orienté le RHS dans le GN. Null sans candidat ; sinon `cas` :
+ *  - « acteCma » : acte CCAM CMA (phase écartée, normaliserActe), marqueur
+ *    de sévérité sans exclusion possible ; `code`, l'acte ;
+ *  - « inconnu » : ni code de CIM_infos_SMR, ni acte CCAM CMA ; `code` dans
+ *    la graphie CIM-10 s'il en a la forme, dans celle d'un acte sinon ;
+ *  - « pasCma » : code CIM-10 sans effet sur le niveau de sévérité ;
+ *  - « cma » : `orientants` saisis, `excluant` (ceux qui l'excluent),
+ *    `inconnus` (absents de CIM_infos_SMR, non vérifiés), `taille` de sa
+ *    liste d'exclusion et `exclueParElleMeme`.
+ *  `code` (« pasCma », « cma ») et les orientants sont des clefs. */
+export function evaluerCma(smr, candidat, orientantsSaisis) {
+  const { classification: k, diagnostics, exclusions } = smr;
+  const D = diagnostics._parCle;
+  const saisie = String(candidat ?? "").trim();
+  const orientants = codesSaisis(orientantsSaisis).map(cle);
+  if (!saisie) return null;
+
+  const acte = normaliserActe(saisie).slice(0, 7);
+  if (k._cmaCcam.has(acte)) return { cas: "acteCma", code: acte };
+  const c = cle(saisie);
+  const diag = D.get(c);
+  if (!diag) {
+    // Graphie CIM-10 pour un code qui en a la forme seulement : un acte
+    // garde la sienne (« AHQP002 », pas « AHQ.P002 »).
+    return { cas: "inconnu", code: RE_CIM.test(c) ? graphie(c) : normaliserActe(saisie) };
+  }
+  if (!diag.CMA) return { cas: "pasCma", code: c };
+  const index = exclusions.cma[graphie(c)];
+  return {
+    cas: "cma",
+    code: c,
+    orientants,
+    inconnus: orientants.filter((o) => !D.has(o)),
+    excluant: orientants.filter((o) => D.has(o) && estExclue({ diagnostics, exclusions }, c, o)),
+    taille: index == null ? 0 : tailleListeExclusion(diagnostics, exclusions, index),
+    exclueParElleMeme: D.has(c) && estExclue({ diagnostics, exclusions }, c, c),
+  };
+}
+
 // ==== Fiche code : saisie et suggestions ====
 
 const SUGGESTIONS_MAX = 12;
