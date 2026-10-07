@@ -537,6 +537,12 @@ export function codesDeListe(lignes, code) {
   return resultat;
 }
 
+/** Les diagnostics d'entrée dans la CMD `cmd` (« 09 »), tels que les donne
+ *  le volume 2 (entrees.json), sous la forme des lignes de codesDeListe. */
+export function diagnosticsDEntree(lignes, cmd) {
+  return lignes.filter((l) => l.CMD === cmd).map((l) => ({ Code: l.Code, "Libellé code": l["Libellé"] }));
+}
+
 /** Le niveau de CMA de chaque diagnostic d'une liste (codesDeListe) et ses
  *  exclusions à l'étape d'où elle est ouverte (`contexte`, cf.
  *  contexteDeListe), posés en `_cma` sur sa ligne (statutCma). */
