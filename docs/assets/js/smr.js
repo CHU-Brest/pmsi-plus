@@ -457,6 +457,169 @@ export function evaluerCma(smr, candidat, orientantsSaisis) {
   };
 }
 
+// ==== Listes de la fonction groupage ====
+
+// Colonne GN des listes que n'emploie aucun test d'entrée (D-9001, D-9090).
+export const SANS_GN = "Aucun";
+
+// Numéros de GN séparés d'une espace, sans virgule : le tableau partagé
+// dimensionne une colonne d'identifiants sur sa valeur la plus longue tant
+// qu'aucune ne passe 20 caractères, et sur la longueur moyenne au-delà. Les
+// quatre GN de D-0831 font 19 caractères ainsi, 22 avec des virgules : la
+// colonne se serait alors réglée sur la moyenne (un seul GN) et tronquée
+// jusqu'au numéro seul (« 0… »).
+const SEPARATEUR_GN = " ";
+
+// « GN » est volontairement hors de l'index, comme « CMD » en MCO : les
+// listes portent le plus souvent le numéro du GN qu'elles ouvrent (D-0103,
+// GN 0103), et une liste peut servir à un GN voisin (D-0830 entre dans les
+// tests du GN 0831) — chercher « 0831 » ramènerait alors D-0830 à côté de
+// D-0831. La colonne reste affichée et triable ; une saisie qui est un
+// numéro de GN renvoie à l'algorithme (indicationGnDiagnostics du thème).
+const COLONNES_DIAGNOSTICS = ["Liste", "Libellé liste", "Code", "Libellé code"];
+
+/** Liste → GN dont un test d'entrée l'emploie, triés. Gardé sur la
+ *  classification, partagée par les thèmes SMR : le nom est préfixé pour
+ *  ne pas croiser l'index d'un autre thème. */
+export function gnParListe(k) {
+  if (!k._groupageGnParListe) {
+    const m = new Map();
+    for (const noeud of k.tests) {
+      for (const test of noeud.tests) {
+        if (!m.has(test.liste)) m.set(test.liste, new Set());
+        m.get(test.liste).add(noeud.gn);
+      }
+    }
+    k._groupageGnParListe = new Map([...m].map(([liste, gns]) => [liste, [...gns].sort()]));
+  }
+  return k._groupageGnParListe;
+}
+
+/** Les listes de diagnostics que n'emploie aucun test d'entrée en GN
+ *  (D-9001, D-9090), lues dans les données plutôt qu'écrites en dur. */
+export function listesSansTest(k) {
+  const gns = gnParListe(k);
+  return Object.keys(k.listes)
+    .filter((liste) => !gns.has(liste))
+    .sort();
+}
+
+/** Une ligne par code et par liste, listes dans l'ordre de leur numéro et
+ *  codes dans celui de CIM_infos_SMR. Construite et indexée une fois par
+ *  jeu chargé (près de 13 000 lignes tirées de 43 000 codes), jamais à la frappe. */
+export function lignesDiagnostics(diagnostics, k) {
+  if (!diagnostics._groupageLignes) {
+    const gns = gnParListe(k);
+    const parListe = new Map();
+    for (const d of diagnostics.lignes) {
+      for (const liste of d.Listes) {
+        if (!parListe.has(liste)) parListe.set(liste, []);
+        parListe.get(liste).push(d);
+      }
+    }
+    const lignes = [];
+    for (const liste of [...parListe.keys()].sort()) {
+      const gn = gns.get(liste)?.join(SEPARATEUR_GN) ?? SANS_GN;
+      const libelle = k.listes[liste] ?? "";
+      for (const d of parListe.get(liste)) {
+        lignes.push({ Liste: `D-${liste}`, "Libellé liste": libelle, GN: gn, Code: d.Code, "Libellé code": d["Libellé"] });
+      }
+    }
+    recherche.indexer(lignes, COLONNES_DIAGNOSTICS);
+    diagnostics._groupageLignes = lignes;
+  }
+  return diagnostics._groupageLignes;
+}
+
+/** Saisie réécrite mot à mot dans la graphie de l'index : un code sans
+ *  point (« i634 ») prend le sien (« I63.4 »), un numéro de liste sans
+ *  tiret (« D0112 ») le sien (« D-0112 ») — sauf s'il est lui-même un
+ *  code. On n'indexe pas plutôt la clef sans point : « 0112 » y trouverait
+ *  F01.12, et un numéro de liste ou de GN ne se chercherait plus. */
+export function corrigerDiagnostics(diagnostics, requete) {
+  return requete
+    .split(/\s+/)
+    .map((mot) => {
+      if (/^d-?\d{4}$/i.test(mot) && !diagnostics._parCle.has(cle(mot))) return `D-${mot.slice(-4)}`;
+      if (/^[a-z]\d{2}[0-9+]+$/i.test(mot)) return graphie(mot);
+      return mot;
+    })
+    .join(" ");
+}
+
+// Ici les GN couverts entrent dans l'index : un code d'acte n'a que trois
+// chiffres (ALQ+183, ZZQM004), et les listes ne portent pas de numéro de
+// diagnostic avec lequel les confondre. Chercher « 0147 » donne donc les
+// actes spécialisés de ce GN, même quand sa liste s'appelle autrement
+// (« 0106_09_15_30_45_47_48 », « tous_05 »).
+const COLONNES_ACTES = ["Liste", "Libellé liste", "GN couverts", "Code", "Nomenclature", "Libellé"];
+
+/** Une ligne par acte et par liste d'actes spécialisés, listes par CM puis
+ *  par nom. */
+export function lignesActes(jeu, k) {
+  if (!jeu._groupageLignes) {
+    const lignes = [...jeu.lignes]
+      .sort((a, b) => a.CM.localeCompare(b.CM) || a.Liste.localeCompare(b.Liste) || a.Code.localeCompare(b.Code))
+      .map((l) => ({
+        Liste: l.Liste,
+        "Libellé liste": l["Libellé liste"],
+        "GN couverts": (k.listesSpe[l.Liste]?.gn ?? []).join(SEPARATEUR_GN),
+        Code: l.Code,
+        Nomenclature: l.Nomenclature,
+        "Libellé": l["Libellé"],
+      }));
+    recherche.indexer(lignes, COLONNES_ACTES);
+    jeu._groupageLignes = lignes;
+  }
+  return jeu._groupageLignes;
+}
+
+/** Un code CSARR saisi sans « + » (« alq183 ») prend la graphie de l'index. */
+export function corrigerActes(requete) {
+  return requete
+    .split(/\s+/)
+    .map((mot) => (/^[a-z]{3}\d{3}$/i.test(mot) ? `${mot.slice(0, 3)}+${mot.slice(3)}` : mot))
+    .join(" ");
+}
+
+/** Ce que dit le fichier d'un GN sans liste d'actes spécialisés. Le
+ *  « GR spécialisé unique » de l'ATIH : GN non subdivisé sur la
+ *  réadaptation, dont l'unique type, hors pédiatrique, est la réadaptation
+ *  spécialisée importante (volume 1, 3.4.1.2). Pour les autres, on lit les
+ *  types de GR_infos plutôt que de supposer qu'aucun n'est spécialisé. */
+export function situationSansListe(k, gn) {
+  if (k.gnListeSpe[gn].speUnique) return "unique";
+  return k.gr[gn]?.hc.includes("S") ? "specialise" : "sansType";
+}
+
+// Les situations de situationSansListe, dans l'ordre où la page les donne.
+export const SITUATIONS = {
+  unique: {
+    titre: "GR spécialisé unique",
+    texte: "GN non subdivisé sur la réadaptation, dont l'unique type, hors pédiatrique, est la réadaptation spécialisée importante (volume 1, 3.4.1.2)",
+  },
+  sansType: {
+    titre: "Sans type spécialisé",
+    texte: "le GN n'a pas de type « réadaptation spécialisée importante » (GR_infos)",
+  },
+  specialise: {
+    titre: "Type spécialisé sans liste",
+    texte: "le GN a un type « réadaptation spécialisée importante », mais aucun acte n'y est spécialisé",
+  },
+};
+
+/** Les GN sans liste d'actes spécialisés (« PAS DE LISTE » dans
+ *  ACTES_listes_SPE), regroupés par situation : situation → GN triés, dans
+ *  l'ordre de SITUATIONS. */
+export function gnSansListe(k) {
+  const groupes = new Map(Object.keys(SITUATIONS).map((s) => [s, []]));
+  for (const [gn, rattachement] of Object.entries(k.gnListeSpe)) {
+    if (!rattachement.liste) groupes.get(situationSansListe(k, gn)).push(gn);
+  }
+  for (const gns of groupes.values()) gns.sort();
+  return groupes;
+}
+
 // ==== Tarifs des GME (arrêté tarifaire SMR, annexe I) ====
 
 // Colonnes de l'annexe, dans son ordre : bornes en jours, puis montants.
