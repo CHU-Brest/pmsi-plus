@@ -18,114 +18,19 @@
 // Le tableau partagé (interface.js) n'affiche que du texte : le lien d'un
 // GME vers l'algorithme ne peut pas être posé dans sa cellule. Il est donné
 // au-dessus du tableau dès que les résultats ne couvrent qu'un GN.
+//
+// Lignes, index, recherche et exceptions sont calculés par smr.js
+// (preparerTarifs, filtreTarifs…) ; ce module les dessine.
 
-import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats, nombre } from "../../interface.js";
-import { chargerTarifsSmr } from "../../smr.js";
-import { lienArbre, lienTarifs, natureGmt } from "../../smr_interface.js";
+import { chargerTarifsSmr, DUREES, filtreTarifs, groupeCommun, homonymeGmt, MONTANTS, preparerTarifs } from "../../smr.js";
+import { lienArbre, lienTarifs } from "../../smr_interface.js";
 import { euros, jours } from "../../tarifs.js";
 
-const COLONNES_CHERCHABLES = ["GMT", "GME", "Nature", "Libellé"];
-
-// Colonnes de l'annexe, dans son ordre : bornes en jours, puis montants.
-const DUREES = ["DZF", "FZF"];
-const MONTANTS = ["TZB", "SZB", "TZF1", "TZF2", "TZF3", "SZH"];
 const FORMATS = Object.fromEntries([...DUREES.map((c) => [c, jours]), ...MONTANTS.map((c) => [c, euros])]);
 
-// Code de groupe, entier ou en partie : CM (« 01 »), GN (« 0147 »), GR
-// (« 0147S »), GL (« 0147SC ») ou GME (« 0147SC2 »). Même forme que dans
-// la recherche de l'algorithme (smr/arbre.js).
-const RE_CODE_GROUPE = /^\d{2}(?:\d{2}(?:[A-Z](?:[A-Z]\d?)?)?)?$/;
-const RE_GMT = /^\d{4}$/;
 // Longueur d'un préfixe de GME → niveau du groupe qu'il désigne.
 const NIVEAUX = { 4: "GN", 5: "GR", 6: "GL", 7: "GME" };
-// Nombre ordinaire de GMT d'un GME d'HC : principal, GMT2, séjours courts.
-const GMT_PAR_GME_HC = 3;
-
-const comparer = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-const estHtp = (gme) => gme.endsWith("0");
-
-/** Lignes du tableau et index de la recherche, une fois par jeu : le jeu
- *  reste en cache d'une page à l'autre, et l'algorithme le partage (nom
- *  préfixé pour ne pas croiser ses index). */
-function preparer(jeu) {
-  if (!jeu._tarifsTableau) {
-    const lignes = jeu.lignes
-      .map((l) => ({
-        GMT: l.GMT,
-        GME: l.GME,
-        Nature: natureGmt(l),
-        // Case vide de l'arrêté → 0 : tableau() n'appelle pas le format
-        // d'une valeur nulle, qui s'afficherait en blanc au lieu du tiret
-        // que euros() et jours() donnent pour 0 (aucun 0 dans l'annexe).
-        ...Object.fromEntries([...DUREES, ...MONTANTS].map((c) => [c, l[c] ?? 0])),
-        // En dernier : colonne la plus large, il repousserait sinon les
-        // montants hors de l'écran.
-        "Libellé": l["Libellé"],
-      }))
-      .sort((a, b) => comparer(a.GME, b.GME) || comparer(a.GMT, b.GMT));
-    recherche.indexer(lignes, COLONNES_CHERCHABLES);
-
-    // Débuts de GME (CM, GN, GR, GL, GME), GME de chaque GMT, et libellé
-    // de chaque GN tel que l'arrêté l'écrit, avant « / » : la page n'a pas
-    // à charger la classification pour nommer un GN.
-    const prefixes = new Set();
-    const gmeParGmt = new Map();
-    const libelleGn = new Map();
-    for (const l of lignes) {
-      for (const n of [2, 4, 5, 6, 7]) prefixes.add(l.GME.slice(0, n));
-      if (!gmeParGmt.has(l.GMT)) gmeParGmt.set(l.GMT, []);
-      gmeParGmt.get(l.GMT).push(l.GME);
-      const gn = l.GME.slice(0, 4);
-      if (!libelleGn.has(gn)) libelleGn.set(gn, l["Libellé"].split(" / ")[0]);
-    }
-    jeu._tarifsTableau = { lignes, prefixes, gmeParGmt, libelleGn, exceptions: exceptionsHc(jeu) };
-  }
-  return jeu._tarifsTableau;
-}
-
-/** GME d'HC qui n'ont pas trois GMT, regroupés par GN et par nombre de
- *  GMT, lus dans l'arrêté plutôt qu'écrits en dur ; `complet` : le groupe
- *  couvre tous les GME d'HC du GN. `doublons` : GN dont un GME a plusieurs
- *  GMT de même nature. */
-function exceptionsHc(jeu) {
-  const hcParGn = new Map();
-  const groupes = new Map();
-  const doublons = new Set();
-  for (const [gme, lignes] of jeu._parGme) {
-    if (estHtp(gme)) continue;
-    const gn = gme.slice(0, 4);
-    hcParGn.set(gn, (hcParGn.get(gn) ?? 0) + 1);
-    if (lignes.length === GMT_PAR_GME_HC) continue;
-    const cle = `${gn} ${lignes.length}`;
-    if (!groupes.has(cle)) groupes.set(cle, { gn, nombre: lignes.length, gmes: [] });
-    groupes.get(cle).gmes.push(gme);
-    const natures = lignes.map(natureGmt);
-    if (new Set(natures).size < natures.length) doublons.add(gn);
-  }
-  const liste = [...groupes.values()]
-    .map((g) => ({ ...g, gmes: g.gmes.sort(), complet: g.gmes.length === hcParGn.get(g.gn) }))
-    .sort((a, b) => comparer(a.gn, b.gn) || a.nombre - b.nombre);
-  return { liste, doublons: [...doublons].sort() };
-}
-
-/** Prédicat de la recherche : mots clefs cumulatifs, comme recherche.filtre,
- *  sauf qu'un code de groupe se compare au début du GME et un numéro de GMT
- *  (qui n'est pas un début de GME) au GMT entier. */
-function filtre(index, requete) {
-  const tests = recherche
-    .normaliser(requete)
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((mot) => {
-      const code = mot.toUpperCase();
-      if (RE_CODE_GROUPE.test(code) && index.prefixes.has(code)) return (l) => l.GME.startsWith(code);
-      if (RE_GMT.test(code) && index.gmeParGmt.has(code)) return (l) => l.GMT === code;
-      return (l) => l._recherche.includes(mot);
-    });
-  return (l) => tests.every((t) => t(l));
-}
 
 /** Suite de liens séparés par des virgules. */
 function liens(codes, href) {
@@ -135,9 +40,9 @@ function liens(codes, href) {
 /** « 0147 » saisi seul est lu comme un GN ; s'il est aussi un numéro de
  *  GMT, dire lequel et y mener, plutôt que de le taire. */
 function indicationHomonyme(index, requete) {
-  const code = requete.trim().toUpperCase();
-  if (!RE_GMT.test(code) || !index.prefixes.has(code) || !index.gmeParGmt.has(code)) return null;
-  const gmes = [...new Set(index.gmeParGmt.get(code))];
+  const homonyme = homonymeGmt(index, requete);
+  if (!homonyme) return null;
+  const { code, gmes } = homonyme;
   return el(
     "p",
     { class: "liens-fiches" },
@@ -145,21 +50,6 @@ function indicationHomonyme(index, requete) {
     ...liens(gmes, lienTarifs),
     "."
   );
-}
-
-/** Plus long début commun des GME trouvés, s'il désigne un groupe de
- *  l'algorithme (GN au moins) : l'algorithme s'ouvre sur un GN, placé sur
- *  le GR, le GL ou le GME quand on le lui donne. */
-function groupeCommun(trouvees) {
-  if (!trouvees.length) return null;
-  let commun = trouvees[0].GME;
-  for (const l of trouvees) {
-    let n = 0;
-    while (n < commun.length && commun[n] === l.GME[n]) n++;
-    commun = commun.slice(0, n);
-    if (commun.length < 4) return null;
-  }
-  return commun;
 }
 
 function indicationAlgorithme(index, trouvees) {
@@ -198,7 +88,7 @@ function phraseExceptions({ liste, doublons }) {
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
   const jeu = await chargerTarifsSmr();
-  const index = preparer(jeu);
+  const index = preparerTarifs(jeu);
   const { lignes } = index;
   const exceptions = {
     ...index.exceptions,
@@ -280,7 +170,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   );
 
   function afficher(requete) {
-    const trouvees = lignes.filter(filtre(index, requete));
+    const trouvees = lignes.filter(filtreTarifs(index, requete));
     zoneIndication.replaceChildren(
       ...[indicationHomonyme(index, requete), indicationAlgorithme(index, trouvees)].filter(Boolean)
     );

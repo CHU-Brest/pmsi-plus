@@ -4,7 +4,7 @@
 
 import { el } from "./interface.js";
 import { euros, jours } from "./tarifs.js";
-import { graphie, libelleGroupe } from "./smr.js";
+import { graphie, libelleGroupe, natureGmt } from "./smr.js";
 
 /** Sous-titre commun : la version de la fonction groupage appliquée. */
 export function sourceFg() {
@@ -95,16 +95,6 @@ export function lienGn(k, gn) {
 }
 
 // ==== Tarifs ====
-
-/** Nature d'un GMT, d'après sa tranche de numéros et son libellé : chaque
- *  GME d'HC relève de trois GMT, chaque GME d'HTP d'un seul. */
-export function natureGmt(ligne) {
-  const n = Number(ligne.GMT);
-  if (ligne.GME.endsWith("0")) return "HTP, par journée";
-  if (n >= 8000) return "Séjour de moins de 8 jours avec transfert ou décès";
-  if (n >= 7000) return "GMT2";
-  return "GMT principal";
-}
 
 /** Ce qu'il faut savoir pour lire un tarif SMR ; `adresse` mène aux tarifs
  *  dans le thème Tarifs. */
