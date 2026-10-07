@@ -17,7 +17,7 @@ individuelle — sont repris ici :
 | MCO | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
 | MCO | Groupage | Fiche code | un code CIM-10 ou CCAM sur une page : CMD où il oriente le séjour en DP (d'après les diagnostics d'entrée du volume 2), étapes de l'arbre qui le testent, racines possibles et leurs tarifs, code ou acte frontière, niveau de CMA et DP/racines qui l'excluent, avec vérificateur |
 | MCO | Groupage | Listes de la fonction groupage | listes de diagnostics et d'actes de la fonction groupage, par CMD |
-| MCO | Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes ; chemin et tarifs de chaque case de GHM |
+| MCO | Groupage | Algorithme de la fonction groupage | arbres de décision du Manuel des GHM (volume 3), CMD par CMD, reliés aux listes et aux diagnostics d'entrée de chaque CMD (volume 2) ; chemin et tarifs de chaque case de GHM |
 | MCO | Groupage | Tarifs des GHS | arrêté tarifaire MCO, secteur public : tarif de chaque GHS, bornes basse et haute, extrêmes bas et haut |
 | MCO | Groupage (depuis la fiche) | Actes frontières | actes CCAM voisins (mêmes 4 lettres) qui mènent à des racines de GHM différentes, avec un filtre « le type de GHM change » |
 | MCO | Groupage (depuis la fiche) | Niveaux de sévérité (CMA) | CMA et leur niveau (2 à 4), et un vérificateur « ce DAS compte-t-il avec ce DP, dans cette racine ? » d'après les listes d'exclusion (volume 1, annexes 4 et 5) ; niveau aussi affiché dans les listes de diagnostics de l'algorithme |
@@ -244,7 +244,8 @@ La page d'orientation (page 9) n'emploie aucun des symboles des autres pages : s
 étapes sont transcrites dans `ORIENTATION` du script, qui vérifie contre le texte de la
 page le test et le libellé de chacune, la CM/CMD écrite face à ce libellé, et leur ordre.
 
-La CMD d'un DP se lit dans les diagnostics d'entrée de chaque CMD, donnés par le volume 2 :
+La CMD d'un DP se lit dans les diagnostics d'entrée de chaque CMD, donnés par le volume 2 (la fiche code
+en tire la CMD du code ; l'algorithme les ouvre depuis le test du DP en tête de chaque CMD) :
 les listes D-CCnn n'en contiennent qu'une partie dans certaines CMD (I21.00 en CMD 05,
 O80.0 en CMD 14, Z38.0 en CMD 15…). Remplacer les fichiers de `data/groupage/volume_2/`
 par les « Diagnostics d entrée dans la CMD n°XX.csv » du nouveau volume 2, sous le même

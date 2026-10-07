@@ -337,7 +337,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
           {},
           "Les arbres de décision de la classification en GHM, tels que les dessine le volume 3 du ",
           el("strong", {}, arbre.version ?? "Manuel des GHM"),
-          " (ATIH), transcrits page à page. Chaque test s'enchaîne sous le précédent quand sa condition n'est pas satisfaite, et ouvre en retrait ce qui suit quand elle l'est. Un clic sur un code de liste en montre les codes ; un clic sur une case de GHM donne le chemin qui y mène et les tarifs de ses GHS."
+          " (ATIH), transcrits page à page. Chaque test s'enchaîne sous le précédent quand sa condition n'est pas satisfaite, et ouvre en retrait ce qui suit quand elle l'est. Un clic sur un code de liste en montre les codes, et sur le test du DP en tête d'une CMD, ses diagnostics d'entrée (volume 2) ; un clic sur une case de GHM donne le chemin qui y mène et les tarifs de ses GHS."
         ),
         legende(),
       ],
@@ -378,6 +378,14 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       complementChemin: blocTarifs,
       codesDeListe,
       contexteDeListe,
+      // La racine des CMD 01 à 23 teste le DP sur les diagnostics d'entrée
+      // de la CMD (volume 2) : son libellé, « CMD 09 », les ouvre.
+      listesNommees: Object.fromEntries(
+        arbre.cmd.map((c) => [
+          `CMD ${c.cmd}`,
+          { libelle: "Diagnostics d'entrée dans la CMD (volume 2 du Manuel des GHM)", nature: "diagnostics" },
+        ])
+      ),
       listeAbsente: (code) =>
         code === "A-001"
           ? "A-001 désigne l'ensemble des actes classants opératoires : elle ne figure pas parmi les listes publiées de la fonction groupage."
@@ -410,9 +418,9 @@ async function listesDuCode(requete, nature) {
   return parCode;
 }
 
-/** Les codes d'une liste, sans doublon : une même liste apparaît sous
- *  plusieurs CMD dans les listes publiées, avec le même contenu. */
-async function codesDeListe(code, nature, contexte) {
+/** Les codes d'une liste publiée de la fonction groupage, sans doublon :
+ *  une même liste apparaît sous plusieurs CMD, avec le même contenu. */
+async function codesPublies(code, nature) {
   const { lignes } = await chargerJeu(
     "groupage",
     nature,
@@ -425,6 +433,21 @@ async function codesDeListe(code, nature, contexte) {
     vus.add(l.Code);
     resultat.push({ Code: l.Code, "Libellé code": l["Libellé code"] });
   }
+  return resultat;
+}
+
+/** Les diagnostics d'entrée dans la CMD `cmd`, tels que les donne le
+ *  volume 2. */
+async function diagnosticsDEntree(cmd) {
+  const { lignes } = await chargerJeu("groupage", "entrees", "diagnostics d'entrée des CMD (volume 2)");
+  return lignes.filter((l) => l.CMD === cmd).map((l) => ({ Code: l.Code, "Libellé code": l["Libellé"] }));
+}
+
+/** Les codes d'une liste : une liste publiée, ou les diagnostics d'entrée
+ *  d'une CMD (« CMD 09 »). */
+async function codesDeListe(code, nature, contexte) {
+  const cmd = code.match(/^CMD (\d{2})$/)?.[1];
+  const resultat = cmd ? await diagnosticsDEntree(cmd) : await codesPublies(code, nature);
   if (nature !== "diagnostics") return resultat;
   // Le niveau de CMA de chaque diagnostic et ses exclusions à cette étape
   // (volume 1, annexes 4 et 5), chargés à la première liste ouverte.
