@@ -1,7 +1,8 @@
 // Lecture d'un arbre de décision de fonction groupage, sans DOM : index des
-// parents, chemin d'un nœud jusqu'à la racine et libellé de ses étapes,
-// recherche des étapes et des feuilles, textes d'une ligne. Le dessin est
-// celui de arbre_vue.js, qui passe ici le profil du champ (`P`, cf.
+// parents, suite d'une colonne, chemin d'un nœud jusqu'à la racine et
+// libellé de ses étapes, recherche des étapes et des feuilles et ordre des
+// résultats, nature et contexte d'une liste, textes d'une ligne. Le dessin
+// est celui de arbre_vue.js, qui passe ici le profil du champ (`P`, cf.
 // dessinerArbre) : l'arbre et ce que le champ sait de ses nœuds (symboles,
 // feuilles, codes de groupe…).
 
@@ -88,6 +89,24 @@ export function resume(P, n) {
 function codeDeListe(requete) {
   const m = requete.trim().match(/^([ad])\s*-?\s*(\d{3,4})$/i);
   return m ? `${m[1].toUpperCase()}-${m[2]}` : null;
+}
+
+// ==== Colonnes ====
+
+/** Ce qui prolonge la colonne sous un nœud : le cas « non », la suite
+ *  d'une étape sans condition, ou la seule issue d'un test qui n'a pas
+ *  de cas « non » (la racine « DP de la CMD »). Rend `{ lien, entree }` :
+ *  le lien suivi, qui garde dans `depuis` le trait d'où il part (cf.
+ *  cheminVers), et la marque posée au-dessus de l'étape atteinte ; null
+ *  en bas de colonne. L'arbre doit être préparé (`n._id`). */
+export function suiteDeColonne(n) {
+  const depuis = { de: n._id };
+  if (n.sinon) return { lien: { ...n.sinon, depuis: { ...depuis, role: "non" } }, entree: "non" };
+  if (n.suite) return { lien: { ...n.suite, depuis: { ...depuis, role: "suite" } }, entree: "puis" };
+  if (n.branches?.length === 1) {
+    return { lien: { ...n.branches[0], depuis: { ...depuis, role: "oui", i: 0 } }, entree: "oui" };
+  }
+  return null;
 }
 
 // ==== Chemin ====
@@ -222,6 +241,19 @@ export function casDesListes(arbre, listes, deja) {
   return ajouts;
 }
 
+/** Les entrées `{ n, i }` dans l'ordre du dessin : par catégorie, dans
+ *  l'ordre du sélecteur (`P.categories`), puis par page et par cas. Trie
+ *  `entrees` sur place et les rend. */
+export function trierResultats(P, entrees) {
+  const ordre = new Map(P.categories.map((c, i) => [c.id, i]));
+  return entrees.sort(
+    (a, b) =>
+      ordre.get(a.n.cmd) - ordre.get(b.n.cmd) ||
+      (a.n.page ?? 0) - (b.n.page ?? 0) ||
+      (a.i ?? -1) - (b.i ?? -1)
+  );
+}
+
 /** Un résultat de recherche en une ligne. Une feuille qui porte un code
  *  est située par les deux dernières conditions de son chemin. */
 export function resumeResultat(P, n, i) {
@@ -251,4 +283,22 @@ export function resumeResultat(P, n, i) {
   const cible = b.length === 1 ? arbre.noeuds[b[0].vers] : null;
   const suite = cible && P.feuilles.has(cible.genre) ? ` → ${P.texteFeuille(cible)}` : "";
   return `${resume(P, n)}${suite}`;
+}
+
+// ==== Listes ====
+
+/** Nature d'une liste citée par une branche (« actes » ou
+ *  « diagnostics ») : celle de sa fiche, ou à défaut celle que dit son
+ *  code (A-… : actes), pour une liste absente des listes publiées. */
+export function natureDeListe(arbre, code) {
+  return arbre.listes[code]?.nature ?? (code.startsWith("A") ? "actes" : "diagnostics");
+}
+
+/** Ce que le profil tire de l'étape `n` d'où la liste `code` est ouverte
+ *  (MCO : les exclusions de CMA à cette étape), par la branche de `n` qui
+ *  teste la liste ; null hors d'une étape, ou sans `P.contexteDeListe`. */
+export function contexteDeListe(P, n, code) {
+  const b = n?.branches?.find((x) => x.listes.includes(code));
+  if (!b || !P.contexteDeListe) return null;
+  return P.contexteDeListe(n, b);
 }

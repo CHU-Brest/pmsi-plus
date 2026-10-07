@@ -15,20 +15,25 @@
 // (CMD, CM, GN…) où le nœud est dessiné. Un test (genre « test », un
 // `symbole`) et un critère (« critere », une `variable`) se dessinent ici ;
 // les autres étapes et les feuilles, par le profil du champ (cf.
-// dessinerArbre). Ce qui se lit sur le graphe sans DOM (parents, chemin et
-// libellé de ses étapes, recherche) est dans arbre_graphe.js.
+// dessinerArbre). Ce qui se lit sur le graphe sans DOM (parents, suite d'une
+// colonne, chemin et libellé de ses étapes, recherche et ordre des
+// résultats, nature et contexte d'une liste) est dans arbre_graphe.js.
 
 import * as recherche from "./recherche.js";
 import { el, champMotsClefs, nombre } from "./interface.js";
 import {
   casDesListes,
   cheminVers,
+  contexteDeListe,
   issue,
   libelleEtape,
+  natureDeListe,
   noeudsCorrespondants,
   preparer,
   resume,
   resumeResultat,
+  suiteDeColonne,
+  trierResultats,
 } from "./arbre_graphe.js";
 
 // Un code de liste dans un libellé, avec ses parenthèses s'il en a : la
@@ -100,7 +105,7 @@ function optionsDuSelecteur(categories) {
 export function dessinerArbre(conteneur, profil, chemin = []) {
   const P = profil;
   const arbre = preparer(P);
-  const categories = new Map(P.categories.map((c, i) => [c.id, { ...c, ordre: i }]));
+  const categories = new Map(P.categories.map((c) => [c.id, c]));
   // Ce que le profil peut appeler en retour : ses vues et ses feuilles
   // naviguent, reprennent les marques de l'arbre (« non », flèche), ouvrent
   // un chemin.
@@ -227,19 +232,6 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
       arrivee = suite.entree;
     }
     return ol;
-  }
-
-  /** Ce qui prolonge la colonne sous un nœud : le cas « non », la suite
-   *  d'une étape sans condition, ou la seule issue d'un test qui n'a pas
-   *  de cas « non » (la racine « DP de la CMD »). */
-  function suiteDeColonne(n) {
-    const depuis = { de: n._id };
-    if (n.sinon) return { lien: { ...n.sinon, depuis: { ...depuis, role: "non" } }, entree: "non" };
-    if (n.suite) return { lien: { ...n.suite, depuis: { ...depuis, role: "suite" } }, entree: "puis" };
-    if (n.branches?.length === 1) {
-      return { lien: { ...n.branches[0], depuis: { ...depuis, role: "oui", i: 0 } }, entree: "oui" };
-    }
-    return null;
   }
 
   function etape(n, entree) {
@@ -430,20 +422,12 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
     );
   }
 
-  /** Le test d'où la liste est ouverte, et ce que le profil en tire (MCO :
-   *  les exclusions de CMA à cette étape). */
-  function contexteDeListe(bouton, code) {
-    const n = arbre.noeuds[bouton.closest("[data-noeud]")?.dataset.noeud];
-    const b = n?.branches?.find((x) => x.listes.includes(code));
-    if (!b || !P.contexteDeListe) return null;
-    return P.contexteDeListe(n, b);
-  }
-
   function basculerListe(bouton, code) {
-    const contexte = contexteDeListe(bouton, code);
+    // Le test d'où la liste est ouverte : l'étape qui porte le bouton.
+    const contexte = contexteDeListe(P, arbre.noeuds[bouton.closest("[data-noeud]")?.dataset.noeud], code);
     basculerPanneau(bouton, (fermer) => {
       const fiche = arbre.listes[code];
-      const nature = fiche?.nature ?? (code.startsWith("A") ? "actes" : "diagnostics");
+      const nature = natureDeListe(arbre, code);
       const zone = el("div", {}, el("p", { class: "compteur" }, "Chargement de la liste…"));
       const panneau = el(
         "div",
@@ -711,12 +695,7 @@ export function dessinerArbre(conteneur, profil, chemin = []) {
       }
       return;
     }
-    entrees.sort(
-      (a, b) =>
-        categories.get(a.n.cmd).ordre - categories.get(b.n.cmd).ordre ||
-        (a.n.page ?? 0) - (b.n.page ?? 0) ||
-        (a.i ?? -1) - (b.i ?? -1)
-    );
+    trierResultats(P, entrees);
     const affiches = entrees.slice(0, RESULTATS_MAX);
     bloc.append(
       el(
