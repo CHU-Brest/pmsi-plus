@@ -1,11 +1,38 @@
 // Fonction groupage MCO — ce que plusieurs thèmes lisent de la même façon
-// dans l'arbre (arbre.json) et les listes : racines atteintes depuis un
-// nœud, codes GHM d'une case, codes et actes frontières, ligne d'une CMA
-// et éléments de ses listes d'exclusion (volume 1, annexes 4 et 5).
+// dans l'arbre (arbre.json) et les listes : graphie des codes saisis,
+// racines atteintes depuis un nœud, codes GHM d'une case, codes et actes
+// frontières, ligne d'une CMA et éléments de ses listes d'exclusion
+// (volume 1, annexes 4 et 5).
 //
 // Rien ici ne touche au DOM : les fonctions reçoivent l'arbre et les jeux
 // chargés en argument. Pendant MCO de smr.js. Partagé par la fiche code,
 // l'algorithme, les CMA, les codes et actes frontières.
+
+// ==== Graphie des codes ====
+
+/** Un code CCAM : quatre lettres, trois chiffres. */
+export const RE_CCAM = /^[A-Z]{4}\d{3}/;
+
+/** Une racine de GHM : « 01C03 ». */
+export const RE_RACINE = /^\d{2}[CKMZ]\d{2}$/;
+
+/** « g409 », « G40.9 » → « G40.9 » ; « aafa001 » → « AAFA001 ». */
+export function graphie(saisie) {
+  const c = saisie.trim().toUpperCase().replace(/\s+/g, "");
+  if (RE_CCAM.test(c)) return c;
+  const sansPoint = c.replace(/\./g, "");
+  return sansPoint.length <= 3 ? sansPoint : `${sansPoint.slice(0, 3)}.${sansPoint.slice(3)}`;
+}
+
+/** Code d'acte des listes (« AAFA001-00/0 ») ramené à son code CCAM. */
+export const codeCcam = (code) => code.split("-")[0];
+
+/** « 11m04 », « 11M04Z » → « 11M04 » : la racine d'un GHM saisi, null si
+ *  la saisie n'en est pas une. */
+export function graphieRacine(saisie) {
+  const racine = saisie.trim().toUpperCase().slice(0, 5);
+  return RE_RACINE.test(racine) ? racine : null;
+}
 
 // ==== Arbre ====
 

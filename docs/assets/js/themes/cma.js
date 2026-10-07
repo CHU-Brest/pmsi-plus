@@ -5,17 +5,11 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
-import { couvreRacine, exclusionParDp, ligneCma } from "../groupage_mco.js";
+import { couvreRacine, exclusionParDp, graphie, graphieRacine, ligneCma } from "../groupage_mco.js";
 
 const NIVEAUX = [2, 3, 4];
 
 // ==== Exclusions (volume 1, annexes 4 et 5) ====
-
-/** « e871 », « E87.1 » → « E87.1 » : la graphie des listes. */
-function graphie(saisie) {
-  const c = saisie.trim().toUpperCase().replace(/[\s.]/g, "");
-  return c.length <= 3 ? c : `${c.slice(0, 3)}.${c.slice(3)}`;
-}
 
 function verifierCma(exclusions, das, dp, racine) {
   const fiche = ligneCma(exclusions, das);
@@ -122,11 +116,10 @@ function verificateur(exclusions) {
   function evaluer() {
     const das = graphie(document.getElementById("cma_das").value);
     const dpSaisi = document.getElementById("cma_dp").value.trim();
-    const racineSaisie = document.getElementById("cma_racine").value.trim().toUpperCase().slice(0, 5);
     zone.innerHTML = "";
     if (!das) return;
     const dp = dpSaisi ? graphie(dpSaisi) : null;
-    const racine = /^\d{2}[CKMZ]\d{2}$/.test(racineSaisie) ? racineSaisie : null;
+    const racine = graphieRacine(document.getElementById("cma_racine").value);
     const v = verifierCma(exclusions, das, dp, racine);
     if (!v.cma) {
       zone.append(el("p", { class: "message-info" }, `${das} n'est pas une CMA : il ne modifie pas le niveau de sévérité.`));

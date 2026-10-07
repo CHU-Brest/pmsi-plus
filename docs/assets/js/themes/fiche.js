@@ -13,12 +13,23 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import { normaliser } from "../recherche.js";
 import { el, fraicheur, nombre } from "../interface.js";
-import { codesGhm, exclusionParDp, frontieresActes, frontieresDp, ligneCma, racinesAtteintes, racinesDepuis, sorties } from "../groupage_mco.js";
+import {
+  RE_CCAM,
+  RE_RACINE,
+  codeCcam,
+  codesGhm,
+  exclusionParDp,
+  frontieresActes,
+  frontieresDp,
+  graphie,
+  ligneCma,
+  racinesAtteintes,
+  racinesDepuis,
+  sorties,
+} from "../groupage_mco.js";
 import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
 
 const SUGGESTIONS_MAX = 12;
-const RE_CCAM = /^[A-Z]{4}\d{3}/;
-const RE_RACINE = /^\d{2}[CKMZ]\d{2}$/;
 
 // Type de racine, 3e caractère de son code.
 const TYPES_RACINE = { C: "chirurgicale", K: "interventionnelle", M: "médicale", Z: "indifférenciée" };
@@ -69,17 +80,6 @@ const racinesEnClair = (libelles, racines) =>
     .filter(Boolean)
     .map((r) => (libelleRacine(libelles, r) ? `${r} ${libelleRacine(libelles, r)}` : r))
     .join(" ; ");
-
-/** « g409 », « G40.9 » → « G40.9 » ; « aafa001 » → « AAFA001 ». */
-function graphie(saisie) {
-  const c = saisie.trim().toUpperCase().replace(/\s+/g, "");
-  if (RE_CCAM.test(c)) return c;
-  const sansPoint = c.replace(/\./g, "");
-  return sansPoint.length <= 3 ? sansPoint : `${sansPoint.slice(0, 3)}.${sansPoint.slice(3)}`;
-}
-
-/** Code d'acte des listes (« AAFA001-00/0 ») ramené à son code CCAM. */
-const codeCcam = (code) => code.split("-")[0];
 
 function indexer(arbre) {
   if (arbre._fiche) return arbre._fiche;
