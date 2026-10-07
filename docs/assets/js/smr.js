@@ -15,6 +15,9 @@ import { chargerJeu, chargerJson } from "./donnees.js";
 import { nombre } from "./interface.js";
 import * as recherche from "./recherche.js";
 
+// Ordre de deux chaînes, pour sort().
+const comparer = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
 // ==== Graphie des codes ====
 
 /** Saisie ou code de l'ATIH → clef sans point ni espace, en capitales :
@@ -330,6 +333,103 @@ export function regrouperTranscodage(lignes, parCsar) {
     .sort((a, b) => (a.csar === b.csar ? 0 : a.csar < b.csar ? -1 : 1) || a.modalite - b.modalite || b.intervenants.length - a.intervenants.length);
 }
 
+// Au-delà, la liste des intervenants d'une condition se résume.
+const INTERVENANTS_CITES_MAX = 4;
+
+/** Pour un acte CSAR : ses CSARR transcodés, chacun avec la condition qui y
+ *  mène (modalité, intervenants), la plus fréquente d'abord. */
+export function transcodages(lignes, k) {
+  const modalites = [...new Set(lignes.map((l) => l["Modalité"]))].sort();
+  const resultat = [];
+  for (const m of modalites) {
+    const deLaModalite = lignes.filter((l) => l["Modalité"] === m);
+    const tous = new Set(deLaModalite.map((l) => l.Intervenant));
+    const parCsarr = new Map();
+    for (const l of deLaModalite) {
+      if (!parCsarr.has(l["Code CSARR"])) parCsarr.set(l["Code CSARR"], { lignes: [], intervenants: new Set() });
+      const g = parCsarr.get(l["Code CSARR"]);
+      g.lignes.push(l);
+      g.intervenants.add(l.Intervenant);
+    }
+    const groupes = [...parCsarr.entries()].sort((a, b) => b[1].intervenants.size - a[1].intervenants.size);
+    groupes.forEach(([csarr, g], i) => {
+      const morceaux = [];
+      if (modalites.length > 1) morceaux.push(MODALITES[m] ?? m);
+      if (g.intervenants.size < tous.size) {
+        // Le groupe le plus nombreux d'une modalité à plusieurs CSARR :
+        // « les autres intervenants », plus lisible que leur liste.
+        if (i === 0) morceaux.push("les autres intervenants");
+        else morceaux.push(citerIntervenants([...g.intervenants].sort(), k));
+      }
+      resultat.push({
+        csarr,
+        libelleCsarr: g.lignes[0]["Libellé CSARR"],
+        condition: morceaux.join(", "),
+        equivalent: g.lignes.some((l) => l["Équivalent"]),
+        ecart: g.lignes.some((l) => l["Pondération CSAR"] !== l["Pondération CSARR"]),
+      });
+    });
+  }
+  return resultat;
+}
+
+/** Les intervenants d'une condition, « libellé (code) » séparés de
+ *  virgules ; au-delà de INTERVENANTS_CITES_MAX, les premiers et le nombre
+ *  des autres. */
+export function citerIntervenants(codes, k) {
+  const noms = codes.map((iv) => `${(k.intervenants[iv] ?? iv).toLowerCase()} (${iv})`);
+  if (noms.length <= INTERVENANTS_CITES_MAX) return noms.join(", ");
+  return `${noms.slice(0, INTERVENANTS_CITES_MAX).join(", ")} et ${nombre(noms.length - INTERVENANTS_CITES_MAX)} autres`;
+}
+
+/** Les deux tables du thème Transcodage et les écarts, une fois par jeu
+ *  (gardés sur le jeu, sous un nom préfixé pour ne pas croiser les index
+ *  des autres thèmes) : `actes`, chaque acte CSAR et ses CSARR transcodés
+ *  (transcodages) ; `csarrs`, la même table lue à l'envers ; `ecarts`, les
+ *  lignes dont la pondération du fichier CSAR diffère de celle du CSARR. */
+export function preparerCsar(jeu, k) {
+  if (jeu._csarVue) return jeu._csarVue;
+  const parCsar = new Map();
+  for (const l of jeu.lignes) {
+    if (!parCsar.has(l["Code CSAR"])) parCsar.set(l["Code CSAR"], []);
+    parCsar.get(l["Code CSAR"]).push(l);
+  }
+  const actes = [...parCsar.entries()]
+    .sort((a, b) => comparer(a[0], b[0]))
+    .map(([code, lignes]) => {
+      const cibles = transcodages(lignes, k);
+      return {
+        code,
+        libelle: lignes[0]["Libellé CSAR"],
+        modalites: new Set(lignes.map((l) => l["Modalité"])),
+        cibles,
+        equivalent: cibles.some((c) => c.equivalent),
+        ecart: cibles.some((c) => c.ecart),
+      };
+    });
+  // Sens inverse : chaque CSARR et les actes CSAR qui y mènent, avec la
+  // même condition que dans le sens direct.
+  const parCsarr = new Map();
+  for (const a of actes) {
+    for (const c of a.cibles) {
+      if (!parCsarr.has(c.csarr)) parCsarr.set(c.csarr, { code: c.csarr, libelle: c.libelleCsarr, sources: [] });
+      parCsarr.get(c.csarr).sources.push({ code: a.code, libelle: a.libelle, condition: c.condition, equivalent: c.equivalent });
+    }
+  }
+  const csarrs = [...parCsarr.values()].sort((a, b) => comparer(a.code, b.code));
+  for (const a of actes) {
+    a._recherche = recherche.normaliser(
+      [a.code, a.libelle, ...a.cibles.flatMap((c) => [c.csarr, c.libelleCsarr])].join(" ")
+    );
+  }
+  for (const c of csarrs) {
+    c._recherche = recherche.normaliser([c.code, c.libelle, ...c.sources.flatMap((s) => [s.code, s.libelle])].join(" "));
+  }
+  const ecarts = jeu.lignes.filter((l) => l["Pondération CSAR"] !== l["Pondération CSARR"]);
+  jeu._csarVue = { actes, csarrs, ecarts };
+  return jeu._csarVue;
+}
+
 /** Les intervenants propres au CSAR, transposés avant le transcodage
  *  (3.3.1.2) : `intervenants`, leurs codes ; `cibles`, les intervenants
  *  CSARR qu'ils deviennent, sans doublon. */
@@ -636,7 +736,6 @@ const RE_GMT = /^\d{4}$/;
 // Nombre ordinaire de GMT d'un GME d'HC : principal, GMT2, séjours courts.
 const GMT_PAR_GME_HC = 3;
 
-const comparer = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const estHtp = (gme) => gme.endsWith("0");
 
 /** Nature d'un GMT, d'après sa tranche de numéros et son libellé : chaque

@@ -14,107 +14,13 @@
 // Vue d'ensemble seulement : le détail d'un acte (pondérations par
 // intervenant, modulateurs, caractère spécialisé) est dans sa fiche code.
 // L'adresse #/smr/csar/<recherche> pré-remplit le champ (« 01E01 »,
-// « ALQ+183 », « déglutition »).
+// « ALQ+183 », « déglutition »). Les deux tables sont préparées par smr.js
+// (preparerCsar) ; ce module les dessine.
 
 import * as recherche from "../../recherche.js";
 import { el, fraicheur, champMotsClefs, nombre } from "../../interface.js";
-import { chargerClassification, chargerCsar, MODALITES } from "../../smr.js";
+import { chargerClassification, chargerCsar, preparerCsar } from "../../smr.js";
 import { lienCsar, lienFiche, sourceFg } from "../../smr_interface.js";
-
-// Au-delà, la liste des intervenants d'une condition se résume.
-const INTERVENANTS_CITES_MAX = 4;
-
-const comparer = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-
-// ==== Préparation ====
-
-/** Pour un acte CSAR : ses CSARR transcodés, chacun avec la condition qui y
- *  mène (modalité, intervenants), la plus fréquente d'abord. */
-function transcodages(lignes, k) {
-  const modalites = [...new Set(lignes.map((l) => l["Modalité"]))].sort();
-  const resultat = [];
-  for (const m of modalites) {
-    const deLaModalite = lignes.filter((l) => l["Modalité"] === m);
-    const tous = new Set(deLaModalite.map((l) => l.Intervenant));
-    const parCsarr = new Map();
-    for (const l of deLaModalite) {
-      if (!parCsarr.has(l["Code CSARR"])) parCsarr.set(l["Code CSARR"], { lignes: [], intervenants: new Set() });
-      const g = parCsarr.get(l["Code CSARR"]);
-      g.lignes.push(l);
-      g.intervenants.add(l.Intervenant);
-    }
-    const groupes = [...parCsarr.entries()].sort((a, b) => b[1].intervenants.size - a[1].intervenants.size);
-    groupes.forEach(([csarr, g], i) => {
-      const morceaux = [];
-      if (modalites.length > 1) morceaux.push(MODALITES[m] ?? m);
-      if (g.intervenants.size < tous.size) {
-        // Le groupe le plus nombreux d'une modalité à plusieurs CSARR :
-        // « les autres intervenants », plus lisible que leur liste.
-        if (i === 0) morceaux.push("les autres intervenants");
-        else morceaux.push(citerIntervenants([...g.intervenants].sort(), k));
-      }
-      resultat.push({
-        csarr,
-        libelleCsarr: g.lignes[0]["Libellé CSARR"],
-        condition: morceaux.join(", "),
-        equivalent: g.lignes.some((l) => l["Équivalent"]),
-        ecart: g.lignes.some((l) => l["Pondération CSAR"] !== l["Pondération CSARR"]),
-      });
-    });
-  }
-  return resultat;
-}
-
-function citerIntervenants(codes, k) {
-  const noms = codes.map((iv) => `${(k.intervenants[iv] ?? iv).toLowerCase()} (${iv})`);
-  if (noms.length <= INTERVENANTS_CITES_MAX) return noms.join(", ");
-  return `${noms.slice(0, INTERVENANTS_CITES_MAX).join(", ")} et ${nombre(noms.length - INTERVENANTS_CITES_MAX)} autres`;
-}
-
-/** Les deux tables et les écarts, une fois par jeu (gardés sur le jeu, sous
- *  un nom préfixé pour ne pas croiser les index des autres thèmes). */
-function preparer(jeu, k) {
-  if (jeu._csarVue) return jeu._csarVue;
-  const parCsar = new Map();
-  for (const l of jeu.lignes) {
-    if (!parCsar.has(l["Code CSAR"])) parCsar.set(l["Code CSAR"], []);
-    parCsar.get(l["Code CSAR"]).push(l);
-  }
-  const actes = [...parCsar.entries()]
-    .sort((a, b) => comparer(a[0], b[0]))
-    .map(([code, lignes]) => {
-      const cibles = transcodages(lignes, k);
-      return {
-        code,
-        libelle: lignes[0]["Libellé CSAR"],
-        modalites: new Set(lignes.map((l) => l["Modalité"])),
-        cibles,
-        equivalent: cibles.some((c) => c.equivalent),
-        ecart: cibles.some((c) => c.ecart),
-      };
-    });
-  // Sens inverse : chaque CSARR et les actes CSAR qui y mènent, avec la
-  // même condition que dans le sens direct.
-  const parCsarr = new Map();
-  for (const a of actes) {
-    for (const c of a.cibles) {
-      if (!parCsarr.has(c.csarr)) parCsarr.set(c.csarr, { code: c.csarr, libelle: c.libelleCsarr, sources: [] });
-      parCsarr.get(c.csarr).sources.push({ code: a.code, libelle: a.libelle, condition: c.condition, equivalent: c.equivalent });
-    }
-  }
-  const csarrs = [...parCsarr.values()].sort((a, b) => comparer(a.code, b.code));
-  for (const a of actes) {
-    a._recherche = recherche.normaliser(
-      [a.code, a.libelle, ...a.cibles.flatMap((c) => [c.csarr, c.libelleCsarr])].join(" ")
-    );
-  }
-  for (const c of csarrs) {
-    c._recherche = recherche.normaliser([c.code, c.libelle, ...c.sources.flatMap((s) => [s.code, s.libelle])].join(" "));
-  }
-  const ecarts = jeu.lignes.filter((l) => l["Pondération CSAR"] !== l["Pondération CSARR"]);
-  jeu._csarVue = { actes, csarrs, ecarts };
-  return jeu._csarVue;
-}
 
 // ==== Affichage ====
 
@@ -234,7 +140,7 @@ function notes(k, actes) {
 
 export async function rendre(conteneur, { chemin = [] } = {}) {
   const [jeu, k] = await Promise.all([chargerCsar(), chargerClassification()]);
-  const { actes, csarrs, ecarts } = preparer(jeu, k);
+  const { actes, csarrs, ecarts } = preparerCsar(jeu, k);
   conteneur.innerHTML = "";
 
   const [demande = ""] = chemin;
