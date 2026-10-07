@@ -5,8 +5,9 @@
 //   caractère de CMA et liste d'exclusion, avec vérificateur ;
 // - un acte CSARR ou CCAM, ou un acte CSAR : les fiches de fiche_actes.js.
 //
-// Ce module garde la recherche (suggestions), la résolution du code saisi
-// (`trouver`) et la fiche d'un diagnostic.
+// Ce module dessine la recherche (suggestions) et la fiche d'un
+// diagnostic ; les suggestions (`chercher`), la résolution du code saisi
+// (`trouver`) et ce que la fiche en dit sont calculés par smr.js.
 //
 // Tout vient des jeux de scripts/build_smr.py, chargés et indexés par
 // smr.js ; les règles citées (2.2.1, 3.3.1.3, 5.2.3…) sont celles du volume
@@ -15,22 +16,22 @@
 // fiche, et l'adresse est réécrite dans la graphie du site.
 
 import { el, fraicheur, nombre } from "../../interface.js";
-import { normaliser } from "../../recherche.js";
 import {
   chargerSmr,
-  cle,
-  graphie,
-  RE_CIM,
-  RE_CSAR,
-  RE_CSARR,
-  POSITIONS,
-  controlerDiagnostics,
-  estExclue,
-  gnSansSeverite2,
+  chercher,
+  cmaDuDiagnostic,
+  codesPlusPrecis,
+  CONDITIONS,
+  erreursParPosition,
+  exclusionParOrientant,
   libelleGroupe,
   orienteDansCm,
+  POSITIONS,
   positionAutorisee,
-  tailleListeExclusion,
+  PROFILS,
+  roleOrientation,
+  trouver,
+  usagesDesListes,
 } from "../../smr.js";
 import {
   entete,
@@ -49,145 +50,15 @@ import {
 } from "../../smr_interface.js";
 import { ficheActe, ficheCsar } from "./fiche_actes.js";
 
-const SUGGESTIONS_MAX = 12;
 // Même délai que les champs de recherche du site (interface.js) : filtrer
 // 45 000 codes entre deux touches d'une même saisie ne sert à rien.
 const DELAI_FRAPPE = 120;
 
-// Lisez-moi de CIM_infos_SMR.xlsx (colonne « Profil ») : un caractère par
-// position — MMP, AE, DAS —, O pour oui, N pour non.
-const PROFILS = {
-  NNN: "code non utilisable ; il s'agit en particulier de codes pères, dont l'extension est obligatoire",
-  NNO: "code autorisé seulement en DAS",
-  NOO: "code autorisé seulement en AE et en DAS ; il s'agit en particulier de codes séquelles",
-  ONO: "code autorisé seulement en MMP et en DAS ; il s'agit en particulier de codes symptômes",
-  OOO: "code autorisé aux trois positions",
-};
 const POSITIONS_LONGUES = {
   MMP: "Manifestation morbide principale (MMP)",
   AE: "Affection étiologique (AE)",
   DAS: "Diagnostic associé significatif (DAS)",
 };
-
-// Conditions du seul test écrit en toutes lettres (GN 0871, fractures
-// multiples), telles que les donne GN_liste_tests.xlsx ; build_smr.py les
-// réduit à ces deux mots-clefs.
-const CONDITIONS = {
-  mmpPrioritaire: "Si la MMP et l'AE sont classantes, seul le code en MMP est retenu comme classant.",
-  quatreCaracteresDifferents:
-    "Les 4 premiers caractères du code classant en DAS doivent être différents des 4 premiers caractères du code classant en MMP ou AE.",
-};
-
-// ==== Index ====
-
-/** Clef de comparaison d'une saisie à un code : capitales, sans point,
- *  espace ni « + » — « alq247 » trouve ALQ+247, « i634 » trouve I63.4. */
-const clefSaisie = (texte) => String(texte ?? "").toUpperCase().replace(/[\s.+]/g, "");
-
-function entree(code, nature, libelle) {
-  return { code, nature, libelle, clef: clefSaisie(code), texte: normaliser(libelle) };
-}
-
-/** Les entrées de suggestion, construites une fois par jeu chargé et
- *  gardées sur l'objet du jeu : jamais recalculées à la frappe. Les actes
- *  CCAM CMA qui ne sont pas des actes de réadaptation (EBLA003…) rejoignent
- *  les actes : ils ont eux aussi leur fiche. */
-function listesSuggestion(smr) {
-  const { diagnostics, actes, csar, classification: k } = smr;
-  if (!diagnostics._ficheSuggestions) {
-    diagnostics._ficheSuggestions = diagnostics.lignes.map((l) => entree(l.Code, "CIM-10", l["Libellé"]));
-  }
-  if (!actes._ficheSuggestions) {
-    const entrees = [...actes._parCode].map(([c, lignes]) => entree(c, lignes[0].Nomenclature, lignes[0]["Libellé"]));
-    for (const [c, libelle] of k._cmaCcam) if (!actes._parCode.has(c)) entrees.push(entree(c, "CCAM", libelle));
-    // ACTES_ponderations.xlsx est rangé par hiérarchie : trié par code, un
-    // début de code propose d'abord le code exact.
-    actes._ficheSuggestions = entrees.sort((a, b) => (a.code < b.code ? -1 : 1));
-  }
-  if (!csar._ficheSuggestions) {
-    csar._ficheSuggestions = [...csar._parCode].map(([c, lignes]) => entree(c, "CSAR", lignes[0]["Libellé CSAR"]));
-  }
-  return [diagnostics._ficheSuggestions, actes._ficheSuggestions, csar._ficheSuggestions];
-}
-
-/** Suggestions : par début de code d'abord, puis par mots du libellé. Une
- *  saisie qui a la forme d'un début de code (« i63 », « 01E », « alq+2 »,
- *  « ahqp ») ne se cherche pas dans les libellés, où elle ne trouverait que
- *  du bruit. */
-function chercher(smr, saisie) {
-  const q = saisie.trim();
-  if (q.length < 2) return [];
-  const clef = clefSaisie(q);
-  const compacte = q.replace(/\s+/g, "");
-  const commeCode = /^([a-z]\d|\d{2}|[a-z]{3}\+|[a-z]{4}\d)/i.test(compacte);
-  const mots = normaliser(q).split(/\s+/).filter(Boolean);
-  const parTexte = !commeCode && q.length >= 3;
-  const parCode = [];
-  const parMots = [];
-  for (const entrees of listesSuggestion(smr)) {
-    for (const e of entrees) {
-      if (clef && e.clef.startsWith(clef)) {
-        parCode.push(e);
-        if (parCode.length >= SUGGESTIONS_MAX) return parCode;
-      } else if (parTexte && parMots.length < SUGGESTIONS_MAX && mots.every((m) => e.texte.includes(m))) {
-        parMots.push(e);
-      }
-    }
-  }
-  return [...parCode, ...parMots].slice(0, SUGGESTIONS_MAX);
-}
-
-/** Tests d'entrée en GN qui emploient chaque liste D-xxxx : liste →
- *  [{ noeud, test, rang }], `rang` 0 ou 1 (premier ou second test du nœud). */
-function testsParListe(k) {
-  if (!k._ficheTestsParListe) {
-    const index = new Map();
-    for (const noeud of k.tests) {
-      noeud.tests.forEach((test, rang) => {
-        if (!index.has(test.liste)) index.set(test.liste, []);
-        index.get(test.liste).push({ noeud, test, rang });
-      });
-    }
-    k._ficheTestsParListe = index;
-  }
-  return k._ficheTestsParListe;
-}
-
-// ==== Résolution d'un code saisi ====
-
-/** La saisie (champ ou lien profond) rapportée à une fiche : { nature,
- *  code, affiche, connu, … }. `affiche` est la graphie de l'adresse et du
- *  titre (« I63.4 », « ALQ+247 »). */
-function trouver(smr, saisie) {
-  const k = smr.classification;
-  const brut = String(saisie ?? "").trim().toUpperCase().replace(/\s+/g, "");
-  // CSARR saisi sans son « + » (« ALQ247 ») : aucune autre nomenclature
-  // n'a cette forme.
-  const csarr = /^[A-Z]{3}\d{3}$/.test(brut) ? `${brut.slice(0, 3)}+${brut.slice(3)}` : brut;
-  if (RE_CSARR.test(csarr)) {
-    const lignes = smr.actes._parCode.get(csarr);
-    return { nature: "CSARR", code: csarr, affiche: csarr, connu: !!lignes, lignes };
-  }
-  if (RE_CSAR.test(brut)) {
-    const lignes = smr.csar._parCode.get(brut);
-    return { nature: "CSAR", code: brut, affiche: brut, connu: !!lignes, lignes };
-  }
-  // Code CCAM suivi de sa phase ou de son activité (« EBLA0030 »,
-  // « AHQP002-10 ») : ni les pondérations ni les CMA n'en tiennent compte.
-  if (/^[A-Z]{4}\d{3}/.test(brut)) {
-    const c = brut.slice(0, 7);
-    const lignes = smr.actes._parCode.get(c);
-    const cma = k._cmaCcam.get(c);
-    return { nature: "CCAM", code: c, affiche: c, connu: !!lignes || cma != null, lignes, cma };
-  }
-  if (brut && RE_CIM.test(cle(brut))) {
-    const diag = smr.diagnostics._parCle.get(cle(brut));
-    return { nature: "CIM-10", code: cle(brut), affiche: graphie(brut), connu: !!diag, diag };
-  }
-  // Saisie qui n'a la forme d'aucun code (« hémiplégie droite ») : montrée
-  // telle quelle, pas en capitales collées (« HÉMIPLÉGIEDROITE »).
-  return { nature: null, code: brut, affiche: String(saisie ?? "").trim(), connu: false };
-}
 
 // ==== Vue ====
 
@@ -423,14 +294,12 @@ function ficheDiagnostic(smr, { diag, affiche }) {
 }
 
 // Ce que le code fait de l'orientation en CM, selon les positions que son
-// profil permet : seules la MMP et l'AE orientent en CM (2.2.1), un code
-// permis seulement en DAS n'y joue aucun rôle.
+// profil permet (smr.roleOrientation).
 const RAPPEL_AE = "quand l'AE est testée : MMP qui n'appartient à aucune liste d'entrée dans une CM, ou qui oriente en deuxième intention";
 
 function blocCm(k, diag) {
-  const mmp = positionAutorisee(diag, "MMP");
-  const ae = positionAutorisee(diag, "AE");
-  if (!orienteDansCm(diag)) {
+  const { cas, mmp, ae } = roleOrientation(diag);
+  if (cas === "aucuneCm") {
     return [
       el("p", {}, el("strong", {}, "CM 90 : n'oriente dans aucune CM."), ` ${libelleGroupe(k, "90")}.`),
       el(
@@ -447,14 +316,14 @@ function blocCm(k, diag) {
     ];
   }
   const cm = el("p", {}, "Oriente dans la ", el("strong", {}, `CM ${diag.CM}`), ` — ${libelleGroupe(k, diag.CM)}.`);
-  if (!mmp && !ae) {
+  if (cas === "dasSeulement") {
     return [
       cm,
       el("p", {}, "Son profil ne le permet qu'en DAS : il ne sert donc pas à orienter le RHS en CM, que seules la MMP et l'AE déterminent."),
       note("Volume 1, 2.2.1."),
     ];
   }
-  if (!diag["Deuxième intention"]) {
+  if (cas === "premiereIntention") {
     return [
       cm,
       el(
@@ -482,15 +351,9 @@ function blocCm(k, diag) {
 }
 
 function blocPositions(smr, diag) {
-  const k = smr.classification;
   // Les erreurs que lèverait le code à chaque position : celles du contrôle
-  // des diagnostics de smr.js, plutôt qu'une table recopiée ici. Le même
-  // code aux trois positions ajoute l'erreur 69 (AE = MMP), écartée.
-  const erreurs = controlerDiagnostics(smr, { mmp: diag.Code, ae: diag.Code, das: [diag.Code] }).filter((e) => e.code !== 69);
-  const lignes = POSITIONS.map((p) => {
-    const oui = positionAutorisee(diag, p);
-    const erreur = erreurs.find((e) => e.position === p);
-    const bloquante = erreur && k._erreurs.get(erreur.code)?.bloquant !== false;
+  // des diagnostics de smr.js (erreursParPosition).
+  const lignes = erreursParPosition(smr, diag).map(({ position: p, permise: oui, erreur, bloquante }) => {
     return el(
       "tr",
       {},
@@ -508,12 +371,7 @@ function blocPositions(smr, diag) {
     note(`Profil ${diag.Profil} de CIM_infos_SMR (MMP, AE, DAS) : ${PROFILS[diag.Profil] ?? "profil inconnu"}.`),
   ];
   if (diag.Profil === "NNN") {
-    // Les codes plus précis sont ceux qui prolongent la clef du code père.
-    const clef = cle(diag.Code);
-    const enfants = smr.diagnostics.lignes.filter((l) => {
-      const c = cle(l.Code);
-      return c !== clef && c.startsWith(clef) && l.Profil !== "NNN";
-    });
+    const enfants = codesPlusPrecis(smr.diagnostics, diag.Code);
     blocs.push(
       el(
         "div",
@@ -536,10 +394,9 @@ function blocPositions(smr, diag) {
 
 function blocListes(k, diag) {
   if (!diag.Listes.length) return [el("p", { class: "message-info" }, "Ce code n'appartient à aucune liste d'entrée en GN.")];
-  const index = testsParListe(k);
-  let horsCm = false;
-  const corps = diag.Listes.map((liste) => {
-    const usages = index.get(liste) ?? [];
+  const listes = usagesDesListes(k, diag);
+  const horsCm = listes.some(({ usages }) => usages.some((u) => u.autreCm));
+  const corps = listes.map(({ liste, usages }) => {
     const enTete = el(
       "th",
       { scope: "rowgroup", rowspan: String(Math.max(1, usages.length)) },
@@ -556,14 +413,7 @@ function blocListes(k, diag) {
     return el(
       "tbody",
       {},
-      ...usages.map(({ noeud, test, rang }, i) => {
-        const nbTests = k._testsParCm.get(noeud.cm)?.length ?? 0;
-        // Les tests sont propres à chaque CM (2.2.2) : un test d'une autre
-        // CM que celle du code ne le lit que dans un RHS classé dans cette
-        // CM par un autre code. Un test en DAS, lui, lit tous les DAS.
-        const autreCm = noeud.cm !== diag.CM && !test.positions.includes("DAS");
-        if (autreCm) horsCm = true;
-        const autre = noeud.tests[1 - rang];
+      ...usages.map(({ noeud, test, rang, nbTests, autreCm, autre }, i) => {
         // Une cellule pour tout le nœud, une ligne par élément : où il se
         // trouve dans l'arbre, à quelle position le code y est lu, le second
         // test éventuel et les conditions du GN 0871.
@@ -598,12 +448,12 @@ function blocListes(k, diag) {
 }
 
 function blocCma(smr, diag, affiche) {
-  if (!diag.CMA) {
+  const cma = cmaDuDiagnostic(smr, diag);
+  if (!cma) {
     return [el("p", {}, `${affiche} n'est pas une CMA : il n'est pas marqueur de sévérité.`)];
   }
-  const index = smr.exclusions.cma[graphie(diag.Code)];
+  const { index, taille: n, sansNiveau2 } = cma;
   const k = smr.classification;
-  const sansNiveau2 = gnSansSeverite2(k);
   const blocs = [
     el(
       "p",
@@ -618,7 +468,6 @@ function blocCma(smr, diag, affiche) {
   if (index == null) {
     blocs.push(el("p", { class: "message-info" }, "Aucune liste d'exclusion : aucun code orientant ne l'exclut."));
   } else {
-    const n = tailleListeExclusion(smr.diagnostics, smr.exclusions, index);
     blocs.push(
       el("p", { class: "fiche-sous-titre" }, `Liste d'exclusion : ${nombre(n)} code${n > 1 ? "s" : ""} l'excluent quand ils orientent le RHS dans le GN du séjour.`),
       verificateur(smr, diag, affiche)
@@ -630,9 +479,9 @@ function blocCma(smr, diag, affiche) {
   return blocs;
 }
 
-/** « Exclue par ce code orientant ? » : smr.estExclue, le test même de la
- *  fonction groupage, sur un code saisi. Un code inconnu est signalé avant :
- *  entre deux bornes de plage, il passerait pour exclu. */
+/** « Exclue par ce code orientant ? » : smr.exclusionParOrientant, le test
+ *  même de la fonction groupage, sur un code saisi ; un code inconnu est
+ *  signalé avant. */
 function verificateur(smr, diag, affiche) {
   const verdict = el("p", { class: "fiche-verdict", role: "status" });
   const champ = el("input", {
@@ -646,18 +495,17 @@ function verificateur(smr, diag, affiche) {
       verdict.innerHTML = "";
       verdict.className = "fiche-verdict";
       if (!saisie) return;
-      const orientant = smr.diagnostics._parCle.get(cle(saisie));
+      const { orientant, exclue } = exclusionParOrientant(smr, diag.Code, saisie);
       if (!orientant) {
         verdict.classList.add("message-info");
         verdict.append(`${saisie.toUpperCase()} n'est pas un code CIM-10 de la fonction groupage SMR.`);
         return;
       }
-      const exclue = estExclue(smr, diag.Code, orientant.Code);
       verdict.classList.add(exclue ? "message-avertissement" : "message-succes");
       verdict.append(
         exclue
-          ? `Exclue : si ${orientant.Code} a orienté un RHS du séjour dans le GN retenu, ${affiche} n'est pas marqueur de sévérité.`
-          : `Retenue : ${orientant.Code} n'exclut pas ${affiche}.`
+          ? `Exclue : si ${orientant} a orienté un RHS du séjour dans le GN retenu, ${affiche} n'est pas marqueur de sévérité.`
+          : `Retenue : ${orientant} n'exclut pas ${affiche}.`
       );
     },
   });
