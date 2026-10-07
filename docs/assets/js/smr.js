@@ -1,15 +1,20 @@
 // Fonction groupage SMR — chargement des jeux produits par
-// scripts/build_smr.py, et ce que plusieurs thèmes SMR lisent de la même
-// façon : graphie des codes, libellés des groupes et des modalités CSAR,
-// modulateurs de lieu CSARR, positions permises d'un diagnostic et erreurs
-// qu'il lève, exclusions des CMA, GN sans niveau de sévérité 2, caractère
-// spécialisé d'un acte. Les règles du groupage elles-mêmes (volume 1 du
-// Manuel des GME, data/smr/groupage/manuel_gme_volume_1.pdf) sont
-// mises en arbres par smr_arbre.js, que dessine l'algorithme.
+// scripts/build_smr.py et leurs index ; ce que plusieurs thèmes SMR lisent
+// de la même façon : graphie des codes, libellés des groupes et des
+// modalités CSAR, modulateurs de lieu CSARR, positions permises d'un
+// diagnostic et erreurs qu'il lève, exclusions des CMA, GN sans niveau de
+// sévérité 2, caractère spécialisé d'un acte ; et ce que chaque thème en
+// calcule : lignes de ses tableaux, recherche et réécriture des saisies,
+// verdicts (CMA, code orientant), résolution d'un code saisi et suggestions
+// de la fiche code, ce que disent les fiches d'un diagnostic, d'un acte et
+// d'un acte CSAR. Les règles du groupage elles-mêmes (volume 1 du Manuel
+// des GME, data/smr/groupage/manuel_gme_volume_1.pdf) sont mises en arbres
+// par smr_arbre.js, que dessine l'algorithme.
 //
 // Rien ici ne touche au DOM : les fonctions reçoivent les jeux chargés en
-// argument (`smr`, cf. chargerSmr). Partagé par les thèmes SMR : fiche code,
-// listes, algorithme, tarifs, pondérations, transcodage CSAR, CMA, erreurs.
+// argument (`smr`, cf. chargerSmr). Les thèmes SMR — fiche code, listes,
+// algorithme, tarifs, pondérations, transcodage CSAR, CMA, erreurs — n'en
+// gardent que le dessin.
 
 import { chargerJeu, chargerJson } from "./donnees.js";
 import { nombre } from "./interface.js";
@@ -262,7 +267,7 @@ export function controlerDiagnostics(smr, rhs) {
   return erreurs.map((e) => ({ ...e, libelle: k._erreurs.get(e.code)?.libelle ?? "" }));
 }
 
-// ==== Erreurs de la fonction groupage (FG_erreurs) ====
+// ==== Codes erreur de FG_erreurs ====
 
 const COLONNES_ERREURS = ["Code", "Libellé"];
 
@@ -588,8 +593,8 @@ export const codesSaisis = (texte) =>
     .filter(Boolean);
 
 /** Verdict du vérificateur « Cette CMA compte-t-elle ? » (5.2) sur les
- *  saisies : `candidat`, code CIM-10 ou acte CCAM ; `orientants`, les codes
- *  ayant orienté le RHS dans le GN. Null sans candidat ; sinon `cas` :
+ *  saisies : `candidat`, code CIM-10 ou acte CCAM ; `orientantsSaisis`, les
+ *  codes ayant orienté le RHS dans le GN. Null sans candidat ; sinon `cas` :
  *  - « acteCma » : acte CCAM CMA (phase écartée, normaliserActe), marqueur
  *    de sévérité sans exclusion possible ; `code`, l'acte ;
  *  - « inconnu » : ni code de CIM_infos_SMR, ni acte CCAM CMA ; `code` dans
@@ -801,7 +806,7 @@ const COLONNES_TARIFS = ["GMT", "GME", "Nature", "Libellé"];
 
 // Code de groupe, entier ou en partie : CM (« 01 »), GN (« 0147 »), GR
 // (« 0147S »), GL (« 0147SC ») ou GME (« 0147SC2 »). Même forme que dans
-// la recherche de l'algorithme (smr/arbre.js).
+// la recherche de l'algorithme (groupeDeRequete, smr_arbre.js).
 const RE_CODE_GROUPE = /^\d{2}(?:\d{2}(?:[A-Z](?:[A-Z]\d?)?)?)?$/;
 const RE_GMT = /^\d{4}$/;
 // Nombre ordinaire de GMT d'un GME d'HC : principal, GMT2, séjours courts.
