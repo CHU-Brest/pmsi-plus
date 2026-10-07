@@ -68,7 +68,7 @@ export function noteTarifs(lien) {
  *  et que chacun garde au moins un GHS à lui : sans quoi un GHM
  *  disparaîtrait du tableau derrière la ligne commune. `index` est celui
  *  de parGhm, `tarifes` des GHM qui y figurent. */
-export function ghsCommuns(index, tarifes) {
+function ghsCommuns(index, tarifes) {
   if (tarifes.length < 2) return new Set();
   let communs = new Set(index.get(tarifes[0]).map((l) => l.GHS));
   for (const g of tarifes.slice(1)) {
@@ -83,7 +83,7 @@ export function ghsCommuns(index, tarifes) {
  *  passent après les GHS propres à un GHM, même quand celui-ci est seul
  *  dans son tableau : la première ligne n'est jamais le GHS d'un cas
  *  particulier commun à toute la racine. */
-export function ghsCommunsRacine(jeu, racine) {
+function ghsCommunsRacine(jeu, racine) {
   if (!jeu._communsRacine) jeu._communsRacine = new Map();
   if (!jeu._communsRacine.has(racine)) {
     jeu._communsRacine.set(racine, ghsCommuns(parGhm(jeu), ghmDeRacine(jeu, racine)));

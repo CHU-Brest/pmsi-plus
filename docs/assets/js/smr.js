@@ -1170,7 +1170,7 @@ export function resumePonderations(k, lignes) {
 
 /** Erreurs non bloquantes de FG_erreurs dont la liste d'actes cite
  *  celui-ci : [{ numero, erreur }], `erreur` lue dans k._erreurs. */
-export function erreursDeLActe(k, c) {
+export function erreursActe(k, c) {
   return ["162", "163"]
     .filter((numero) => (k.actesErreurs[numero] ?? []).some(([a]) => a === c))
     .map((numero) => ({ numero, erreur: k._erreurs.get(Number(numero)) }));

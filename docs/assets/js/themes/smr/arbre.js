@@ -20,7 +20,7 @@ import { chargerClassification, chargerDiagnostics, chargerTarifsSmr, libelleGro
 import {
   CM_ERREURS,
   codesDeListe,
-  CONDITIONS,
+  CONDITIONS_ARBRE,
   construire,
   enumeration,
   listesDuCode,
@@ -456,7 +456,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
           ];
         }
         if (n.conditions?.length) {
-          return [`Conditions supplémentaires : ${n.conditions.map((c) => CONDITIONS[c]).filter(Boolean).join(" ; ")}.`];
+          return [`Conditions supplémentaires : ${n.conditions.map((c) => CONDITIONS_ARBRE[c]).filter(Boolean).join(" ; ")}.`];
         }
         if (n.listeSpe) {
           const fiche = k.listesSpe?.[n.listeSpe];

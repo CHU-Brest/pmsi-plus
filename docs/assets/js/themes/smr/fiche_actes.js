@@ -14,7 +14,7 @@ import { el, nombre } from "../../interface.js";
 import {
   caracteristiquesActe,
   caracteristiquesCsar,
-  erreursDeLActe,
+  erreursActe,
   libelleIntervenant,
   LIEUX_TRANSCODES,
   MODALITES,
@@ -226,7 +226,7 @@ function blocPonderation(k, c, lignes) {
     }
   }
   // Erreurs non bloquantes de FG_erreurs dont la liste d'actes cite celui-ci.
-  for (const { numero, erreur } of erreursDeLActe(k, c)) {
+  for (const { numero, erreur } of erreursActe(k, c)) {
     blocs.push(
       el(
         "p",

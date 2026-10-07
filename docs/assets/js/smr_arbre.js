@@ -410,7 +410,7 @@ export const VARIABLES = {
 // Conditions du seul test écrit en toutes lettres (GN 0871, fractures
 // multiples), telles que les donne GN_liste_tests.xlsx ; build_smr.py les
 // réduit à ces deux mots-clefs.
-export const CONDITIONS = {
+export const CONDITIONS_ARBRE = {
   mmpPrioritaire: "si la MMP et l'AE sont classantes, seul le code en MMP est retenu comme classant",
   quatreCaracteresDifferents:
     "les 4 premiers caractères du code classant en DAS doivent différer de ceux du code classant en MMP ou AE",
@@ -444,7 +444,8 @@ export const natureDeCode = (requete) =>
 
 /** Le profil de l'algorithme SMR tel que le lit arbre_graphe.js, sans DOM :
  *  l'arbre construit (construire), les légendes, les feuilles et leurs
- *  codes, la lecture d'une requête. Le thème y ajoute le dessin. */
+ *  codes, la lecture d'une requête. Le thème y ajoute le dessin, dont
+ *  `special.gr.intitule`, qu'arbre_vue.js appelle sur chaque GR. */
 export function profilArbre(k) {
   return {
     arbre: construire(k).arbre,

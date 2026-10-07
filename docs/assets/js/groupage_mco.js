@@ -118,7 +118,7 @@ const indexParArbre = new WeakMap();
 
 /** Les étapes qui testent chaque liste : `parListe`, liste → [{ id, n, i }],
  *  le nœud `n` d'identifiant `id` et le rang `i` du cas qui la cite. */
-export function indexer(arbre) {
+export function indexerEtapes(arbre) {
   if (indexParArbre.has(arbre)) return indexParArbre.get(arbre);
   const parListe = new Map(); // liste → [{ id, n, i }]
   for (const [id, n] of Object.entries(arbre.noeuds)) {
@@ -663,7 +663,7 @@ export function donneesFicheDiagnostic(arbre, code, { diagnostics, cma, entrees,
     lignes[0]?.["Libellé code"] ?? cma.find((l) => l.Code === code)?.["Libellé"] ?? entreesDuCode[0]?.["Libellé"];
   if (!libelle) return null;
   const listes = [...new Set(lignes.map((l) => l.Liste))].sort();
-  const { parListe } = indexer(arbre);
+  const { parListe } = indexerEtapes(arbre);
   const etapes = listes.flatMap((l) => (parListe.get(l) ?? []).map((e) => ({ ...e, liste: l })));
   const surLeDp = (e) => e.n.genre === "test" && e.n.symbole === "DP";
   const cmds = entreesDuCode.map((e) => etapeCmd(arbre, e.CMD)).filter(Boolean);
@@ -707,7 +707,7 @@ export function donneesFicheActe(arbre, code, actes) {
   if (!lignes.length) return null;
   const libelle = lignes[0]["Libellé code"];
   const listes = [...new Set(lignes.map((l) => l.Liste))].sort();
-  const { parListe } = indexer(arbre);
+  const { parListe } = indexerEtapes(arbre);
   const etapes = listes.flatMap((l) => (parListe.get(l) ?? []).map((e) => ({ ...e, liste: l })));
   const frontieres = frontieresActes(arbre, actes);
   const moi = frontieres.filter((f) => codeCcam(f.Code) === code);
