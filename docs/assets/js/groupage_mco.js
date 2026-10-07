@@ -1,14 +1,16 @@
-// Fonction groupage MCO — ce que plusieurs thèmes lisent de la même façon
-// dans l'arbre (arbre.json) et les listes : graphie des codes saisis,
-// racines atteintes depuis un nœud, par toutes ses sorties ou par le
-// parcours d'un séjour dont le code est le DP, étapes qui testent une
-// liste, codes GHM d'une case ou d'une racine, codes et actes frontières,
-// ligne d'une CMA et éléments de ses listes d'exclusion (volume 1,
-// annexes 4 et 5).
+// Fonction groupage MCO — ce que les thèmes MCO calculent de l'arbre
+// (arbre.json) et des listes : graphie des codes saisis, racines atteintes
+// depuis un nœud, par toutes ses sorties ou par le parcours d'un séjour
+// dont le code est le DP, étapes qui testent une liste, codes GHM d'une
+// case ou d'une racine, codes et actes frontières, ligne d'une CMA, ses
+// listes d'exclusion (volume 1, annexes 4 et 5) et leur vérificateur ;
+// légende et profil de l'arbre de l'algorithme, codes des listes qu'il
+// ouvre ; fiche d'un diagnostic ou d'un acte et suggestions de sa saisie ;
+// lignes du tableau des tarifs.
 //
 // Rien ici ne touche au DOM : les fonctions reçoivent l'arbre et les jeux
 // chargés en argument. Pendant MCO de smr.js. Partagé par la fiche code,
-// l'algorithme, les CMA, les codes et actes frontières.
+// l'algorithme, les CMA, les codes et actes frontières, les tarifs.
 
 import { normaliser } from "./recherche.js";
 
@@ -333,6 +335,14 @@ function calculerFrontieresActes(arbre, actes) {
   lignes.sort((a, b) => a.CMD.localeCompare(b.CMD) || a.Code.localeCompare(b.Code));
   return lignes;
 }
+
+/** Nombre de catégories CIM-10 des codes frontières en DP, comptées dans
+ *  chaque CMD où elles le sont. */
+export const nombreCategoriesFrontieres = (lignes) => new Set(lignes.map((l) => `${l.CMD}/${l._categorie}`)).size;
+
+/** Nombre de familles des actes frontières, comptées dans chaque CMD où
+ *  elles le sont. */
+export const nombreFamillesFrontieres = (lignes) => new Set(lignes.map((l) => `${l.CMD}/${l._famille}`)).size;
 
 // ==== Exclusions des CMA (volume 1, annexes 4 et 5) ====
 
@@ -762,4 +772,29 @@ export function chercher(q, nom, jeu, trouves) {
     if (trouves.size >= SUGGESTIONS_MAX) break;
   }
   return trouves;
+}
+
+// ==== Tarifs des GHS (thème Tarifs) ====
+
+/** Lignes du tableau des tarifs, d'après celles de l'arrêté : GHS d'un
+ *  même GHM à la suite, plutôt que dans l'ordre du classeur, qui range à
+ *  part les GHS UHCD de chaque racine. Le libellé vient en dernier :
+ *  colonne la plus large, il repousserait sinon les montants hors de
+ *  l'écran. */
+export function lignesTarifs(lignes) {
+  // Le forfait EXB est le plus souvent nul partout : pas de colonne vide.
+  const avecForfait = lignes.some((l) => l["Forfait EXB"]);
+  return lignes
+    .map((l) => ({
+      GHM: l.GHM,
+      GHS: l.GHS,
+      Tarif: l.Tarif,
+      "Borne basse": l["Borne basse"],
+      "Borne haute": l["Borne haute"],
+      ...(avecForfait ? { "Forfait EXB": l["Forfait EXB"] } : {}),
+      "Tarif EXB": l["Tarif EXB"],
+      "Tarif EXH": l["Tarif EXH"],
+      "Libellé": l["Libellé"],
+    }))
+    .sort((a, b) => (a.GHM === b.GHM ? a.GHS - b.GHS : a.GHM < b.GHM ? -1 : 1));
 }

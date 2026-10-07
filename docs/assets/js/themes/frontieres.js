@@ -8,7 +8,7 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
-import { frontieresDp } from "../groupage_mco.js";
+import { frontieresDp, nombreCategoriesFrontieres } from "../groupage_mco.js";
 
 const COLONNES_CHERCHABLES = ["CMD", "Code", "Racines", "Liste", "Libellé code", "_libelleListe"];
 
@@ -20,7 +20,7 @@ export async function rendre(conteneur) {
   // Lignes calculées une fois (groupage_mco.js), partagées avec la fiche
   // code ; les indexer à chaque visite ne prend qu'une quinzaine de ms.
   const lignes = recherche.indexer(frontieresDp(arbre, diagnostics.lignes), COLONNES_CHERCHABLES);
-  const categories = new Set(lignes.map((l) => `${l.CMD}/${l._categorie}`)).size;
+  const categories = nombreCategoriesFrontieres(lignes);
 
   conteneur.innerHTML = "";
   const zoneResultats = el("div", {});

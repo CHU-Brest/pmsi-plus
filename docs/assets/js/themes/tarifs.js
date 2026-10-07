@@ -6,6 +6,7 @@
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
 import { chargerTarifs, euros, jours } from "../tarifs.js";
+import { lignesTarifs } from "../groupage_mco.js";
 
 const COLONNES_CHERCHABLES = ["GHM", "GHS", "Libellé"];
 
@@ -18,27 +19,11 @@ const FORMATS = {
   "Tarif EXH": euros,
 };
 
-/** Lignes du tableau, une fois par jeu : GHS d'un même GHM à la suite,
- *  plutôt que dans l'ordre du classeur, qui range à part les GHS UHCD de
- *  chaque racine. Le libellé vient en dernier : colonne la plus large, il
- *  repousserait sinon les montants hors de l'écran. */
+/** Lignes du tableau (lignesTarifs, groupage_mco.js), calculées et
+ *  indexées pour la recherche une fois par jeu. */
 function lignesAffichees(jeu) {
   if (!jeu._affichage) {
-    // Le forfait EXB est le plus souvent nul partout : pas de colonne vide.
-    const avecForfait = jeu.lignes.some((l) => l["Forfait EXB"]);
-    jeu._affichage = jeu.lignes
-      .map((l) => ({
-        GHM: l.GHM,
-        GHS: l.GHS,
-        Tarif: l.Tarif,
-        "Borne basse": l["Borne basse"],
-        "Borne haute": l["Borne haute"],
-        ...(avecForfait ? { "Forfait EXB": l["Forfait EXB"] } : {}),
-        "Tarif EXB": l["Tarif EXB"],
-        "Tarif EXH": l["Tarif EXH"],
-        "Libellé": l["Libellé"],
-      }))
-      .sort((a, b) => (a.GHM === b.GHM ? a.GHS - b.GHS : a.GHM < b.GHM ? -1 : 1));
+    jeu._affichage = lignesTarifs(jeu.lignes);
     recherche.indexer(jeu._affichage, COLONNES_CHERCHABLES);
   }
   return jeu._affichage;

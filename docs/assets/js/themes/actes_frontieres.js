@@ -9,7 +9,7 @@
 import { chargerJeu, chargerJson } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
-import { frontieresActes } from "../groupage_mco.js";
+import { frontieresActes, nombreFamillesFrontieres } from "../groupage_mco.js";
 
 export async function rendre(conteneur) {
   const [arbre, actes] = await Promise.all([
@@ -19,7 +19,7 @@ export async function rendre(conteneur) {
   // Lignes calculées une fois (groupage_mco.js), partagées avec la fiche
   // code ; les indexer à chaque visite ne prend qu'une vingtaine de ms.
   const lignes = recherche.indexer(frontieresActes(arbre, actes.lignes), ["CMD", "Code", "Racines", "Liste(s)", "Libellé code"]);
-  const familles = new Set(lignes.map((l) => `${l.CMD}/${l._famille}`)).size;
+  const familles = nombreFamillesFrontieres(lignes);
 
   conteneur.innerHTML = "";
   const zoneResultats = el("div", {});
