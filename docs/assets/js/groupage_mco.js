@@ -379,3 +379,53 @@ export function exclusionParDp(exclusions, cma, dp) {
   if (listeDp == null) return null;
   return exclusions.dp[listeDp].find((e) => couvre(e, dp)) ?? null;
 }
+
+// ==== Fiche code ====
+
+/** Ce que teste chaque symbole du volume 3, en clair, dans la colonne
+ *  « Test » des étapes de la fiche code. */
+export const SYMBOLES_EN_CLAIR = {
+  DP: "DP",
+  DR: "DR",
+  DAS: "DAS",
+  D: "un diagnostic",
+  D2: "deux diagnostics",
+  Dtous: "tous les diagnostics",
+  DRbarre: "DP ou DAS (sauf DR)",
+  A: "un acte",
+  A2: "deux actes",
+  Atous: "tous les actes",
+};
+
+/** Les lignes du tableau des étapes de la fiche code : l'étape (`id`,
+ *  `cmd`, `page`, et `cas`, le rang du cas quand le test en a plusieurs),
+ *  ce qu'elle teste en clair, et les racines que le séjour peut atteindre
+ *  par ce cas, par toutes les sorties ou selon `parcours` (parcoursEnDp) ;
+ *  aucune pour une étape `nonAtteinte` avec ce DP (marquerAtteintes). */
+export function lignesEtapes(arbre, etapes, parcours) {
+  return etapes.map((e) => {
+    const b = e.n.branches[e.i];
+    const symbole = e.n.genre === "test" ? SYMBOLES_EN_CLAIR[e.n.symbole] ?? e.n.symbole : e.n.variable;
+    return {
+      id: e.id,
+      cmd: e.n.cmd,
+      page: e.n.page,
+      cas: e.n.branches.length > 1 ? e.i : null,
+      test: e.test ?? `${symbole} : ${b.libelle}`,
+      nonAtteinte: Boolean(e.nonAtteinte),
+      racines: e.nonAtteinte ? [] : racinesDe(arbre, b.vers, parcours),
+    };
+  });
+}
+
+// Type de racine, 3e caractère de son code.
+export const TYPES_RACINE = { C: "chirurgicale", K: "interventionnelle", M: "médicale", Z: "indifférenciée" };
+
+/** « 27 racines : 22 chirurgicales, 3 interventionnelles, 2 médicales ». */
+export function decompte(racines) {
+  const parType = Object.entries(TYPES_RACINE).flatMap(([type, nom]) => {
+    const n = racines.filter((r) => r[2] === type).length;
+    return n ? [`${n} ${nom}${n > 1 ? "s" : ""}`] : [];
+  });
+  return `${racines.length} racines : ${parType.join(", ")}`;
+}

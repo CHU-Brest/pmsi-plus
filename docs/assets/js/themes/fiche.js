@@ -16,6 +16,7 @@ import { el, fraicheur, nombre } from "../interface.js";
 import {
   RE_CCAM,
   codeCcam,
+  decompte,
   etapeCmd,
   exclusionParDp,
   frontieresActes,
@@ -25,30 +26,14 @@ import {
   indexer,
   libellesRacines,
   ligneCma,
+  lignesEtapes,
   marquerAtteintes,
   parcoursEnDp,
-  racinesDe,
   racinesDesEtapes,
 } from "../groupage_mco.js";
 import { chargerTarifs, ghmDeRacine, nombreGhs, noteTarifs, tableTarifs } from "../tarifs.js";
 
 const SUGGESTIONS_MAX = 12;
-
-// Type de racine, 3e caractère de son code.
-const TYPES_RACINE = { C: "chirurgicale", K: "interventionnelle", M: "médicale", Z: "indifférenciée" };
-
-const SYMBOLES = {
-  DP: "DP",
-  DR: "DR",
-  DAS: "DAS",
-  D: "un diagnostic",
-  D2: "deux diagnostics",
-  Dtous: "tous les diagnostics",
-  DRbarre: "DP ou DAS (sauf DR)",
-  A: "un acte",
-  A2: "deux actes",
-  Atous: "tous les actes",
-};
 
 // ==== Données ====
 
@@ -273,7 +258,7 @@ async function ficheDiagnostic(arbre, code, libelles) {
           { class: "message-info" },
           `${code} n'est un diagnostic d'entrée d'aucune CMD (volume 2 du Manuel des GHM) : en DP, il n'oriente le séjour vers aucune CMD.`
         ),
-    enDp.length ? tableEtapes(arbre, libelles, enDp, parcours) : null,
+    enDp.length ? tableEtapes(libelles, lignesEtapes(arbre, enDp, parcours)) : null,
     enDp.length
       ? el(
           "p",
@@ -286,7 +271,7 @@ async function ficheDiagnostic(arbre, code, libelles) {
     el("h3", {}, "En diagnostic associé : CMA"),
     blocCma(libelles, exclusions, code),
     autres.length ? el("h3", {}, "Autres tests de l'arbre sur ce diagnostic") : null,
-    autres.length ? tableEtapes(arbre, libelles, autres) : null,
+    autres.length ? tableEtapes(libelles, lignesEtapes(arbre, autres)) : null,
     el("h3", {}, "Listes de la fonction groupage"),
     listes.length
       ? el(
@@ -316,8 +301,8 @@ function resume(cmds, enDp, frontiere, exclusions, code) {
 }
 
 function lienArbre(e) {
-  const cas = e.n.branches.length > 1 ? `/${e.i}` : "";
-  return el("a", { href: `#/mco/arbre/${e.n.cmd}/${e.id}${cas}` }, `CMD ${e.n.cmd} · p. ${e.n.page}`);
+  const cas = e.cas != null ? `/${e.cas}` : "";
+  return el("a", { href: `#/mco/arbre/${e.cmd}/${e.id}${cas}` }, `CMD ${e.cmd} · p. ${e.page}`);
 }
 
 // Au-delà, les racines d'une étape se replient : depuis la CMD du DP, elles
@@ -333,16 +318,8 @@ function celluleRacines(libelles, racines) {
   return [el("details", {}, el("summary", {}, decompte(racines)), ...lignes)];
 }
 
-/** « 27 racines : 22 chirurgicales, 3 interventionnelles, 2 médicales ». */
-function decompte(racines) {
-  const parType = Object.entries(TYPES_RACINE).flatMap(([type, nom]) => {
-    const n = racines.filter((r) => r[2] === type).length;
-    return n ? [`${n} ${nom}${n > 1 ? "s" : ""}`] : [];
-  });
-  return `${racines.length} racines : ${parType.join(", ")}`;
-}
-
-function tableEtapes(arbre, libelles, etapes, parcours) {
+/** Le tableau des étapes, d'après leurs lignes (lignesEtapes). */
+function tableEtapes(libelles, etapes) {
   return el(
     "div",
     { class: "codes-liste" },
@@ -357,23 +334,21 @@ function tableEtapes(arbre, libelles, etapes, parcours) {
       el(
         "tbody",
         {},
-        ...etapes.map((e) => {
-          const b = e.n.branches[e.i];
-          const symbole = e.n.genre === "test" ? SYMBOLES[e.n.symbole] ?? e.n.symbole : e.n.variable;
-          return el(
+        ...etapes.map((e) =>
+          el(
             "tr",
             {},
             el("td", { class: "code" }, lienArbre(e)),
-            el("td", {}, e.test ?? `${symbole} : ${b.libelle}`),
+            el("td", {}, e.test),
             e.nonAtteinte
               ? el(
                   "td",
                   { class: "racines non-atteinte" },
                   "Non atteinte avec ce DP : un test précédent classe le séjour ailleurs, ou l'étape suit une inversion du DP et du DR."
                 )
-              : el("td", { class: "racines" }, ...celluleRacines(libelles, racinesDe(arbre, b.vers, parcours)))
-          );
-        })
+              : el("td", { class: "racines" }, ...celluleRacines(libelles, e.racines))
+          )
+        )
       )
     )
   );
@@ -522,7 +497,7 @@ async function ficheActe(arbre, code, libelles) {
       moi.length ? el("span", { class: "pastille attention" }, moi.some((m) => m._typeChange) ? "Acte frontière (le type de GHM change)" : "Acte frontière") : null
     ),
     el("h3", {}, "Étapes de l'arbre qui testent cet acte"),
-    etapes.length ? tableEtapes(arbre, libelles, etapes) : el("p", { class: "compteur" }, "Aucune."),
+    etapes.length ? tableEtapes(libelles, lignesEtapes(arbre, etapes)) : el("p", { class: "compteur" }, "Aucune."),
     voisins.length
       ? el(
           "div",
