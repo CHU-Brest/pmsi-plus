@@ -12,6 +12,7 @@
 // listes, algorithme, tarifs, pondérations, transcodage CSAR, CMA, erreurs.
 
 import { chargerJeu, chargerJson } from "./donnees.js";
+import { nombre } from "./interface.js";
 import * as recherche from "./recherche.js";
 
 // ==== Graphie des codes ====
@@ -195,6 +196,11 @@ export function libelleGroupe(k, code) {
   return k.groupes[quoi]?.[code]?.[1] ?? "";
 }
 
+/** Libellé d'un intervenant de la réadaptation (code à deux chiffres). */
+export function libelleIntervenant(k, iv) {
+  return k.intervenants[iv] ?? `intervenant ${iv}`;
+}
+
 export const TYPES_READAPTATION = {
   P: "réadaptation pédiatrique",
   S: "réadaptation spécialisée importante",
@@ -259,6 +265,79 @@ export function controlerDiagnostics(smr, rhs) {
 export function estSpecialise(smr, csarr, gn) {
   const liste = smr.classification._listeSpeParGn.get(gn);
   return !!liste && !!smr.actesSpe._parCode.get(csarr)?.has(liste);
+}
+
+/** Les GN pour lesquels un acte CSARR ou CCAM est spécialisé, par liste
+ *  d'actes spécialisés : [{ liste, gns }]. La liste des GN vient de
+ *  estSpecialise, le test même de la fonction groupage. */
+export function specialisation(smr, csarr) {
+  const k = smr.classification;
+  const listes = [...(smr.actesSpe._parCode.get(csarr) ?? [])].sort();
+  const gns = Object.keys(k.groupes.GN).filter((gn) => estSpecialise(smr, csarr, gn));
+  return listes.map((liste) => ({ liste, gns: gns.filter((gn) => k._listeSpeParGn.get(gn) === liste) }));
+}
+
+// ==== Transcodage CSAR (volume 1, 3.1.1) ====
+
+// Tableau 4 du volume 1 (3.3.1.4) : le modulateur de lieu CSARR que devient
+// chaque modulateur CSAR au transcodage.
+export const LIEUX_TRANSCODES = { L1: "HW ou LJ", L2: "XH", L3: "L3" };
+
+/** Transcodage CSAR à rebours : code CSARR → lignes de csar.json. */
+export function csarVers(smr, csarr) {
+  const jeu = smr.csar;
+  if (!jeu._ficheParCsarr) {
+    jeu._ficheParCsarr = new Map();
+    for (const l of jeu.lignes) {
+      if (!jeu._ficheParCsarr.has(l["Code CSARR"])) jeu._ficheParCsarr.set(l["Code CSARR"], []);
+      jeu._ficheParCsarr.get(l["Code CSARR"]).push(l);
+    }
+  }
+  return jeu._ficheParCsarr.get(csarr) ?? [];
+}
+
+/** Lignes de transcodage regroupées par transcodage identique — même
+ *  modalité, même CSARR, mêmes pondérations — pour qu'un acte CSAR à 32
+ *  intervenants tienne en quelques lignes. Groupes par modalité, le plus
+ *  nombreux d'abord. `parCsar` (code CSAR → toutes ses lignes) donne le
+ *  nombre d'intervenants de chaque acte CSAR, que `lignes` peut ne donner
+ *  qu'en partie (fiche d'un CSARR : les seules lignes transcodées en lui). */
+export function regrouperTranscodage(lignes, parCsar) {
+  const groupes = new Map();
+  for (const l of lignes) {
+    const clef = [l["Modalité"], l["Code CSARR"], l["Pondération CSARR"], l["Pondération CSAR"], l["Équivalent"]].join("|");
+    if (!groupes.has(clef)) {
+      groupes.set(clef, {
+        csar: l["Code CSAR"],
+        libelleCsar: l["Libellé CSAR"],
+        modalite: l["Modalité"],
+        csarr: l["Code CSARR"],
+        libelleCsarr: l["Libellé CSARR"],
+        ponderation: l["Pondération CSARR"],
+        fichierCsar: l["Pondération CSAR"],
+        equivalent: l["Équivalent"],
+        intervenants: [],
+      });
+    }
+    groupes.get(clef).intervenants.push(l.Intervenant);
+  }
+  // Nombre d'intervenants transcodés pour chaque acte et modalité : le
+  // dénominateur de « tous les intervenants ».
+  const total = (csar, modalite) =>
+    new Set(parCsar.get(csar).filter((l) => l["Modalité"] === modalite).map((l) => l.Intervenant)).size;
+  return [...groupes.values()]
+    .map((g) => ({ ...g, ecart: g.ponderation !== g.fichierCsar, total: total(g.csar, g.modalite) }))
+    .sort((a, b) => (a.csar === b.csar ? 0 : a.csar < b.csar ? -1 : 1) || a.modalite - b.modalite || b.intervenants.length - a.intervenants.length);
+}
+
+/** Les intervenants propres au CSAR, transposés avant le transcodage
+ *  (3.3.1.2) : `intervenants`, leurs codes ; `cibles`, les intervenants
+ *  CSARR qu'ils deviennent, sans doublon. */
+export function transpositionCsar(k) {
+  return {
+    intervenants: Object.keys(k.csar.transposition),
+    cibles: [...new Set(Object.values(k.csar.transposition))],
+  };
 }
 
 // ==== CMA (volume 1, 5.2) ====
@@ -526,4 +605,107 @@ export function exclusionParOrientant(smr, cma, saisie) {
   const orientant = smr.diagnostics._parCle.get(cle(saisie));
   if (!orientant) return { orientant: null, exclue: false };
   return { orientant: orientant.Code, exclue: estExclue(smr, cma, orientant.Code) };
+}
+
+// ==== Fiche d'un acte ====
+
+/** « Pondération 35 pour 29 intervenants ; 130 pour neuropsychologue (33),
+ *  psychotechnicien (72) ; 85 pour orthophoniste (24). » */
+export function resumePonderations(k, lignes) {
+  const parValeur = new Map();
+  for (const l of lignes) {
+    if (!parValeur.has(l["Pondération"])) parValeur.set(l["Pondération"], []);
+    parValeur.get(l["Pondération"]).push(l.Intervenant);
+  }
+  const morceaux = [...parValeur]
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([valeur, ivs]) => {
+      const qui =
+        ivs.length > 4
+          ? `${nombre(ivs.length)} intervenants`
+          : ivs.map((iv) => `${libelleIntervenant(k, iv).toLowerCase()} (${iv})`).join(", ");
+      return `${valeur}${valeur === 0 ? " (non attendu)" : ""} pour ${qui}`;
+    });
+  return `Pondération différenciée selon l'intervenant : ${morceaux.join(" ; ")}.`;
+}
+
+/** Erreurs non bloquantes de FG_erreurs dont la liste d'actes cite
+ *  celui-ci : [{ numero, erreur }], `erreur` lue dans k._erreurs. */
+export function erreursDeLActe(k, c) {
+  return ["162", "163"]
+    .filter((numero) => (k.actesErreurs[numero] ?? []).some(([a]) => a === c))
+    .map((numero) => ({ numero, erreur: k._erreurs.get(Number(numero)) }));
+}
+
+/** Les modulateurs de lieu qui majorent la pondération (MODULATEURS_LIEU),
+ *  acceptés ou non par l'acte (sa ligne de ACTES_ponderations) :
+ *  [{ modulateur, libelle, individuel, collectif, accepte }], majorations
+ *  « en individuel » et « en collectif » (null : sans objet). */
+export function modulateursLieu(k, ligne) {
+  return MODULATEURS_LIEU.map((m) => {
+    const [, libelle, individuel, collectif] = k.modulateurs.find(([c]) => c === m) ?? [m, "", 0, null];
+    return { modulateur: m, libelle, individuel, collectif, accepte: !!ligne[m] };
+  });
+}
+
+/** Ce que la fiche d'un acte CSARR ou CCAM (résolu par trouver) en dit : sa
+ *  première ligne de ACTES_ponderations et son libellé, son caractère de
+ *  CMA CCAM, ses listes d'actes spécialisés (specialisation) et le nombre
+ *  de GN qu'elles couvrent, les lignes CSAR transcodées en lui et s'il y a
+ *  un écart de pondération, les GN sans niveau de sévérité 2. */
+export function caracteristiquesActe(smr, trouve) {
+  const k = smr.classification;
+  const { code: c, lignes, nature } = trouve;
+  const ligne = lignes?.[0];
+  const spe = ligne ? specialisation(smr, c) : [];
+  const venus = nature === "CSARR" ? csarVers(smr, c) : [];
+  return {
+    ligne,
+    libelle: ligne?.["Libellé"] ?? trouve.cma ?? "",
+    cma: k._cmaCcam.has(c),
+    spe,
+    nbGn: new Set(spe.flatMap((s) => s.gns)).size,
+    venus,
+    ecarts: venus.some((l) => l["Pondération CSAR"] !== l["Pondération CSARR"]),
+    sansNiveau2: gnSansSeverite2(k),
+  };
+}
+
+/** Ce que la fiche d'un acte CSAR en dit : ses modalités, les modulateurs
+ *  qu'il accepte (temps, L1 à L3), son transcodage regroupé
+ *  (regrouperTranscodage), les groupes en écart de pondération, le nombre
+ *  de lignes « équivalent en pondération », ses CSARR transcodés regroupés
+ *  par listes d'actes spécialisés identiques et le nombre de GN couverts,
+ *  et `autres` : les groupes qui sont « les autres intervenants » de leur
+ *  modalité. */
+export function caracteristiquesCsar(smr, { code: c, lignes }) {
+  const k = smr.classification;
+  const [temps, l1, l2, l3] = k.csar.modulables[c] ?? [false, false, false, false];
+  const groupes = regrouperTranscodage(lignes, smr.csar._parCode);
+  const csarrs = [...new Set(lignes.map((l) => l["Code CSARR"]))].sort();
+  // Les CSARR transcodés d'un même acte CSAR ont souvent les mêmes listes
+  // (ALQ+137 et ALQ+247 pour 01E08) : une ligne pour eux tous.
+  const spe = [];
+  for (const csarr of csarrs) {
+    const listes = specialisation(smr, csarr);
+    const signature = JSON.stringify(listes);
+    const meme = spe.find((x) => x.signature === signature);
+    if (meme) meme.csarrs.push(csarr);
+    else spe.push({ csarrs: [csarr], listes, signature });
+  }
+  // Le plus nombreux des groupes d'une modalité est « les autres » quand
+  // d'autres groupes existent pour la même modalité.
+  const plusNombreux = new Map();
+  for (const g of groupes) if (!plusNombreux.has(g.modalite)) plusNombreux.set(g.modalite, g);
+  const parModalite = (m) => groupes.filter((g) => g.modalite === m).length;
+  return {
+    modalites: new Set(lignes.map((l) => l["Modalité"])),
+    modulateurs: { temps, L1: l1, L2: l2, L3: l3 },
+    groupes,
+    ecarts: groupes.filter((g) => g.ecart),
+    equivalents: lignes.filter((l) => l["Équivalent"]).length,
+    spe,
+    nbGn: new Set(spe.flatMap((s) => s.listes.flatMap((x) => x.gns))).size,
+    autres: new Set(groupes.filter((g) => plusNombreux.get(g.modalite) === g && parModalite(g.modalite) > 1)),
+  };
 }

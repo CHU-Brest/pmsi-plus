@@ -353,8 +353,8 @@ function blocCm(k, diag) {
 function blocPositions(smr, diag) {
   // Les erreurs que lèverait le code à chaque position : celles du contrôle
   // des diagnostics de smr.js (erreursParPosition).
-  const lignes = erreursParPosition(smr, diag).map(({ position: p, permise: oui, erreur, bloquante }) => {
-    return el(
+  const lignes = erreursParPosition(smr, diag).map(({ position: p, permise: oui, erreur, bloquante }) =>
+    el(
       "tr",
       {},
       el("th", { scope: "row" }, p, sousLibelle(POSITIONS_LONGUES[p])),
@@ -364,8 +364,8 @@ function blocPositions(smr, diag) {
         {},
         erreur ? [`Erreur ${erreur.code}${bloquante ? " (bloquante)" : ""} : `, erreur.libelle].join("") : "—"
       )
-    );
-  });
+    )
+  );
   const blocs = [
     table([entete("Position"), entete("Permise"), entete("Codé à cette position")], el("tbody", {}, ...lignes)),
     note(`Profil ${diag.Profil} de CIM_infos_SMR (MMP, AE, DAS) : ${PROFILS[diag.Profil] ?? "profil inconnu"}.`),
