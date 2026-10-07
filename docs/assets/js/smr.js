@@ -58,30 +58,14 @@ const LIBELLES = {
  *  modulateurs, CSAR : readaptation/referentiel.json) la rejoignent : les
  *  thèmes lisent un seul objet, quelle que soit la section de la source. */
 export function chargerClassification() {
-  return Promise.all([chargerJson("smr/groupage", "classification"), chargerJson("smr/readaptation", "referentiel")]).then(([k, r]) => {
-    if (!k._testsParCm) {
-      Object.assign(k, r, { millesimes: { ...k.millesimes, ...r.millesimes } });
-      k._testsParCm = new Map();
-      for (const t of k.tests) {
-        if (!k._testsParCm.has(t.cm)) k._testsParCm.set(t.cm, []);
-        k._testsParCm.get(t.cm).push(t);
-      }
-      for (const liste of k._testsParCm.values()) liste.sort((a, b) => a.ordre - b.ordre);
-      k._cmaCcam = new Map(k.cmaCcam.map(([code, libelle]) => [code, libelle]));
-      k._erreurs = new Map(k.erreurs.map(([code, libelle, bloquant]) => [code, { code, libelle, bloquant }]));
-      // Listes d'actes spécialisés : GN → numéro de liste.
-      k._listeSpeParGn = new Map(Object.entries(k.gnListeSpe).map(([gn, e]) => [gn, e.liste]));
-    }
-    return k;
-  });
+  return Promise.all([chargerJson("smr/groupage", "classification"), chargerJson("smr/readaptation", "referentiel")]).then(([k, r]) =>
+    indexerClassification(k, r)
+  );
 }
 
 /** Les codes CIM-10, indexés par clef sans point. */
 export function chargerDiagnostics() {
-  return chargerJeu("smr/groupage", "diagnostics", LIBELLES.diagnostics).then((jeu) => {
-    if (!jeu._parCle) jeu._parCle = new Map(jeu.lignes.map((l) => [cle(l.Code), l]));
-    return jeu;
-  });
+  return chargerJeu("smr/groupage", "diagnostics", LIBELLES.diagnostics).then(indexerDiagnostics);
 }
 
 export function chargerExclusions() {
@@ -90,59 +74,22 @@ export function chargerExclusions() {
 
 /** Pondérations : code → lignes (une « 00 », ou une par intervenant). */
 export function chargerActes() {
-  return chargerJeu("smr/readaptation", "actes", LIBELLES.actes).then((jeu) => {
-    if (!jeu._parCode) {
-      jeu._parCode = new Map();
-      for (const l of jeu.lignes) {
-        if (!jeu._parCode.has(l.Code)) jeu._parCode.set(l.Code, []);
-        jeu._parCode.get(l.Code).push(l);
-      }
-    }
-    return jeu;
-  });
+  return chargerJeu("smr/readaptation", "actes", LIBELLES.actes).then(indexerActes);
 }
 
 /** Listes d'actes spécialisés : code → numéros de liste. */
 export function chargerActesSpe() {
-  return chargerJeu("smr/readaptation", "actes_spe", LIBELLES.actesSpe).then((jeu) => {
-    if (!jeu._parCode) {
-      jeu._parCode = new Map();
-      for (const l of jeu.lignes) {
-        if (!jeu._parCode.has(l.Code)) jeu._parCode.set(l.Code, new Set());
-        jeu._parCode.get(l.Code).add(l.Liste);
-      }
-    }
-    return jeu;
-  });
+  return chargerJeu("smr/readaptation", "actes_spe", LIBELLES.actesSpe).then(indexerActesSpe);
 }
 
 /** Transcodage CSAR : code CSAR → lignes (une par intervenant et modalité). */
 export function chargerCsar() {
-  return chargerJeu("smr/readaptation", "csar", LIBELLES.csar).then((jeu) => {
-    if (!jeu._parCode) {
-      jeu._parCode = new Map();
-      for (const l of jeu.lignes) {
-        if (!jeu._parCode.has(l["Code CSAR"])) jeu._parCode.set(l["Code CSAR"], []);
-        jeu._parCode.get(l["Code CSAR"]).push(l);
-      }
-    }
-    return jeu;
-  });
+  return chargerJeu("smr/readaptation", "csar", LIBELLES.csar).then(indexerCsar);
 }
 
 /** Tarifs des GMT : GME → lignes, GMT principal d'abord. */
 export function chargerTarifsSmr() {
-  return chargerJeu("smr/groupage", "tarifs", LIBELLES.tarifs).then((jeu) => {
-    if (!jeu._parGme) {
-      jeu._parGme = new Map();
-      for (const l of jeu.lignes) {
-        if (!jeu._parGme.has(l.GME)) jeu._parGme.set(l.GME, []);
-        jeu._parGme.get(l.GME).push(l);
-      }
-      for (const lignes of jeu._parGme.values()) lignes.sort((a, b) => (a.GMT < b.GMT ? -1 : 1));
-    }
-    return jeu;
-  });
+  return chargerJeu("smr/groupage", "tarifs", LIBELLES.tarifs).then(indexerTarifsSmr);
 }
 
 /** Tout ce que le groupage d'un séjour demande, en un objet `smr`. */
@@ -156,6 +103,87 @@ export async function chargerSmr() {
     chargerCsar(),
   ]);
   return { classification, diagnostics, exclusions, actes, actesSpe, csar };
+}
+
+// ==== Index des jeux ====
+
+// Posés une fois sur le jeu chargé, que les chargeurs gardent en cache :
+// chaque fonction reçoit le JSON brut (classification.json et
+// referentiel.json, ou un jeu de chargerJeu), le complète et le rend.
+
+/** La classification et le référentiel de la réadaptation réunis, avec
+ *  leurs index : tests d'entrée par CM, dans l'ordre de leur rang, actes
+ *  CCAM CMA, erreurs de FG_erreurs, liste d'actes spécialisés de chaque GN. */
+export function indexerClassification(k, r) {
+  if (!k._testsParCm) {
+    Object.assign(k, r, { millesimes: { ...k.millesimes, ...r.millesimes } });
+    k._testsParCm = new Map();
+    for (const t of k.tests) {
+      if (!k._testsParCm.has(t.cm)) k._testsParCm.set(t.cm, []);
+      k._testsParCm.get(t.cm).push(t);
+    }
+    for (const liste of k._testsParCm.values()) liste.sort((a, b) => a.ordre - b.ordre);
+    k._cmaCcam = new Map(k.cmaCcam.map(([code, libelle]) => [code, libelle]));
+    k._erreurs = new Map(k.erreurs.map(([code, libelle, bloquant]) => [code, { code, libelle, bloquant }]));
+    // Listes d'actes spécialisés : GN → numéro de liste.
+    k._listeSpeParGn = new Map(Object.entries(k.gnListeSpe).map(([gn, e]) => [gn, e.liste]));
+  }
+  return k;
+}
+
+/** Codes CIM-10 : clef sans point → ligne. */
+export function indexerDiagnostics(jeu) {
+  if (!jeu._parCle) jeu._parCle = new Map(jeu.lignes.map((l) => [cle(l.Code), l]));
+  return jeu;
+}
+
+/** Pondérations : code → lignes (une « 00 », ou une par intervenant). */
+export function indexerActes(jeu) {
+  if (!jeu._parCode) {
+    jeu._parCode = new Map();
+    for (const l of jeu.lignes) {
+      if (!jeu._parCode.has(l.Code)) jeu._parCode.set(l.Code, []);
+      jeu._parCode.get(l.Code).push(l);
+    }
+  }
+  return jeu;
+}
+
+/** Listes d'actes spécialisés : code → numéros de liste. */
+export function indexerActesSpe(jeu) {
+  if (!jeu._parCode) {
+    jeu._parCode = new Map();
+    for (const l of jeu.lignes) {
+      if (!jeu._parCode.has(l.Code)) jeu._parCode.set(l.Code, new Set());
+      jeu._parCode.get(l.Code).add(l.Liste);
+    }
+  }
+  return jeu;
+}
+
+/** Transcodage CSAR : code CSAR → lignes (une par intervenant et modalité). */
+export function indexerCsar(jeu) {
+  if (!jeu._parCode) {
+    jeu._parCode = new Map();
+    for (const l of jeu.lignes) {
+      if (!jeu._parCode.has(l["Code CSAR"])) jeu._parCode.set(l["Code CSAR"], []);
+      jeu._parCode.get(l["Code CSAR"]).push(l);
+    }
+  }
+  return jeu;
+}
+
+/** Tarifs des GMT : GME → lignes, GMT principal d'abord. */
+export function indexerTarifsSmr(jeu) {
+  if (!jeu._parGme) {
+    jeu._parGme = new Map();
+    for (const l of jeu.lignes) {
+      if (!jeu._parGme.has(l.GME)) jeu._parGme.set(l.GME, []);
+      jeu._parGme.get(l.GME).push(l);
+    }
+    for (const lignes of jeu._parGme.values()) lignes.sort((a, b) => (a.GMT < b.GMT ? -1 : 1));
+  }
+  return jeu;
 }
 
 // ==== Libellés ====
