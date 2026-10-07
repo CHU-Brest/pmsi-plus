@@ -9,10 +9,15 @@
 // 1, et c'est `construire` qui en fait des nœuds : une règle qui change
 // dans une nouvelle version du manuel se reporte ici.
 //
+// Le profil que lisent arbre_graphe.js et arbre_vue.js — légendes des
+// tests et des critères, feuilles et codes d'un nœud, lecture d'une
+// requête, adresses, chemins et codes des listes — est ici aussi, avec ce
+// que les notes de l'arbre d'un GN calculent.
+//
 // Rien ici ne touche au DOM : le dessin est celui de themes/smr/arbre.js.
 
 import { nombre } from "./interface.js";
-import { libelleGroupe, TYPES_READAPTATION } from "./smr.js";
+import { cle, gnSansSeverite2, libelleGroupe, TYPES_READAPTATION } from "./smr.js";
 
 export const ORIENTATION = "orientation";
 // CM 90 « Erreurs et recueils inclassables » : aucune liste n'y oriente,
@@ -378,4 +383,167 @@ export function construire(k) {
   const gnsParCm = new Map(cms.map((cm) => [cm, Object.keys(k.groupes.GN).filter((gn) => gn.startsWith(cm)).sort()]));
   k._arbreSmr = { arbre: { noeuds, listes }, cms, gnsParCm, departs };
   return k._arbreSmr;
+}
+
+// ==== Profil de l'algorithme (arbre_graphe.js) ====
+
+// Positions des tests d'entrée en GN (annexe 7.2), en cercle comme celles
+// du volume 3 du Manuel des GHM.
+export const SYMBOLES = {
+  MMP: { texte: "MMP", titre: "La manifestation morbide principale (MMP) du RHS", variante: "serre" },
+  AE: { texte: "AE", titre: "L'affection étiologique (AE) du RHS" },
+  MMPAE: { texte: "MMP ou AE", lignes: ["MMP", "AE"], titre: "La MMP ou l'AE du RHS", variante: "empile" },
+  DAS: { texte: "DAS", titre: "L'un au moins des diagnostics associés significatifs (DAS) du RHS", variante: "serre" },
+};
+
+export const VARIABLES = {
+  Âge: "âge du patient, au premier RHS du séjour en HC, à chaque RHS en HTP (1.2.3.5)",
+  "Score R spécialisé":
+    "score de réadaptation spécialisée : pondérations des actes de la liste d'actes spécialisés du GN, par séjour et par jour (3.3.2.1)",
+  "Score R global":
+    "score de réadaptation globale : pondérations des actes CSARR, codés ou transcodés du CSAR, et CCAM de réadaptation, par séjour et par jour (3.3.2.1)",
+  "Score R global par jour": "score de réadaptation globale de la semaine, par jour de présence (3.3.2.2)",
+  "Niveau C si": "le patient a-t-il une de ses caractéristiques en niveau C ? (4.2.1, figure 8)",
+  "Niveau B si": "le patient a-t-il une de ses caractéristiques en niveau B ? (4.2.1, figure 8)",
+};
+
+// Conditions du seul test écrit en toutes lettres (GN 0871, fractures
+// multiples), telles que les donne GN_liste_tests.xlsx ; build_smr.py les
+// réduit à ces deux mots-clefs.
+export const CONDITIONS = {
+  mmpPrioritaire: "si la MMP et l'AE sont classantes, seul le code en MMP est retenu comme classant",
+  quatreCaracteresDifferents:
+    "les 4 premiers caractères du code classant en DAS doivent différer de ceux du code classant en MMP ou AE",
+};
+
+// Les genres des feuilles : GN (tests d'une CM), GL (arbre d'un GN), code
+// erreur, et les CM où mène l'orientation.
+export const FEUILLES = new Set(["gn", "gl", "erreur", "renvoi", "grille"]);
+
+// L'étape propre au SMR : le groupe de réadaptation (GR), en quelques mots.
+export const SPECIAL = {
+  gr: { court: (n) => `GR ${n.code}` },
+};
+
+/** Code ou texte d'une feuille. */
+export const texteFeuille = (n) => n.code ?? n.etiquette ?? n.texte;
+
+/** Les codes de groupe que porte un nœud, pour la recherche : un GL et ses
+ *  GME, un GN, un GR. */
+export const codesNoeud = (n) => (n.genre === "gl" ? [n.code, ...n.gmes] : n.genre === "gn" || n.genre === "gr" ? [n.code] : []);
+
+/** La requête (compactée, en minuscules) lue comme un code de groupe,
+ *  entier ou en partie : « 01 », « 0147 », « 0147S », « 0147SC »,
+ *  « 0147SC2 » ; null sinon. */
+export const groupeDeRequete = (compact) => (/^\d{2}(?:\d{2}(?:[a-z](?:[a-z]\d?)?)?)?$/.test(compact) ? compact : null);
+
+/** « diagnostics » pour une requête qui a la forme d'un code CIM-10, null
+ *  sinon. */
+export const natureDeCode = (requete) =>
+  /^[A-Z]\d{2}(\.?\d*)?[+]?\d*$/.test(requete.trim().toUpperCase().replace(/\s+/g, "")) ? "diagnostics" : null;
+
+/** Le profil de l'algorithme SMR tel que le lit arbre_graphe.js, sans DOM :
+ *  l'arbre construit (construire), les légendes, les feuilles et leurs
+ *  codes, la lecture d'une requête. Le thème y ajoute le dessin. */
+export function profilArbre(k) {
+  return {
+    arbre: construire(k).arbre,
+    symboles: SYMBOLES,
+    variables: VARIABLES,
+    special: SPECIAL,
+    feuilles: FEUILLES,
+    texteFeuille,
+    codesNoeud,
+    groupeDeRequete,
+    natureDeCode,
+  };
+}
+
+// ==== Adresses et chemins ====
+
+/** Un GL d'HTP : réadaptation pédiatrique, très intense, intense, modérée
+ *  ou indifférenciée (3.4.2). */
+const htp = (n) => "HIJKL".includes(n.code?.[4]);
+
+/** Les catégories de l'algorithme, dans l'ordre du manuel : l'orientation,
+ *  puis chaque CM et ses GN. */
+export function idsCategories(k) {
+  const { cms, gnsParCm } = construire(k);
+  return [ORIENTATION, ...cms.flatMap((cm) => [cm, ...gnsParCm.get(cm)])];
+}
+
+/** L'adresse : une catégorie et, le cas échéant, un nœud ; ou un code de
+ *  GR, de GL ou de GME, qui ouvre son GN sur l'étape du GR ou la case du
+ *  GL. Une adresse illisible retombe sur l'orientation. */
+export function resoudre(k, [premier, noeud, cas]) {
+  const { arbre } = construire(k);
+  const ids = new Set(idsCategories(k));
+  const brut = String(premier ?? "");
+  if (!brut) return {};
+  if (ids.has(brut)) return { cmd: brut, noeud, cas: cas != null && /^\d+$/.test(cas) ? Number(cas) : null };
+  const code = brut.toUpperCase();
+  if (/^\d{4}[A-Z]{1,2}\d?$/.test(code) && ids.has(code.slice(0, 4))) {
+    const cible = code.length === 5 ? (arbre.noeuds[code] ? code : `${code}A`) : code.slice(0, 6);
+    return { cmd: code.slice(0, 4), noeud: arbre.noeuds[cible] ? cible : undefined };
+  }
+  return { cmd: brut };
+}
+
+/** D'où part le chemin d'une feuille : le premier test de l'orientation, la
+ *  racine de la CM, ou l'arbre du GN en HC ou en HTP ; un GL d'HTP sans
+ *  test, quand le GN n'est pas subdivisé en HTP. */
+export function origineChemin(k, n) {
+  if (n.cmd === ORIENTATION) return "Chemin depuis le premier test de l'orientation :";
+  if (n.genre !== "gl") return `Chemin depuis la racine de la CM ${n.cmd} :`;
+  if (construire(k).departs.get(n.cmd).htp === n._id) {
+    return "Le GN n'est pas subdivisé en HTP : chaque RHS d'HTP y va dans ce groupe, sans test (3.4.2.2).";
+  }
+  return `Chemin dans l'arbre du GN ${n.cmd}, ${htp(n) ? "hospitalisation à temps partiel" : "hospitalisation complète"} :`;
+}
+
+// ==== Listes et codes ====
+
+/** Les codes CIM-10 d'une liste d'entrée en GN (« D-0112 »). */
+export function codesDeListe(diagnostics, code) {
+  const num = code.slice(2);
+  return diagnostics.lignes.filter((l) => l.Listes.includes(num)).map((l) => ({ Code: l.Code, "Libellé code": l.Libellé }));
+}
+
+/** Les listes d'entrée en GN des codes CIM-10 qui commencent par la
+ *  requête : code → { libelle, listes }. */
+export function listesDuCode(diagnostics, requete) {
+  const debut = cle(requete);
+  const parCode = new Map();
+  for (const l of diagnostics.lignes) {
+    if (!l.Listes.length || !cle(l.Code).startsWith(debut)) continue;
+    parCode.set(l.Code, { libelle: l.Libellé, listes: new Set(l.Listes.map((num) => `D-${num}`)) });
+  }
+  return parCode;
+}
+
+// ==== Arbre d'un GN : notes ====
+
+/** Les rangs des nœuds de sa CM dont un test d'entrée mène au GN. */
+export function rangsDuGn(k, gn) {
+  return k.tests.filter((t) => t.gn === gn).map((t) => String(t.ordre));
+}
+
+/** Ce que les notes de l'arbre d'un GN en disent : `adultes`, ses types de
+ *  réadaptation d'adultes en HC ; `seuilManquant`, entre plusieurs types,
+ *  un couple de seuils (tableau 5) dont GR_infos ne donne qu'un ;
+ *  `combinees`, ses GR dont une règle de lourdeur combine l'âge et la
+ *  dépendance physique (4.2.2.1) ; `sansSeverite2` (gnSansSeverite2) ;
+ *  `intensite`, ses types d'HTP selon l'intensité (3.4.2). */
+export function particularitesGn(k, gn) {
+  const { adultes } = construire(k).departs.get(gn);
+  const e = k.gr[gn];
+  return {
+    adultes,
+    seuilManquant: adultes.length > 1 && [e.spe, e.glob].some(([sejour, jour]) => (sejour == null) !== (jour == null)),
+    combinees: [...adultes, ...(e.hc.includes("P") ? ["P"] : [])]
+      .map((t) => gn + t)
+      .filter((gr) => Object.values(k.gl[gr] ?? {}).some((valeurs) => valeurs.some(Array.isArray))),
+    sansSeverite2: gnSansSeverite2(k).includes(gn),
+    intensite: e.htp.includes("I"),
+  };
 }

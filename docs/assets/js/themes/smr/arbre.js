@@ -7,7 +7,8 @@
 // type de réadaptation (3.4, figures 6 et 7, annexes 7.3 et 7.4), le niveau
 // de lourdeur (4.2, figure 8, annexe 7.5) et le niveau de sévérité (5.2.3,
 // figure 9). Les règles qui en font des nœuds sont dans smr_arbre.js, sans
-// DOM ; ce module les dessine.
+// DOM, avec le profil que lit arbre_graphe.js (légendes, feuilles, codes,
+// adresses, chemins) ; ce module les dessine.
 //
 // Adresses : #/smr/arbre/orientation, #/smr/arbre/<CM> et
 // #/smr/arbre/<GN>, suivies d'un nœud le cas échéant ; #/smr/arbre/<GR, GL
@@ -15,46 +16,26 @@
 
 import { el, fraicheur, nombre } from "../../interface.js";
 import { dessinerArbre } from "../../arbre_vue.js";
+import { chargerClassification, chargerDiagnostics, chargerTarifsSmr, libelleGroupe, TYPES_READAPTATION } from "../../smr.js";
 import {
-  chargerClassification,
-  chargerDiagnostics,
-  chargerTarifsSmr,
-  cle,
-  gnSansSeverite2,
-  libelleGroupe,
-  TYPES_READAPTATION,
-} from "../../smr.js";
-import { CM_ERREURS, construire, enumeration, ORIENTATION, PAGE_ORIENTATION } from "../../smr_arbre.js";
+  CM_ERREURS,
+  codesDeListe,
+  CONDITIONS,
+  construire,
+  enumeration,
+  listesDuCode,
+  ORIENTATION,
+  origineChemin,
+  PAGE_ORIENTATION,
+  particularitesGn,
+  profilArbre,
+  rangsDuGn,
+  resoudre,
+  SPECIAL,
+  SYMBOLES,
+  VARIABLES,
+} from "../../smr_arbre.js";
 import { lienCode, lienErreurs, lienGroupage, lienTarifs, noteTarifsSmr, sourceFg, tableTarifsGme } from "../../smr_interface.js";
-
-// Positions des tests d'entrée en GN (annexe 7.2), en cercle comme celles
-// du volume 3 du Manuel des GHM.
-const SYMBOLES = {
-  MMP: { texte: "MMP", titre: "La manifestation morbide principale (MMP) du RHS", variante: "serre" },
-  AE: { texte: "AE", titre: "L'affection étiologique (AE) du RHS" },
-  MMPAE: { texte: "MMP ou AE", lignes: ["MMP", "AE"], titre: "La MMP ou l'AE du RHS", variante: "empile" },
-  DAS: { texte: "DAS", titre: "L'un au moins des diagnostics associés significatifs (DAS) du RHS", variante: "serre" },
-};
-
-const VARIABLES = {
-  Âge: "âge du patient, au premier RHS du séjour en HC, à chaque RHS en HTP (1.2.3.5)",
-  "Score R spécialisé":
-    "score de réadaptation spécialisée : pondérations des actes de la liste d'actes spécialisés du GN, par séjour et par jour (3.3.2.1)",
-  "Score R global":
-    "score de réadaptation globale : pondérations des actes CSARR, codés ou transcodés du CSAR, et CCAM de réadaptation, par séjour et par jour (3.3.2.1)",
-  "Score R global par jour": "score de réadaptation globale de la semaine, par jour de présence (3.3.2.2)",
-  "Niveau C si": "le patient a-t-il une de ses caractéristiques en niveau C ? (4.2.1, figure 8)",
-  "Niveau B si": "le patient a-t-il une de ses caractéristiques en niveau B ? (4.2.1, figure 8)",
-};
-
-// Conditions du seul test écrit en toutes lettres (GN 0871, fractures
-// multiples), telles que les donne GN_liste_tests.xlsx ; build_smr.py les
-// réduit à ces deux mots-clefs.
-const CONDITIONS = {
-  mmpPrioritaire: "si la MMP et l'AE sont classantes, seul le code en MMP est retenu comme classant",
-  quatreCaracteresDifferents:
-    "les 4 premiers caractères du code classant en DAS doivent différer de ceux du code classant en MMP ou AE",
-};
 
 // ==== Textes ====
 
@@ -173,7 +154,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     return null;
   });
   const k = await chargerClassification();
-  const { arbre, cms, gnsParCm, departs } = construire(k);
+  const { cms, gnsParCm, departs } = construire(k);
 
   // Le drapeau porte les fichiers de l'ATIH d'où viennent les arbres ; il
   // prend la date des tarifs quand ils arrivent.
@@ -194,7 +175,6 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   });
 
   const note = (...enfants) => el("p", { class: "note" }, ...enfants);
-  const htp = (n) => "HIJKL".includes(n.code?.[4]);
 
   // ---- Feuilles ----
 
@@ -257,15 +237,6 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     return titre;
   }
 
-  function origineChemin(n) {
-    if (n.cmd === ORIENTATION) return "Chemin depuis le premier test de l'orientation :";
-    if (n.genre !== "gl") return `Chemin depuis la racine de la CM ${n.cmd} :`;
-    if (departs.get(n.cmd).htp === n._id) {
-      return "Le GN n'est pas subdivisé en HTP : chaque RHS d'HTP y va dans ce groupe, sans test (3.4.2.2).";
-    }
-    return `Chemin dans l'arbre du GN ${n.cmd}, ${htp(n) ? "hospitalisation à temps partiel" : "hospitalisation complète"} :`;
-  }
-
   function complementChemin(n, { afficher }) {
     if (n.genre === "gn") {
       return [
@@ -304,27 +275,6 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
     return [zone];
   }
 
-  // ---- Listes et codes ----
-
-  async function codesDeListe(code) {
-    const { lignes } = await chargerDiagnostics();
-    const num = code.slice(2);
-    return lignes.filter((l) => l.Listes.includes(num)).map((l) => ({ Code: l.Code, "Libellé code": l.Libellé }));
-  }
-
-  /** Les listes d'entrée en GN des codes CIM-10 qui commencent par la
-   *  requête. */
-  async function listesDuCode(requete) {
-    const { lignes } = await chargerDiagnostics();
-    const debut = cle(requete);
-    const parCode = new Map();
-    for (const l of lignes) {
-      if (!l.Listes.length || !cle(l.Code).startsWith(debut)) continue;
-      parCode.set(l.Code, { libelle: l.Libellé, listes: new Set(l.Listes.map((num) => `D-${num}`)) });
-    }
-    return parCode;
-  }
-
   // ---- Catégories ----
 
   const noteOrientation = () =>
@@ -348,7 +298,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
 
   function sousTitreGn(gn, { afficher }) {
     const cm = gn.slice(0, 2);
-    const rangs = k.tests.filter((t) => t.gn === gn).map((t) => String(t.ordre));
+    const rangs = rangsDuGn(k, gn);
     const pluriel = rangs.length > 1;
     return [
       `Test${pluriel ? "s" : ""} d'entrée au${pluriel ? "x" : ""} rang${pluriel ? "s" : ""} ${enumeration(rangs)} de la `,
@@ -359,8 +309,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
   }
 
   function notesGn(gn) {
-    const { adultes } = departs.get(gn);
-    const e = k.gr[gn];
+    const { adultes, seuilManquant, combinees, sansSeverite2: sans2, intensite } = particularitesGn(k, gn);
     const notes = [];
     if (adultes.length > 1) {
       const scores = [];
@@ -370,7 +319,6 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       if (adultes.includes("T")) {
         scores.push("score global : de tous les actes CSARR, codés ou transcodés du CSAR, et CCAM de réadaptation");
       }
-      const seuilManquant = [e.spe, e.glob].some(([sejour, jour]) => (sejour == null) !== (jour == null));
       notes.push(
         note(
           `Scores de réadaptation en HC — ${scores.join(" ; ")}. Par jour : divisé par le nombre de jours de présence du lundi au ` +
@@ -379,9 +327,6 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         )
       );
     }
-    const combinees = [...adultes, ...(e.hc.includes("P") ? ["P"] : [])]
-      .map((t) => gn + t)
-      .filter((gr) => Object.values(k.gl[gr] ?? {}).some((valeurs) => valeurs.some(Array.isArray)));
     notes.push(
       note(
         "Lourdeur, en HC : le niveau du séjour est le plus lourd de ceux que donnent ses caractéristiques (4.2.1), d'où les tests du " +
@@ -393,7 +338,6 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
           }`
       )
     );
-    const sans2 = gnSansSeverite2(k).includes(gn);
     notes.push(
       note(
         "Sévérité, en HC : le GME est le GL suivi du niveau 2 quand au moins un marqueur de sévérité est retenu — un code CIM-10 CMA " +
@@ -403,7 +347,7 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         "En HTP, lourdeur A et sévérité 0, par convention (4.1, 5.1)."
       )
     );
-    if (e.htp.includes("I")) {
+    if (intensite) {
       notes.push(
         note(
           "Score global par jour, en HTP : somme des pondérations de tous les actes CSARR, codés ou transcodés, et CCAM de la semaine, " +
@@ -464,31 +408,16 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       });
     }
   }
-  const ids = new Set(categories.map((c) => c.id));
-
-  /** L'adresse : une catégorie et, le cas échéant, un nœud ; ou un code de
-   *  GR, de GL ou de GME, qui ouvre son GN sur l'étape du GR ou la case du
-   *  GL. Une adresse illisible retombe sur l'orientation. */
-  function resoudre([premier, noeud, cas]) {
-    const brut = String(premier ?? "");
-    if (!brut) return {};
-    if (ids.has(brut)) return { cmd: brut, noeud, cas: cas != null && /^\d+$/.test(cas) ? Number(cas) : null };
-    const code = brut.toUpperCase();
-    if (/^\d{4}[A-Z]{1,2}\d?$/.test(code) && ids.has(code.slice(0, 4))) {
-      const cible = code.length === 5 ? (arbre.noeuds[code] ? code : `${code}A`) : code.slice(0, 6);
-      return { cmd: code.slice(0, 4), noeud: arbre.noeuds[cible] ? cible : undefined };
-    }
-    return { cmd: brut };
-  }
-
   return dessinerArbre(
     conteneur,
     {
+      // Arbre, légendes, feuilles, codes et lecture d'une requête : le
+      // profil sans DOM de smr_arbre.js.
+      ...profilArbre(k),
       champ: "smr",
-      arbre,
       parDefaut: ORIENTATION,
       categories,
-      resoudre,
+      resoudre: (adresse) => resoudre(k, adresse),
       entete: [
         el("h1", {}, "Algorithme de la fonction groupage"),
         sourceFg(),
@@ -509,11 +438,9 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
       },
       recherche: { id: "smr_arbre_recherche", exemple: "ex. : 0147SC, D-0112, I63.4, hémiplégies" },
       titrePage: "Page du volume 1 du Manuel des GME",
-      symboles: SYMBOLES,
-      variables: VARIABLES,
       special: {
         gr: {
-          court: (n) => `GR ${n.code}`,
+          ...SPECIAL.gr,
           intitule: (n) => [
             el("strong", {}, n.code),
             ` ${TYPES_READAPTATION[n.code[4]]}`,
@@ -543,21 +470,13 @@ export async function rendre(conteneur, { chemin = [] } = {}) {
         return null;
       },
       pictogramme,
-      feuilles: new Set(["gn", "gl", "erreur", "renvoi", "grille"]),
       feuille,
-      texteFeuille: (n) => n.code ?? n.etiquette ?? n.texte,
-      codesNoeud: (n) => (n.genre === "gl" ? [n.code, ...n.gmes] : n.genre === "gn" || n.genre === "gr" ? [n.code] : []),
       nomFeuille: ["groupe", "groupes"],
       titreChemin,
-      origineChemin,
+      origineChemin: (n) => origineChemin(k, n),
       complementChemin,
-      codesDeListe,
-      // Un code de groupe, entier ou en partie : « 01 », « 0147 »,
-      // « 0147S », « 0147SC », « 0147SC2 ».
-      groupeDeRequete: (compact) => (/^\d{2}(?:\d{2}(?:[a-z](?:[a-z]\d?)?)?)?$/.test(compact) ? compact : null),
-      natureDeCode: (requete) =>
-        /^[A-Z]\d{2}(\.?\d*)?[+]?\d*$/.test(requete.trim().toUpperCase().replace(/\s+/g, "")) ? "diagnostics" : null,
-      listesDuCode,
+      codesDeListe: async (code) => codesDeListe(await chargerDiagnostics(), code),
+      listesDuCode: async (requete) => listesDuCode(await chargerDiagnostics(), requete),
     },
     chemin
   );
