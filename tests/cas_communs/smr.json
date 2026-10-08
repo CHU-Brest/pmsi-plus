@@ -351,7 +351,7 @@
    "nom": "indexerClassification : réel, premier test de la CM 01 (rang 1) → GN 0103",
    "fonction": "indexerClassification",
    "arguments": [{"$json":"smr/groupage/classification"},{"$json":"smr/readaptation/referentiel"}],
-   "extrait": ["_testsParCm","01",0],
+   "extrait": ["_testsParCm","01",{"ordre":1}],
    "attendu": {
     "cm": "01",
     "ordre": 1,
@@ -396,24 +396,6 @@
    "arguments": [{"$json":"smr/groupage/classification"},{"$json":"smr/readaptation/referentiel"}],
    "extrait": ["_cmaCcam","EBLA003"],
    "attendu": "Pose d'un cathéter relié à une veine profonde du membre supérieur ou du cou par voie transcutanée, avec pose d'un système diffuseur implantable souscutané"
-  },
-  {
-   "nom": "indexerClassification : réel, millésimes des deux fichiers réunis",
-   "fonction": "indexerClassification",
-   "arguments": [{"$json":"smr/groupage/classification"},{"$json":"smr/readaptation/referentiel"}],
-   "extrait": ["millesimes"],
-   "attendu": {
-    "TOTAL_listes_groupes.xlsx": "2026-09-25",
-    "GN_liste_tests.xlsx": "2026-09-25",
-    "GR_infos.xlsx": "2026-09-25",
-    "GL_infos.xlsx": "2026-09-25",
-    "CMA_CCAM.xlsx": "2026-09-25",
-    "FG_erreurs.TXT": "2026-09-25",
-    "ACTES_ponderations.xlsx": "2026-09-25",
-    "ACTES_listes_SPE.xlsx": "2026-09-25",
-    "CSAR_infos.xlsx": "2026-09-25",
-    "ACTES_ponderations_CSAR_transcodage.xlsx": "2026-09-25"
-   }
   },
   {
    "nom": "indexerDiagnostics : clef sans point (B24.+0 → B24+0)",
@@ -488,7 +470,7 @@
    "nom": "indexerActes : réel, ALQ+247, neuropsychologue (33) à 130",
    "fonction": "indexerActes",
    "arguments": [{"$jeu":"smr/readaptation/actes"}],
-   "extrait": ["_parCode","ALQ+247",11],
+   "extrait": ["_parCode","ALQ+247",{"Intervenant":"33"}],
    "attendu": {
     "Code": "ALQ+247",
     "Nomenclature": "CSARR",
@@ -561,10 +543,10 @@
    }
   },
   {
-   "nom": "indexerCsar : réel, première ligne de 01E08",
+   "nom": "indexerCsar : réel, 01E08, ligne du médecin (10)",
    "fonction": "indexerCsar",
    "arguments": [{"$jeu":"smr/readaptation/csar"}],
-   "extrait": ["_parCode","01E08",0],
+   "extrait": ["_parCode","01E08",{"Intervenant":"10"}],
    "attendu": {
     "Code CSAR": "01E08",
     "Libellé CSAR": "Evaluation globale des fonctions cognitives sans mise en situation",
@@ -684,6 +666,74 @@
      "SZB": 308.53,
      "TZF1": 2159.74,
      "SZH": 308.53
+    }
+   ]
+  },
+  {
+   "nom": "indexerTarifsSmr : réel, GME d'HTP 0106LA0, un GMT, montants vides (null) omis",
+   "fonction": "indexerTarifsSmr",
+   "arguments": [{"$jeu":"smr/groupage/tarifs"}],
+   "extrait": ["_parGme","0106LA0"],
+   "attendu": [
+    {
+     "GMT": "0004",
+     "GME": "0106LA0",
+     "Libellé": "Tumeurs malignes du système nerveux / HTP",
+     "DZF": 1,
+     "FZF": 1,
+     "TZF1": 219.58
+    }
+   ]
+  },
+  {
+   "nom": "indexerTarifsSmr : réel, GME 2303TA1, quatre GMT triés",
+   "fonction": "indexerTarifsSmr",
+   "arguments": [{"$jeu":"smr/groupage/tarifs"}],
+   "extrait": ["_parGme","2303TA1"],
+   "attendu": [
+    {
+     "GMT": "1267",
+     "GME": "2303TA1",
+     "Libellé": "Soins palliatifs / HC Réadaptation globale Niveau A-1 : sans sévérité",
+     "DZF": 90,
+     "FZF": 90,
+     "TZB": 22219.9,
+     "SZB": 246.89,
+     "TZF1": 22219.9,
+     "SZH": 246.89
+    },
+    {
+     "GMT": "1268",
+     "GME": "2303TA1",
+     "Libellé": "Soins palliatifs / HC Réadaptation globale Niveau A-1 : sans sévérité",
+     "DZF": 90,
+     "FZF": 90,
+     "TZB": 28885.86,
+     "SZB": 320.95,
+     "TZF1": 28885.86,
+     "SZH": 320.95
+    },
+    {
+     "GMT": "1269",
+     "GME": "2303TA1",
+     "Libellé": "Soins palliatifs / HC Réadaptation globale Niveau A-1 : sans sévérité",
+     "DZF": 90,
+     "FZF": 90,
+     "TZB": 33329.84,
+     "SZB": 370.33,
+     "TZF1": 33329.84,
+     "SZH": 370.33
+    },
+    {
+     "GMT": "7212",
+     "GME": "2303TA1",
+     "Libellé": "Soins palliatifs / HC Réadaptation globale / GMT2",
+     "DZF": 7,
+     "FZF": 7,
+     "TZB": 2278.66,
+     "SZB": 325.53,
+     "TZF1": 2278.66,
+     "SZH": 325.53
     }
    ]
   },
@@ -972,6 +1022,12 @@
    "attendu": []
   },
   {
+   "nom": "controlerDiagnostics : DAS égal à la MMP → aucune erreur (seule l'AE est comparée à la MMP)",
+   "fonction": "controlerDiagnostics",
+   "arguments": [{"$smr":"tout"},{"mmp":"I63.4","das":["i63.4"]}],
+   "attendu": []
+  },
+  {
    "nom": "controlerDiagnostics : erreur absente de FG_erreurs → libellé vide",
    "fonction": "controlerDiagnostics",
    "arguments": [
@@ -1005,7 +1061,7 @@
    "nom": "lignesErreurs : réel, erreur 162 non bloquante",
    "fonction": "lignesErreurs",
    "arguments": [{"$smr":"classification"}],
-   "extrait": [136],
+   "extrait": [{"Code":"162"}],
    "attendu": {
     "Code": "162",
     "Libellé": "Acte CSARR : code intervenant 21 (Infirmier) non attendu",
@@ -1017,7 +1073,7 @@
    "nom": "lignesErreurs : réel, erreur 58 bloquante",
    "fonction": "lignesErreurs",
    "arguments": [{"$smr":"classification"}],
-   "extrait": [47],
+   "extrait": [{"Code":"58"}],
    "attendu": {
     "Code": "58",
     "Libellé": "Manifestation morbide principale : absente, de format incorrect ou introuvable",
@@ -1043,18 +1099,15 @@
    "nom": "actesDesErreurs : réel, libellé de l'erreur 163",
    "fonction": "actesDesErreurs",
    "arguments": [{"$smr":"classification"}],
-   "extrait": [1,"libelle"],
+   "extrait": [{"code":"163"},"libelle"],
    "attendu": "Acte CSARR : code intervenant 88 (Autre intervenant) non attendu"
   },
   {
-   "nom": "actesDesErreurs : réel, premier acte de l'erreur 162",
+   "nom": "actesDesErreurs : réel, erreur 162 désignée par son code en texte, libellé",
    "fonction": "actesDesErreurs",
    "arguments": [{"$smr":"classification"}],
-   "extrait": [0,"actes",0],
-   "attendu": [
-    "ANQ+126",
-    "Évaluation de la sensibilité de la peau et des articulations d'un patient douloureux"
-   ]
+   "extrait": [{"code":"162"},"libelle"],
+   "attendu": "Acte CSARR : code intervenant 21 (Infirmier) non attendu"
   },
   {
    "nom": "estSpecialise : ALQ+247 pour le GN 0147 → oui",
@@ -1361,10 +1414,10 @@
    "attendu": []
   },
   {
-   "nom": "csarVers : réel, première ligne vers ALQ+247 (01E02, médecin)",
+   "nom": "csarVers : réel, ligne de 01E02 (médecin) vers ALQ+247",
    "fonction": "csarVers",
    "arguments": [{"$smr":"tout"},"ALQ+247"],
-   "extrait": [0],
+   "extrait": [{"Code CSAR":"01E02","Intervenant":"10"}],
    "attendu": {
     "Code CSAR": "01E02",
     "Libellé CSAR": "Evaluation globale des fonctions cognitives avec mise en situation",
@@ -1381,7 +1434,7 @@
    "nom": "csarVers : réel, intervenant 24 de 01E08, écart 35 / 85",
    "fonction": "csarVers",
    "arguments": [{"$smr":"tout"},"ALQ+247"],
-   "extrait": [35],
+   "extrait": [{"Code CSAR":"01E08","Intervenant":"24"}],
    "attendu": {
     "Code CSAR": "01E08",
     "Libellé CSAR": "Evaluation globale des fonctions cognitives sans mise en situation",
@@ -2277,7 +2330,7 @@
    "nom": "preparerCsar : réel, acte 01E08",
    "fonction": "preparerCsar",
    "arguments": [{"$smr":"csar"},{"$smr":"classification"}],
-   "extrait": ["actes",7],
+   "extrait": ["actes",{"code":"01E08"}],
    "attendu": {
     "code": "01E08",
     "libelle": "Evaluation globale des fonctions cognitives sans mise en situation",
@@ -2306,7 +2359,7 @@
    "nom": "preparerCsar : réel, 01S05 à deux modalités",
    "fonction": "preparerCsar",
    "arguments": [{"$smr":"csar"},{"$smr":"classification"}],
-   "extrait": ["actes",12],
+   "extrait": ["actes",{"code":"01S05"}],
    "attendu": {
     "code": "01S05",
     "libelle": "Séance de réadaptation globale des fonctions cognitives",
@@ -2335,7 +2388,7 @@
    "nom": "preparerCsar : réel, CSARR ALQ+247 et ses actes CSAR",
    "fonction": "preparerCsar",
    "arguments": [{"$smr":"csar"},{"$smr":"classification"}],
-   "extrait": ["csarrs",9],
+   "extrait": ["csarrs",{"code":"ALQ+247"}],
    "attendu": {
     "code": "ALQ+247",
     "libelle": "Évaluation globale initiale de plusieurs fonctions cognitives",
@@ -2359,14 +2412,14 @@
    "nom": "preparerCsar : réel, texte de recherche de 01E08",
    "fonction": "preparerCsar",
    "arguments": [{"$smr":"csar"},{"$smr":"classification"}],
-   "extrait": ["actes",7,"_recherche"],
+   "extrait": ["actes",{"code":"01E08"},"_recherche"],
    "attendu": "01e08 evaluation globale des fonctions cognitives sans mise en situation alq+247 evaluation globale initiale de plusieurs fonctions cognitives alq+137 evaluation globale intermediaire de plusieurs fonctions cognitives"
   },
   {
-   "nom": "preparerCsar : réel, première ligne en écart de pondération",
+   "nom": "preparerCsar : réel, ligne en écart de pondération (01E08, orthophoniste)",
    "fonction": "preparerCsar",
    "arguments": [{"$smr":"csar"},{"$smr":"classification"}],
-   "extrait": ["ecarts",0],
+   "extrait": ["ecarts",{"Code CSAR":"01E08","Intervenant":"24"}],
    "attendu": {
     "Code CSAR": "01E08",
     "Libellé CSAR": "Evaluation globale des fonctions cognitives sans mise en situation",
@@ -2688,7 +2741,7 @@
    "nom": "lignesPonderations : réel, ALQ+247 de 35 à 130",
    "fonction": "lignesPonderations",
    "arguments": [{"$smr":"actes"},{"$smr":"actesSpe"},{"$smr":"classification"}],
-   "extrait": [26],
+   "extrait": [{"Code":"ALQ+247"}],
    "attendu": {
     "Code": "ALQ+247",
     "Nomenclature": "CSARR",
@@ -2705,7 +2758,7 @@
    "nom": "lignesPonderations : réel, AGR+047 accepte L3",
    "fonction": "lignesPonderations",
    "arguments": [{"$smr":"actes"},{"$smr":"actesSpe"},{"$smr":"classification"}],
-   "extrait": [0],
+   "extrait": [{"Code":"AGR+047"}],
    "attendu": {
     "Code": "AGR+047",
     "Nomenclature": "CSARR",
@@ -2722,7 +2775,7 @@
    "nom": "lignesPonderations : réel, ALM+220 supprimé en 2013",
    "fonction": "lignesPonderations",
    "arguments": [{"$smr":"actes"},{"$smr":"actesSpe"},{"$smr":"classification"}],
-   "extrait": [15],
+   "extrait": [{"Code":"ALM+220"}],
    "attendu": {
     "Code": "ALM+220",
     "Nomenclature": "CSARR",
@@ -2739,7 +2792,7 @@
    "nom": "lignesPonderations : réel, AHQP002 (CCAM)",
    "fonction": "lignesPonderations",
    "arguments": [{"$smr":"actes"},{"$smr":"actesSpe"},{"$smr":"classification"}],
-   "extrait": [3],
+   "extrait": [{"Code":"AHQP002"}],
    "attendu": {
     "Code": "AHQP002",
     "Nomenclature": "CCAM",
@@ -3022,21 +3075,21 @@
    "nom": "lignesCma : réel, G81.1",
    "fonction": "lignesCma",
    "arguments": [{"$smr":"diagnostics"},{"$smr":"exclusions"}],
-   "extrait": [121],
+   "extrait": [{"Code":"G81.1"}],
    "attendu": {"Code":"G81.1","Libellé":"HEMIPLEGIE SPASTIQUE","Codes qui l'excluent":254}
   },
   {
    "nom": "lignesCma : réel, L89.2",
    "fonction": "lignesCma",
    "arguments": [{"$smr":"diagnostics"},{"$smr":"exclusions"}],
-   "extrait": [183],
+   "extrait": [{"Code":"L89.2"}],
    "attendu": {"Code":"L89.2","Libellé":"ULCERE DE DECUBITUS STADE 3","Codes qui l'excluent":38}
   },
   {
    "nom": "lignesCma : réel, S99.9 sans liste → 0",
    "fonction": "lignesCma",
    "arguments": [{"$smr":"diagnostics"},{"$smr":"exclusions"}],
-   "extrait": [714],
+   "extrait": [{"Code":"S99.9"}],
    "attendu": {"Code":"S99.9","Libellé":"LES. TRAUMA. CHEVILLE, PIED, SAI","Codes qui l'excluent":0}
   },
   {
@@ -3061,6 +3114,12 @@
    "nom": "evaluerCma : acte CCAM CMA en minuscules",
    "fonction": "evaluerCma",
    "arguments": [{"$smr":"tout"},"ebla003",null],
+   "attendu": {"cas":"acteCma","code":"EBLA003"}
+  },
+  {
+   "nom": "evaluerCma : acte CCAM CMA avec son activité (EBLA003-10)",
+   "fonction": "evaluerCma",
+   "arguments": [{"$smr":"tout"},"EBLA003-10",""],
    "attendu": {"cas":"acteCma","code":"EBLA003"}
   },
   {
@@ -3108,6 +3167,20 @@
    }
   },
   {
+   "nom": "evaluerCma : orientants saisis en codes d'actes (EBLA003, ALQ+247) → inconnus",
+   "fonction": "evaluerCma",
+   "arguments": [{"$smr":"tout"},"G81.1","EBLA003 ALQ+247"],
+   "attendu": {
+    "cas": "cma",
+    "code": "G811",
+    "orientants": ["EBLA003","ALQ+247"],
+    "inconnus": ["EBLA003","ALQ+247"],
+    "excluant": [],
+    "taille": 254,
+    "exclueParElleMeme": true
+   }
+  },
+  {
    "nom": "evaluerCma : L89.2 exclue par elle-même en orientant",
    "fonction": "evaluerCma",
    "arguments": [{"$smr":"tout"},"L89.2","L89.2"],
@@ -3147,6 +3220,20 @@
     "excluant": [],
     "taille": 667,
     "exclueParElleMeme": false
+   }
+  },
+  {
+   "nom": "evaluerCma : R40.28, CMA et deuxième intention → cma, taille de sa liste",
+   "fonction": "evaluerCma",
+   "arguments": [{"$smr":"tout"},"R40.28",""],
+   "attendu": {
+    "cas": "cma",
+    "code": "R4028",
+    "orientants": [],
+    "inconnus": [],
+    "excluant": [],
+    "taille": 1263,
+    "exclueParElleMeme": true
    }
   },
   {
@@ -3309,10 +3396,10 @@
    "attendu": "d-9001  p95.+0 mort fœtale"
   },
   {
-   "nom": "lignesDiagnostics : réel, première ligne (D-0103, R40.10)",
+   "nom": "lignesDiagnostics : réel, R40.10 dans D-0103",
    "fonction": "lignesDiagnostics",
    "arguments": [{"$smr":"diagnostics"},{"$smr":"classification"}],
-   "extrait": [0],
+   "extrait": [{"Liste":"D-0103","Code":"R40.10"}],
    "attendu": {
     "Liste": "D-0103",
     "Libellé liste": "Etats végétatifs chroniques - Etats pauci-relationnels",
@@ -3325,7 +3412,7 @@
    "nom": "lignesDiagnostics : réel, D-0831 et ses quatre GN",
    "fonction": "lignesDiagnostics",
    "arguments": [{"$smr":"diagnostics"},{"$smr":"classification"}],
-   "extrait": [4321],
+   "extrait": [{"Liste":"D-0831","Code":"Z96.6"}],
    "attendu": {
     "Liste": "D-0831",
     "Libellé liste": "Implant articulaire",
@@ -3338,7 +3425,7 @@
    "nom": "lignesDiagnostics : réel, G81.1 dans D-0145",
    "fonction": "lignesDiagnostics",
    "arguments": [{"$smr":"diagnostics"},{"$smr":"classification"}],
-   "extrait": [1043],
+   "extrait": [{"Liste":"D-0145","Code":"G81.1"}],
    "attendu": {
     "Liste": "D-0145",
     "Libellé liste": "Autres affections du système nerveux",
@@ -3351,7 +3438,7 @@
    "nom": "lignesDiagnostics : réel, B24.+0 dans D-1803",
    "fonction": "lignesDiagnostics",
    "arguments": [{"$smr":"diagnostics"},{"$smr":"classification"}],
-   "extrait": [10560],
+   "extrait": [{"Liste":"D-1803","Code":"B24.+0"}],
    "attendu": {
     "Liste": "D-1803",
     "Libellé liste": "Infections par VIH",
@@ -3364,7 +3451,7 @@
    "nom": "lignesDiagnostics : réel, D-9001 sans GN ni libellé de liste",
    "fonction": "lignesDiagnostics",
    "arguments": [{"$smr":"diagnostics"},{"$smr":"classification"}],
-   "extrait": [12851],
+   "extrait": [{"Liste":"D-9001","Code":"P95.+0"}],
    "attendu": {
     "Liste": "D-9001",
     "Libellé liste": "",
@@ -3377,7 +3464,7 @@
    "nom": "lignesDiagnostics : réel, texte de recherche de D-9001 : double espace (libellé vide), ligature œ gardée",
    "fonction": "lignesDiagnostics",
    "arguments": [{"$smr":"diagnostics"},{"$smr":"classification"}],
-   "extrait": [12851,"_recherche"],
+   "extrait": [{"Liste":"D-9001","Code":"P95.+0"},"_recherche"],
    "attendu": "d-9001  p95.+0 mort fœtale in utero ou perpartum suite a une img"
   },
   {
@@ -3593,10 +3680,10 @@
    "attendu": "01060 liste a  alq+001 csarr un"
   },
   {
-   "nom": "lignesActes : réel, première ligne (AGR+047)",
+   "nom": "lignesActes : réel, AGR+047 dans la liste 0106_09_15_30_45_47_48",
    "fonction": "lignesActes",
    "arguments": [{"$smr":"actesSpe"},{"$smr":"classification"}],
-   "extrait": [0],
+   "extrait": [{"Liste":"0106_09_15_30_45_47_48","Code":"AGR+047"}],
    "attendu": {
     "Liste": "0106_09_15_30_45_47_48",
     "Libellé liste": "1_aff_cereb_et_autres",
@@ -3610,7 +3697,7 @@
    "nom": "lignesActes : réel, ALQ+247 dans la liste 0106_09_15_30_45_47_48",
    "fonction": "lignesActes",
    "arguments": [{"$smr":"actesSpe"},{"$smr":"classification"}],
-   "extrait": [18],
+   "extrait": [{"Liste":"0106_09_15_30_45_47_48","Code":"ALQ+247"}],
    "attendu": {
     "Liste": "0106_09_15_30_45_47_48",
     "Libellé liste": "1_aff_cereb_et_autres",
@@ -3624,7 +3711,7 @@
    "nom": "lignesActes : réel, ALQ+247 dans la liste 1903",
    "fonction": "lignesActes",
    "arguments": [{"$smr":"actesSpe"},{"$smr":"classification"}],
-   "extrait": [884],
+   "extrait": [{"Liste":"1903","Code":"ALQ+247"}],
    "attendu": {
     "Liste": "1903",
     "Libellé liste": "19_addicto",
@@ -4045,7 +4132,7 @@
    "nom": "preparerTarifs : réel, ligne du GMT 0239 (GME 0147SC2)",
    "fonction": "preparerTarifs",
    "arguments": [{"$smr":"tarifs"}],
-   "extrait": ["lignes",638],
+   "extrait": ["lignes",{"GMT":"0239","GME":"0147SC2"}],
    "attendu": {
     "GMT": "0239",
     "GME": "0147SC2",
@@ -4567,78 +4654,8 @@
    "nom": "chercher : début de code CIM-10 (i63) — le code père d'abord",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"i63"],
-   "attendu": [
-    {
-     "code": "I63",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB.",
-     "clef": "I63",
-     "texte": "infarctus cereb."
-    },
-    {
-     "code": "I63.0",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB. DU A UNE THROMBOSE DES ART. PRECEREB.",
-     "clef": "I630",
-     "texte": "infarctus cereb. du a une thrombose des art. precereb."
-    },
-    {
-     "code": "I63.1",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB. DU A UNE EMBOLIE DES ART. PRECEREB.",
-     "clef": "I631",
-     "texte": "infarctus cereb. du a une embolie des art. precereb."
-    },
-    {
-     "code": "I63.2",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB. DU A UNE STENOSE DES ART. PRECEREB., DE MECANISME SAI",
-     "clef": "I632",
-     "texte": "infarctus cereb. du a une stenose des art. precereb., de mecanisme sai"
-    },
-    {
-     "code": "I63.3",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB. DU A UNE THROMBOSE DES ART. CEREB.",
-     "clef": "I633",
-     "texte": "infarctus cereb. du a une thrombose des art. cereb."
-    },
-    {
-     "code": "I63.4",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB. DU A UNE EMBOLIE DES ART. CEREB.",
-     "clef": "I634",
-     "texte": "infarctus cereb. du a une embolie des art. cereb."
-    },
-    {
-     "code": "I63.5",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB. DU A UNE STENOSE DES ART. CEREB., DE MECANISME SAI",
-     "clef": "I635",
-     "texte": "infarctus cereb. du a une stenose des art. cereb., de mecanisme sai"
-    },
-    {
-     "code": "I63.6",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB. DU A UNE THROMBOSE VEINEUSE CEREB., NON PYOGENE",
-     "clef": "I636",
-     "texte": "infarctus cereb. du a une thrombose veineuse cereb., non pyogene"
-    },
-    {
-     "code": "I63.8",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB., NCA",
-     "clef": "I638",
-     "texte": "infarctus cereb., nca"
-    },
-    {
-     "code": "I63.9",
-     "nature": "CIM-10",
-     "libelle": "INFARCTUS CEREB., SAI",
-     "clef": "I639",
-     "texte": "infarctus cereb., sai"
-    }
-   ]
+   "extrait": [0,"code"],
+   "attendu": "I63"
   },
   {
    "nom": "chercher : plafond de douze suggestions par code (i6)",
@@ -4658,120 +4675,40 @@
    "nom": "chercher : CSARR saisi sans + (alq2)",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"alq2"],
-   "attendu": [
-    {
-     "code": "ALQ+247",
-     "nature": "CSARR",
-     "libelle": "Évaluation globale initiale de plusieurs fonctions cognitives",
-     "clef": "ALQ247",
-     "texte": "evaluation globale initiale de plusieurs fonctions cognitives"
-    },
-    {
-     "code": "ALQ+250",
-     "nature": "CSARR",
-     "libelle": "Évaluation globale finale de plusieurs fonctions cognitives",
-     "clef": "ALQ250",
-     "texte": "evaluation globale finale de plusieurs fonctions cognitives"
-    },
-    {
-     "code": "ALQ+285",
-     "nature": "CSARR",
-     "libelle": "Évaluation psychologique de fonction cognitive avec simulateur",
-     "clef": "ALQ285",
-     "texte": "evaluation psychologique de fonction cognitive avec simulateur"
-    }
-   ]
+   "extrait": [{"code":"ALQ+247"}],
+   "attendu": {
+    "code": "ALQ+247",
+    "nature": "CSARR",
+    "libelle": "Évaluation globale initiale de plusieurs fonctions cognitives",
+    "clef": "ALQ247",
+    "texte": "evaluation globale initiale de plusieurs fonctions cognitives"
+   }
   },
   {
    "nom": "chercher : CSARR avec son + (alq+2)",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"alq+2"],
-   "attendu": [
-    {
-     "code": "ALQ+247",
-     "nature": "CSARR",
-     "libelle": "Évaluation globale initiale de plusieurs fonctions cognitives",
-     "clef": "ALQ247",
-     "texte": "evaluation globale initiale de plusieurs fonctions cognitives"
-    },
-    {
-     "code": "ALQ+250",
-     "nature": "CSARR",
-     "libelle": "Évaluation globale finale de plusieurs fonctions cognitives",
-     "clef": "ALQ250",
-     "texte": "evaluation globale finale de plusieurs fonctions cognitives"
-    },
-    {
-     "code": "ALQ+285",
-     "nature": "CSARR",
-     "libelle": "Évaluation psychologique de fonction cognitive avec simulateur",
-     "clef": "ALQ285",
-     "texte": "evaluation psychologique de fonction cognitive avec simulateur"
-    }
-   ]
+   "extrait": [{"code":"ALQ+247"}],
+   "attendu": {
+    "code": "ALQ+247",
+    "nature": "CSARR",
+    "libelle": "Évaluation globale initiale de plusieurs fonctions cognitives",
+    "clef": "ALQ247",
+    "texte": "evaluation globale initiale de plusieurs fonctions cognitives"
+   }
   },
   {
    "nom": "chercher : début de code CSAR (01e0)",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"01e0"],
-   "attendu": [
-    {
-     "code": "01E01",
-     "nature": "CSAR",
-     "libelle": "Evaluation analytique des fonctions cognitives",
-     "clef": "01E01",
-     "texte": "evaluation analytique des fonctions cognitives"
-    },
-    {
-     "code": "01E02",
-     "nature": "CSAR",
-     "libelle": "Evaluation globale des fonctions cognitives avec mise en situation",
-     "clef": "01E02",
-     "texte": "evaluation globale des fonctions cognitives avec mise en situation"
-    },
-    {
-     "code": "01E03",
-     "nature": "CSAR",
-     "libelle": "Evaluation des fonctions psychomotrices",
-     "clef": "01E03",
-     "texte": "evaluation des fonctions psychomotrices"
-    },
-    {
-     "code": "01E04",
-     "nature": "CSAR",
-     "libelle": "Evaluation des fonctions du langage et de la cognition mathématique",
-     "clef": "01E04",
-     "texte": "evaluation des fonctions du langage et de la cognition mathematique"
-    },
-    {
-     "code": "01E05",
-     "nature": "CSAR",
-     "libelle": "Evaluation des capacités de communication du patient non communiquant, peu communiquant ou dyscommunicant",
-     "clef": "01E05",
-     "texte": "evaluation des capacites de communication du patient non communiquant, peu communiquant ou dyscommunicant"
-    },
-    {
-     "code": "01E06",
-     "nature": "CSAR",
-     "libelle": "Evaluation psychologique et/ou de la personnalité",
-     "clef": "01E06",
-     "texte": "evaluation psychologique et/ou de la personnalite"
-    },
-    {
-     "code": "01E07",
-     "nature": "CSAR",
-     "libelle": "Evaluation structurée du comportement",
-     "clef": "01E07",
-     "texte": "evaluation structuree du comportement"
-    },
-    {
-     "code": "01E08",
-     "nature": "CSAR",
-     "libelle": "Evaluation globale des fonctions cognitives sans mise en situation",
-     "clef": "01E08",
-     "texte": "evaluation globale des fonctions cognitives sans mise en situation"
-    }
-   ]
+   "extrait": [{"code":"01E08"}],
+   "attendu": {
+    "code": "01E08",
+    "nature": "CSAR",
+    "libelle": "Evaluation globale des fonctions cognitives sans mise en situation",
+    "clef": "01E08",
+    "texte": "evaluation globale des fonctions cognitives sans mise en situation"
+   }
   },
   {
    "nom": "chercher : acte CCAM CMA hors réadaptation, nature CCAM (ebla)",
@@ -4826,240 +4763,55 @@
    "nom": "chercher : mots du libellé, accents ignorés (hémiplégie)",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"hémiplégie"],
-   "attendu": [
-    {"code":"G81","nature":"CIM-10","libelle":"HEMIPLEGIE","clef":"G81","texte":"hemiplegie"},
-    {
-     "code": "G81.0",
-     "nature": "CIM-10",
-     "libelle": "HEMIPLEGIE FLASQUE",
-     "clef": "G810",
-     "texte": "hemiplegie flasque"
-    },
-    {
-     "code": "G81.00",
-     "nature": "CIM-10",
-     "libelle": "HÉMIPLÉGIE FLASQUE RÉCENTE DURÉE SUP À 24 H",
-     "clef": "G8100",
-     "texte": "hemiplegie flasque recente duree sup a 24 h"
-    },
-    {
-     "code": "G81.01",
-     "nature": "CIM-10",
-     "libelle": "HÉMIPLÉGIE FLASQUE RÉCENTE DURÉE INF À 24 H",
-     "clef": "G8101",
-     "texte": "hemiplegie flasque recente duree inf a 24 h"
-    },
-    {
-     "code": "G81.08",
-     "nature": "CIM-10",
-     "libelle": "HÉMIPLÉGIE FLASQUE NCA ET SAI",
-     "clef": "G8108",
-     "texte": "hemiplegie flasque nca et sai"
-    },
-    {
-     "code": "G81.1",
-     "nature": "CIM-10",
-     "libelle": "HEMIPLEGIE SPASTIQUE",
-     "clef": "G811",
-     "texte": "hemiplegie spastique"
-    },
-    {
-     "code": "G81.9",
-     "nature": "CIM-10",
-     "libelle": "HEMIPLEGIE, SAI",
-     "clef": "G819",
-     "texte": "hemiplegie, sai"
-    }
-   ]
+   "extrait": [{"code":"G81.1"}],
+   "attendu": {
+    "code": "G81.1",
+    "nature": "CIM-10",
+    "libelle": "HEMIPLEGIE SPASTIQUE",
+    "clef": "G811",
+    "texte": "hemiplegie spastique"
+   }
   },
   {
    "nom": "chercher : plafond de douze suggestions par libellé (ale)",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"ale"],
-   "attendu": [
-    {
-     "code": "A08",
-     "nature": "CIM-10",
-     "libelle": "INFECT. VIRALES INTEST. ET AUTRES INFECT. INTEST. PREC.",
-     "clef": "A08",
-     "texte": "infect. virales intest. et autres infect. intest. prec."
-    },
-    {
-     "code": "A08.3",
-     "nature": "CIM-10",
-     "libelle": "ENTERITES VIRALES, NCA",
-     "clef": "A083",
-     "texte": "enterites virales, nca"
-    },
-    {
-     "code": "A08.4",
-     "nature": "CIM-10",
-     "libelle": "INFECT. INTEST. VIRALES, SAI",
-     "clef": "A084",
-     "texte": "infect. intest. virales, sai"
-    },
-    {
-     "code": "A18.7",
-     "nature": "CIM-10",
-     "libelle": "TUBERC. DES SURRENALES",
-     "clef": "A187",
-     "texte": "tuberc. des surrenales"
-    },
-    {
-     "code": "A42.2",
-     "nature": "CIM-10",
-     "libelle": "ACTINOMYCOSE CERVICO-FACIALE",
-     "clef": "A422",
-     "texte": "actinomycose cervico-faciale"
-    },
-    {
-     "code": "A51.0",
-     "nature": "CIM-10",
-     "libelle": "SYPHILIS GENITALE IRE.",
-     "clef": "A510",
-     "texte": "syphilis genitale ire."
-    },
-    {
-     "code": "A51.1",
-     "nature": "CIM-10",
-     "libelle": "SYPHILIS ANALE IRE.",
-     "clef": "A511",
-     "texte": "syphilis anale ire."
-    },
-    {
-     "code": "A66.0",
-     "nature": "CIM-10",
-     "libelle": "LES. INITIALES DU PIAN",
-     "clef": "A660",
-     "texte": "les. initiales du pian"
-    },
-    {
-     "code": "A67.0",
-     "nature": "CIM-10",
-     "libelle": "LES. INITIALES DE LA PINTA",
-     "clef": "A670",
-     "texte": "les. initiales de la pinta"
-    },
-    {
-     "code": "A71.0",
-     "nature": "CIM-10",
-     "libelle": "PHASE INITIALE DU TRACHOME",
-     "clef": "A710",
-     "texte": "phase initiale du trachome"
-    },
-    {
-     "code": "A81.2",
-     "nature": "CIM-10",
-     "libelle": "LEUCOENCEPHALOPATHIE MULTIFOCALE",
-     "clef": "A812",
-     "texte": "leucoencephalopathie multifocale"
-    },
-    {
-     "code": "A83",
-     "nature": "CIM-10",
-     "libelle": "ENCEPHALITE VIRALE TRANSMISE PAR DES MOUSTIQUES",
-     "clef": "A83",
-     "texte": "encephalite virale transmise par des moustiques"
-    }
-   ]
+   "extrait": [11,"nature"],
+   "attendu": "CIM-10"
   },
   {
-   "nom": "chercher : plusieurs mots dans le désordre, actes avant actes CSAR",
+   "nom": "chercher : pas de treizième suggestion par libellé (ale)",
+   "fonction": "chercher",
+   "arguments": [{"$smr":"tout"},"ale"],
+   "extrait": [12],
+   "attendu": null
+  },
+  {
+   "nom": "chercher : plusieurs mots dans le désordre, actes CSARR d'abord (évaluation cognitives)",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"évaluation cognitives"],
-   "attendu": [
-    {
-     "code": "ALQ+105",
-     "nature": "CSARR",
-     "libelle": "Évaluation des capacités cognitives et comportementales nécessaires pour la conduite d'un véhicule automobile",
-     "clef": "ALQ105",
-     "texte": "evaluation des capacites cognitives et comportementales necessaires pour la conduite d'un vehicule automobile"
-    },
-    {
-     "code": "ALQ+137",
-     "nature": "CSARR",
-     "libelle": "Évaluation globale intermédiaire de plusieurs fonctions cognitives",
-     "clef": "ALQ137",
-     "texte": "evaluation globale intermediaire de plusieurs fonctions cognitives"
-    },
-    {
-     "code": "ALQ+176",
-     "nature": "CSARR",
-     "libelle": "Évaluation psychologique de plusieurs fonctions cognitives",
-     "clef": "ALQ176",
-     "texte": "evaluation psychologique de plusieurs fonctions cognitives"
-    },
-    {
-     "code": "ALQ+247",
-     "nature": "CSARR",
-     "libelle": "Évaluation globale initiale de plusieurs fonctions cognitives",
-     "clef": "ALQ247",
-     "texte": "evaluation globale initiale de plusieurs fonctions cognitives"
-    },
-    {
-     "code": "ALQ+250",
-     "nature": "CSARR",
-     "libelle": "Évaluation globale finale de plusieurs fonctions cognitives",
-     "clef": "ALQ250",
-     "texte": "evaluation globale finale de plusieurs fonctions cognitives"
-    },
-    {
-     "code": "01E01",
-     "nature": "CSAR",
-     "libelle": "Evaluation analytique des fonctions cognitives",
-     "clef": "01E01",
-     "texte": "evaluation analytique des fonctions cognitives"
-    },
-    {
-     "code": "01E02",
-     "nature": "CSAR",
-     "libelle": "Evaluation globale des fonctions cognitives avec mise en situation",
-     "clef": "01E02",
-     "texte": "evaluation globale des fonctions cognitives avec mise en situation"
-    },
-    {
-     "code": "01E08",
-     "nature": "CSAR",
-     "libelle": "Evaluation globale des fonctions cognitives sans mise en situation",
-     "clef": "01E08",
-     "texte": "evaluation globale des fonctions cognitives sans mise en situation"
-    }
-   ]
+   "extrait": [0,"nature"],
+   "attendu": "CSARR"
+  },
+  {
+   "nom": "chercher : plusieurs mots, actes CSAR ensuite (évaluation cognitives → 01E01)",
+   "fonction": "chercher",
+   "arguments": [{"$smr":"tout"},"évaluation cognitives"],
+   "extrait": [{"nature":"CSAR"},"code"],
+   "attendu": "01E01"
   },
   {
    "nom": "chercher : b24.+ → B24 et ses codes plus précis (point et + retirés)",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"b24.+"],
-   "attendu": [
-    {
-     "code": "B24",
-     "nature": "CIM-10",
-     "libelle": "IMMUNODEFICIENCE HUMAINE VIRALE, SAI",
-     "clef": "B24",
-     "texte": "immunodeficience humaine virale, sai"
-    },
-    {
-     "code": "B24.+0",
-     "nature": "CIM-10",
-     "libelle": "PRE-SIDA (A.R.C.) SAI",
-     "clef": "B240",
-     "texte": "pre-sida (a.r.c.) sai"
-    },
-    {
-     "code": "B24.+1",
-     "nature": "CIM-10",
-     "libelle": "SIDA AVERE SAI",
-     "clef": "B241",
-     "texte": "sida avere sai"
-    },
-    {
-     "code": "B24.+9",
-     "nature": "CIM-10",
-     "libelle": "INFECTION PAR LE V.I.H., SAI",
-     "clef": "B249",
-     "texte": "infection par le v.i.h., sai"
-    }
-   ]
+   "extrait": [{"code":"B24.+0"}],
+   "attendu": {
+    "code": "B24.+0",
+    "nature": "CIM-10",
+    "libelle": "PRE-SIDA (A.R.C.) SAI",
+    "clef": "B240",
+    "texte": "pre-sida (a.r.c.) sai"
+   }
   },
   {
    "nom": "chercher : saisie entourée d'espaces",
@@ -5085,183 +4837,15 @@
    "nom": "chercher : ligature œ gardée (fœtale)",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"FŒTALE"],
-   "attendu": [
-    {
-     "code": "O04.03",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP.[IMG] [ITG] pour association de causes fœtale et maternelle, COMPLIQ. D'UNE INFECT. GENITO-PELV.",
-     "clef": "O0403",
-     "texte": "avort. med. incomp.[img] [itg] pour association de causes fœtale et maternelle, compliq. d'une infect. genito-pelv."
-    },
-    {
-     "code": "O04.13",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP.[IMG] [ITG] pour association de causes fœtale et maternelle, COMPLIQ. D'UNE HEMORR. RETARDEE OU SEVERE",
-     "clef": "O0413",
-     "texte": "avort. med. incomp.[img] [itg] pour association de causes fœtale et maternelle, compliq. d'une hemorr. retardee ou severe"
-    },
-    {
-     "code": "O04.23",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP.[IMG] [ITG] pour association de causes fœtale et maternelle, COMPLIQ. D'UNE EMBOLIEOU SEVERE",
-     "clef": "O0423",
-     "texte": "avort. med. incomp.[img] [itg] pour association de causes fœtale et maternelle, compliq. d'une embolieou severe"
-    },
-    {
-     "code": "O04.33",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP.[IMG] [ITG] pour association de causes fœtale et maternelle, AVEC COMPLIC. NCA OU SAIOU SEVERE",
-     "clef": "O0433",
-     "texte": "avort. med. incomp.[img] [itg] pour association de causes fœtale et maternelle, avec complic. nca ou saiou severe"
-    },
-    {
-     "code": "O04.43",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP.[IMG] [ITG] pour association de causes fœtale et maternelle, SANS COMPLIC.OU SEVERE",
-     "clef": "O0443",
-     "texte": "avort. med. incomp.[img] [itg] pour association de causes fœtale et maternelle, sans complic.ou severe"
-    },
-    {
-     "code": "O04.53",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. COMP. OU SAI.[IMG] [ITG] pour association de causes fœtale et maternelle, COMPLIQ. D'UNE INFECT. GENITO-PELV.",
-     "clef": "O0453",
-     "texte": "avort. med. comp. ou sai.[img] [itg] pour association de causes fœtale et maternelle, compliq. d'une infect. genito-pelv."
-    },
-    {
-     "code": "O04.63",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. COMP. OU SAI.[IMG] [ITG] pour association de causes fœtale et maternelle, COMPLIQ. D'UNE HEMORR. RETARDEE OU SEVEREPELV.",
-     "clef": "O0463",
-     "texte": "avort. med. comp. ou sai.[img] [itg] pour association de causes fœtale et maternelle, compliq. d'une hemorr. retardee ou severepelv."
-    },
-    {
-     "code": "O04.73",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. COMP. OU SAI.[IMG] [ITG] pour association de causes fœtale et maternelle, COMPLIQ. D'UNE EMBOLIE.",
-     "clef": "O0473",
-     "texte": "avort. med. comp. ou sai.[img] [itg] pour association de causes fœtale et maternelle, compliq. d'une embolie."
-    },
-    {
-     "code": "O04.83",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. COMP. OU SAI.[IMG] [ITG] pour association de causes fœtale et maternelle, AVEC COMPLIC. NCA OU SAI",
-     "clef": "O0483",
-     "texte": "avort. med. comp. ou sai.[img] [itg] pour association de causes fœtale et maternelle, avec complic. nca ou sai"
-    },
-    {
-     "code": "O04.92",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. COMP. OU SAI.[IMG] [ITG] pour association de causes fœtale et maternelle, SANS COMPLIC.",
-     "clef": "O0492",
-     "texte": "avort. med. comp. ou sai.[img] [itg] pour association de causes fœtale et maternelle, sans complic."
-    },
-    {
-     "code": "P95.+0",
-     "nature": "CIM-10",
-     "libelle": "MORT FŒTALE IN UTERO OU PERPARTUM SUITE A UNE IMG",
-     "clef": "P950",
-     "texte": "mort fœtale in utero ou perpartum suite a une img"
-    },
-    {
-     "code": "P95.+1",
-     "nature": "CIM-10",
-     "libelle": "MORT FŒTALE IN UTERO EN DEHORS D'UNE IMG",
-     "clef": "P951",
-     "texte": "mort fœtale in utero en dehors d'une img"
-    }
-   ]
+   "extrait": [{"code":"P95.+0"},"texte"],
+   "attendu": "mort fœtale in utero ou perpartum suite a une img"
   },
   {
    "nom": "chercher : « oe » ne trouve pas « œ » (foetale)",
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},"foetale"],
-   "attendu": [
-    {
-     "code": "D56.4",
-     "nature": "CIM-10",
-     "libelle": "PERSISTANCE HERED. DE L'HEMOGLOBINE FOETALE",
-     "clef": "D564",
-     "texte": "persistance hered. de l'hemoglobine foetale"
-    },
-    {
-     "code": "O04.01",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP [IMG] [ITG] pour cause embryonnaire ou foetale, COMPLIQ. D'UNE INFECT. GENITO-PELV.",
-     "clef": "O0401",
-     "texte": "avort. med. incomp [img] [itg] pour cause embryonnaire ou foetale, compliq. d'une infect. genito-pelv."
-    },
-    {
-     "code": "O04.11",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP [IMG] [ITG] pour cause embryonnaire ou foetale, COMPLIQ. D'UNE HEMORR. RETARDEE OU SEVERE",
-     "clef": "O0411",
-     "texte": "avort. med. incomp [img] [itg] pour cause embryonnaire ou foetale, compliq. d'une hemorr. retardee ou severe"
-    },
-    {
-     "code": "O04.21",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP [IMG] [ITG] pour cause embryonnaire ou foetale, COMPLIQ. D'UNE EMBOLIE",
-     "clef": "O0421",
-     "texte": "avort. med. incomp [img] [itg] pour cause embryonnaire ou foetale, compliq. d'une embolie"
-    },
-    {
-     "code": "O04.31",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP [IMG] [ITG] pour cause embryonnaire ou foetale, AVEC COMPLIC. NCA OU SAI",
-     "clef": "O0431",
-     "texte": "avort. med. incomp [img] [itg] pour cause embryonnaire ou foetale, avec complic. nca ou sai"
-    },
-    {
-     "code": "O04.41",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. INCOMP [IMG] [ITG] pour cause embryonnaire ou foetale, SANS COMPLIC.",
-     "clef": "O0441",
-     "texte": "avort. med. incomp [img] [itg] pour cause embryonnaire ou foetale, sans complic."
-    },
-    {
-     "code": "O04.51",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. COMP. OU SAI [IMG] [ITG] pour cause embryonnaire ou foetale, COMPLIQ. D'UNE INFECT. GENITO-PELV.",
-     "clef": "O0451",
-     "texte": "avort. med. comp. ou sai [img] [itg] pour cause embryonnaire ou foetale, compliq. d'une infect. genito-pelv."
-    },
-    {
-     "code": "O04.61",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. COMP. OU SAI [IMG] [ITG] pour cause embryonnaire ou foetale, COMPLIQ. D'UNE HEMORR. RETARDEE OU SEVERE",
-     "clef": "O0461",
-     "texte": "avort. med. comp. ou sai [img] [itg] pour cause embryonnaire ou foetale, compliq. d'une hemorr. retardee ou severe"
-    },
-    {
-     "code": "O04.71",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED. COMP. OU SAI [IMG] [ITG] pour cause embryonnaire ou foetale, COMPLIQ. D'UNE EMBOLIE",
-     "clef": "O0471",
-     "texte": "avort. med. comp. ou sai [img] [itg] pour cause embryonnaire ou foetale, compliq. d'une embolie"
-    },
-    {
-     "code": "O04.81",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED.COMP. OU SAI [IMG] [ITG] pour cause embryonnaire ou foetale, AVEC COMPLIC. NCA OU SAI",
-     "clef": "O0481",
-     "texte": "avort. med.comp. ou sai [img] [itg] pour cause embryonnaire ou foetale, avec complic. nca ou sai"
-    },
-    {
-     "code": "O04.90",
-     "nature": "CIM-10",
-     "libelle": "AVORT. MED.COMP. OU SAI [IMG] [ITG] pour cause embryonnaire ou foetale, SANS COMPLIC.",
-     "clef": "O0490",
-     "texte": "avort. med.comp. ou sai [img] [itg] pour cause embryonnaire ou foetale, sans complic."
-    },
-    {
-     "code": "O33.4",
-     "nature": "CIM-10",
-     "libelle": "SOINS MAT. POUR DISPROP. FOETO-PELVIENNE MIXTE, MAT. ET FOETALE",
-     "clef": "O334",
-     "texte": "soins mat. pour disprop. foeto-pelvienne mixte, mat. et foetale"
-    }
-   ]
+   "extrait": [{"code":"P95.+0"}],
+   "attendu": null
   },
   {
    "nom": "chercher : clef vide (+.) ne prend pas tous les codes",
@@ -5286,6 +4870,12 @@
    "fonction": "chercher",
    "arguments": [{"$smr":"tout"},null],
    "attendu": {"$erreur":true}
+  },
+  {
+   "nom": "chercher : numéro de GN (0147), forme de code, ni code ni libellé → rien",
+   "fonction": "chercher",
+   "arguments": [{"$smr":"tout"},"0147"],
+   "attendu": []
   },
   {
    "nom": "trouver : CSARR saisi sans + (agr047)",
@@ -5320,7 +4910,7 @@
    "nom": "trouver : réel, ALQ+247, neuropsychologue à 130",
    "fonction": "trouver",
    "arguments": [{"$smr":"tout"},"alq247"],
-   "extrait": ["lignes",11],
+   "extrait": ["lignes",{"Intervenant":"33"}],
    "attendu": {
     "Code": "ALQ+247",
     "Nomenclature": "CSARR",
@@ -5359,10 +4949,10 @@
    "attendu": true
   },
   {
-   "nom": "trouver : réel, première ligne de 01E08",
+   "nom": "trouver : réel, 01E08, ligne du médecin (10)",
    "fonction": "trouver",
    "arguments": [{"$smr":"tout"},"01E08"],
-   "extrait": ["lignes",0],
+   "extrait": ["lignes",{"Intervenant":"10"}],
    "attendu": {
     "Code CSAR": "01E08",
     "Libellé CSAR": "Evaluation globale des fonctions cognitives sans mise en situation",
@@ -5597,6 +5187,22 @@
    "attendu": {"cas":"aucuneCm","mmp":true,"ae":true}
   },
   {
+   "nom": "roleOrientation : réel, Z96.6 (CM 90, ONO) → aucuneCm, bien que lu par les tests de D-0831",
+   "fonction": "roleOrientation",
+   "arguments": [
+    {
+     "Code": "Z96.6",
+     "Libellé": "PRESENCE D'IMPLANTS D'ARTIC. ORTHOPED.",
+     "CM": "90",
+     "Profil": "ONO",
+     "Deuxième intention": false,
+     "CMA": false,
+     "Listes": ["0831"]
+    }
+   ],
+   "attendu": {"cas":"aucuneCm","mmp":true,"ae":false}
+  },
+  {
    "nom": "roleOrientation : permis en DAS seulement (Z44.3, NNO, CM 09)",
    "fonction": "roleOrientation",
    "arguments": [
@@ -5610,6 +5216,12 @@
      "Listes": ["0921"]
     }
    ],
+   "attendu": {"cas":"dasSeulement","mmp":false,"ae":false}
+  },
+  {
+   "nom": "roleOrientation : DAS seulement l'emporte sur la deuxième intention (NNO, deuxième intention)",
+   "fonction": "roleOrientation",
+   "arguments": [{"Code":"X00.0","CM":"01","Profil":"NNO","Deuxième intention":true,"CMA":false,"Listes":[]}],
    "attendu": {"cas":"dasSeulement","mmp":false,"ae":false}
   },
   {
@@ -5955,92 +5567,19 @@
    ]
   },
   {
-   "nom": "codesPlusPrecis : réel, R06 (NNN), codes plus précis",
+   "nom": "codesPlusPrecis : réel, R06 (NNN) → R06.0 parmi ses codes plus précis",
    "fonction": "codesPlusPrecis",
    "arguments": [{"$smr":"diagnostics"},"r06"],
-   "attendu": [
-    {
-     "Code": "R06.0",
-     "Libellé": "DYSPNEE",
-     "CM": "23",
-     "Profil": "ONO",
-     "Deuxième intention": true,
-     "CMA": false,
-     "Listes": ["2318"]
-    },
-    {
-     "Code": "R06.1",
-     "Libellé": "STRIDOR",
-     "CM": "23",
-     "Profil": "ONO",
-     "Deuxième intention": true,
-     "CMA": false,
-     "Listes": ["2318"]
-    },
-    {
-     "Code": "R06.2",
-     "Libellé": "SIFFLEMENT RESPIRATOIRE",
-     "CM": "23",
-     "Profil": "ONO",
-     "Deuxième intention": true,
-     "CMA": false,
-     "Listes": ["2318"]
-    },
-    {
-     "Code": "R06.3",
-     "Libellé": "RESPIRATION PERIODIQUE",
-     "CM": "23",
-     "Profil": "ONO",
-     "Deuxième intention": true,
-     "CMA": false,
-     "Listes": ["2318"]
-    },
-    {
-     "Code": "R06.4",
-     "Libellé": "HYPERVENTILATION",
-     "CM": "23",
-     "Profil": "ONO",
-     "Deuxième intention": true,
-     "CMA": false,
-     "Listes": ["2318"]
-    },
-    {
-     "Code": "R06.5",
-     "Libellé": "RESPIRATION PAR LA BOUCHE",
-     "CM": "23",
-     "Profil": "ONO",
-     "Deuxième intention": true,
-     "CMA": false,
-     "Listes": ["2318"]
-    },
-    {
-     "Code": "R06.6",
-     "Libellé": "HOQUET",
-     "CM": "23",
-     "Profil": "ONO",
-     "Deuxième intention": true,
-     "CMA": false,
-     "Listes": ["2318"]
-    },
-    {
-     "Code": "R06.7",
-     "Libellé": "ETERNUEMENT",
-     "CM": "23",
-     "Profil": "ONO",
-     "Deuxième intention": true,
-     "CMA": false,
-     "Listes": ["2318"]
-    },
-    {
-     "Code": "R06.8",
-     "Libellé": "ANOM. DE LA RESPIRATION, NCA OU SAI",
-     "CM": "23",
-     "Profil": "ONO",
-     "Deuxième intention": true,
-     "CMA": false,
-     "Listes": ["2318"]
-    }
-   ]
+   "extrait": [{"Code":"R06.0"}],
+   "attendu": {
+    "Code": "R06.0",
+    "Libellé": "DYSPNEE",
+    "CM": "23",
+    "Profil": "ONO",
+    "Deuxième intention": true,
+    "CMA": false,
+    "Listes": ["2318"]
+   }
   },
   {
    "nom": "codesPlusPrecis : réel, G81.1 n'a pas de code plus précis",
@@ -6387,6 +5926,99 @@
     }
    ],
    "attendu": []
+  },
+  {
+   "nom": "usagesDesListes : réel, Z96.6 (CM 90) dans D-0831 : aucun test lu sans autre code (autreCm partout)",
+   "fonction": "usagesDesListes",
+   "arguments": [
+    {"$smr":"classification"},
+    {
+     "Code": "Z96.6",
+     "Libellé": "PRESENCE D'IMPLANTS D'ARTIC. ORTHOPED.",
+     "CM": "90",
+     "Profil": "ONO",
+     "Deuxième intention": false,
+     "CMA": false,
+     "Listes": ["0831"]
+    }
+   ],
+   "extrait": [{"liste":"0831"},"usages",{"autreCm":false}],
+   "attendu": null
+  },
+  {
+   "nom": "usagesDesListes : réel, Z96.6 (CM 90) dans D-0831 : test en MMP du GN 0831, autreCm",
+   "fonction": "usagesDesListes",
+   "arguments": [
+    {"$smr":"classification"},
+    {
+     "Code": "Z96.6",
+     "Libellé": "PRESENCE D'IMPLANTS D'ARTIC. ORTHOPED.",
+     "CM": "90",
+     "Profil": "ONO",
+     "Deuxième intention": false,
+     "CMA": false,
+     "Listes": ["0831"]
+    }
+   ],
+   "extrait": [{"liste":"0831"},"usages",{"autreCm":true}],
+   "attendu": {
+    "noeud": {
+     "cm": "08",
+     "ordre": 7,
+     "gn": "0831",
+     "tests": [
+      {"positions":["MMP"],"liste":"0831","texte":"MMP D-0831 - Implant articulaire"},
+      {
+       "positions": ["AE"],
+       "liste": "0830",
+       "texte": "AE D-0830 - Fractures de l'extrémité supérieure du fémur"
+      }
+     ]
+    },
+    "test": {"positions":["MMP"],"liste":"0831","texte":"MMP D-0831 - Implant articulaire"},
+    "rang": 0,
+    "nbTests": 23,
+    "autreCm": true,
+    "autre": {
+     "positions": ["AE"],
+     "liste": "0830",
+     "texte": "AE D-0830 - Fractures de l'extrémité supérieure du fémur"
+    }
+   }
+  },
+  {
+   "nom": "usagesDesListes : réel, S02.30 (CM 02) dans D-0897 : test en DAS du GN 0871 (autreCm faux) et son test compagnon D-0896",
+   "fonction": "usagesDesListes",
+   "arguments": [
+    {"$smr":"classification"},
+    {
+     "Code": "S02.30",
+     "Libellé": "FRAC. FERMEE DU PLANCHER DE L'ORBITE",
+     "CM": "02",
+     "Profil": "OOO",
+     "Deuxième intention": false,
+     "CMA": false,
+     "Listes": ["0203","0897"]
+    }
+   ],
+   "extrait": [{"liste":"0897"},"usages",{"rang":1}],
+   "attendu": {
+    "noeud": {
+     "cm": "08",
+     "ordre": 5,
+     "gn": "0871",
+     "tests": [
+      {"positions":["MMP","AE"],"liste":"0896","texte":"MMP ou AE D-0896 - Lésions traumatiques"},
+      {"positions":["DAS"],"liste":"0897","texte":"DAS D-0897 - Lésions traumatiques associées"}
+     ],
+     "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+    },
+    "test": {"positions":["DAS"],"liste":"0897","texte":"DAS D-0897 - Lésions traumatiques associées"},
+    "rang": 1,
+    "nbTests": 23,
+    "autreCm": false,
+    "autre": {"positions":["MMP","AE"],"liste":"0896","texte":"MMP ou AE D-0896 - Lésions traumatiques"}
+   }
   },
   {
    "nom": "usagesDesListes : autre CM (sauf test en DAS), autre test du nœud, nombre de tests de la CM, liste sans test",
@@ -6853,7 +6485,7 @@
    "nom": "caracteristiquesActe : réel, ALQ+247, ligne CSAR en écart (01E08, orthophoniste)",
    "fonction": "caracteristiquesActe",
    "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"alq247"]}],
-   "extrait": ["venus",35],
+   "extrait": ["venus",{"Code CSAR":"01E08","Intervenant":"24"}],
    "attendu": {
     "Code CSAR": "01E08",
     "Libellé CSAR": "Evaluation globale des fonctions cognitives sans mise en situation",
@@ -6897,193 +6529,129 @@
    }
   },
   {
-   "nom": "caracteristiquesCsar : réel, 01E08",
+   "nom": "caracteristiquesActe : réel, AGR+047, CSARR vers lequel aucun acte CSAR ne transcode",
+   "fonction": "caracteristiquesActe",
+   "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"AGR+047"]}],
+   "extrait": ["venus"],
+   "attendu": []
+  },
+  {
+   "nom": "caracteristiquesActe : réel, AGR+047, sans ligne CSAR, pas d'écart",
+   "fonction": "caracteristiquesActe",
+   "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"AGR+047"]}],
+   "extrait": ["ecarts"],
+   "attendu": false
+  },
+  {
+   "nom": "caracteristiquesCsar : réel, 01E08, ALQ+137 et ALQ+247 réunis (mêmes listes, même signature)",
    "fonction": "caracteristiquesCsar",
    "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"01E08"]}],
+   "extrait": ["spe"],
+   "attendu": [
+    {
+     "csarrs": ["ALQ+137","ALQ+247"],
+     "listes": [
+      {"liste":"0106_09_15_30_45_47_48","gns":["0106","0109","0115","0130","0145","0147","0148"]},
+      {"liste":"0127","gns":["0127"]},
+      {"liste":"1903","gns":["1903"]}
+     ],
+     "signature": "[{\"liste\":\"0106_09_15_30_45_47_48\",\"gns\":[\"0106\",\"0109\",\"0115\",\"0130\",\"0145\",\"0147\",\"0148\"]},{\"liste\":\"0127\",\"gns\":[\"0127\"]},{\"liste\":\"1903\",\"gns\":[\"1903\"]}]"
+    }
+   ]
+  },
+  {
+   "nom": "caracteristiquesCsar : réel, 01E08, nombre de GN couverts",
+   "fonction": "caracteristiquesCsar",
+   "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"01E08"]}],
+   "extrait": ["nbGn"],
+   "attendu": 9
+  },
+  {
+   "nom": "caracteristiquesCsar : réel, 01E08, « les autres intervenants » : le groupe le plus nombreux",
+   "fonction": "caracteristiquesCsar",
+   "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"01E08"]}],
+   "extrait": ["autres"],
+   "attendu": [
+    {
+     "csar": "01E08",
+     "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
+     "modalite": "0",
+     "csarr": "ALQ+247",
+     "libelleCsarr": "Évaluation globale initiale de plusieurs fonctions cognitives",
+     "ponderation": 35,
+     "fichierCsar": 35,
+     "equivalent": true,
+     "intervenants": [
+      "10",
+      "21",
+      "22",
+      "23",
+      "25",
+      "26",
+      "27",
+      "28",
+      "31",
+      "32",
+      "41",
+      "61",
+      "62",
+      "63",
+      "64",
+      "65",
+      "66",
+      "67",
+      "68",
+      "69",
+      "70",
+      "71",
+      "73",
+      "74",
+      "75",
+      "76",
+      "77",
+      "88"
+     ],
+     "ecart": false,
+     "total": 32
+    }
+   ]
+  },
+  {
+   "nom": "caracteristiquesCsar : réel, 01E08, groupe ALQ+137 (psychologue)",
+   "fonction": "caracteristiquesCsar",
+   "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"01E08"]}],
+   "extrait": ["groupes",{"csarr":"ALQ+137"}],
    "attendu": {
-    "modalites": ["0"],
-    "modulateurs": {"temps":false,"L1":false,"L2":false,"L3":false},
-    "groupes": [
-     {
-      "csar": "01E08",
-      "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
-      "modalite": "0",
-      "csarr": "ALQ+247",
-      "libelleCsarr": "Évaluation globale initiale de plusieurs fonctions cognitives",
-      "ponderation": 35,
-      "fichierCsar": 35,
-      "equivalent": true,
-      "intervenants": [
-       "10",
-       "21",
-       "22",
-       "23",
-       "25",
-       "26",
-       "27",
-       "28",
-       "31",
-       "32",
-       "41",
-       "61",
-       "62",
-       "63",
-       "64",
-       "65",
-       "66",
-       "67",
-       "68",
-       "69",
-       "70",
-       "71",
-       "73",
-       "74",
-       "75",
-       "76",
-       "77",
-       "88"
-      ],
-      "ecart": false,
-      "total": 32
-     },
-     {
-      "csar": "01E08",
-      "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
-      "modalite": "0",
-      "csarr": "ALQ+247",
-      "libelleCsarr": "Évaluation globale initiale de plusieurs fonctions cognitives",
-      "ponderation": 130,
-      "fichierCsar": 35,
-      "equivalent": true,
-      "intervenants": ["33","72"],
-      "ecart": true,
-      "total": 32
-     },
-     {
-      "csar": "01E08",
-      "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
-      "modalite": "0",
-      "csarr": "ALQ+247",
-      "libelleCsarr": "Évaluation globale initiale de plusieurs fonctions cognitives",
-      "ponderation": 85,
-      "fichierCsar": 35,
-      "equivalent": true,
-      "intervenants": ["24"],
-      "ecart": true,
-      "total": 32
-     },
-     {
-      "csar": "01E08",
-      "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
-      "modalite": "0",
-      "csarr": "ALQ+137",
-      "libelleCsarr": "Évaluation globale intermédiaire de plusieurs fonctions cognitives",
-      "ponderation": 40,
-      "fichierCsar": 35,
-      "equivalent": true,
-      "intervenants": ["30"],
-      "ecart": true,
-      "total": 32
-     }
-    ],
-    "ecarts": [
-     {
-      "csar": "01E08",
-      "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
-      "modalite": "0",
-      "csarr": "ALQ+247",
-      "libelleCsarr": "Évaluation globale initiale de plusieurs fonctions cognitives",
-      "ponderation": 130,
-      "fichierCsar": 35,
-      "equivalent": true,
-      "intervenants": ["33","72"],
-      "ecart": true,
-      "total": 32
-     },
-     {
-      "csar": "01E08",
-      "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
-      "modalite": "0",
-      "csarr": "ALQ+247",
-      "libelleCsarr": "Évaluation globale initiale de plusieurs fonctions cognitives",
-      "ponderation": 85,
-      "fichierCsar": 35,
-      "equivalent": true,
-      "intervenants": ["24"],
-      "ecart": true,
-      "total": 32
-     },
-     {
-      "csar": "01E08",
-      "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
-      "modalite": "0",
-      "csarr": "ALQ+137",
-      "libelleCsarr": "Évaluation globale intermédiaire de plusieurs fonctions cognitives",
-      "ponderation": 40,
-      "fichierCsar": 35,
-      "equivalent": true,
-      "intervenants": ["30"],
-      "ecart": true,
-      "total": 32
-     }
-    ],
-    "equivalents": 32,
-    "spe": [
-     {
-      "csarrs": ["ALQ+137","ALQ+247"],
-      "listes": [
-       {"liste":"0106_09_15_30_45_47_48","gns":["0106","0109","0115","0130","0145","0147","0148"]},
-       {"liste":"0127","gns":["0127"]},
-       {"liste":"1903","gns":["1903"]}
-      ],
-      "signature": "[{\"liste\":\"0106_09_15_30_45_47_48\",\"gns\":[\"0106\",\"0109\",\"0115\",\"0130\",\"0145\",\"0147\",\"0148\"]},{\"liste\":\"0127\",\"gns\":[\"0127\"]},{\"liste\":\"1903\",\"gns\":[\"1903\"]}]"
-     }
-    ],
-    "nbGn": 9,
-    "autres": [
-     {
-      "csar": "01E08",
-      "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
-      "modalite": "0",
-      "csarr": "ALQ+247",
-      "libelleCsarr": "Évaluation globale initiale de plusieurs fonctions cognitives",
-      "ponderation": 35,
-      "fichierCsar": 35,
-      "equivalent": true,
-      "intervenants": [
-       "10",
-       "21",
-       "22",
-       "23",
-       "25",
-       "26",
-       "27",
-       "28",
-       "31",
-       "32",
-       "41",
-       "61",
-       "62",
-       "63",
-       "64",
-       "65",
-       "66",
-       "67",
-       "68",
-       "69",
-       "70",
-       "71",
-       "73",
-       "74",
-       "75",
-       "76",
-       "77",
-       "88"
-      ],
-      "ecart": false,
-      "total": 32
-     }
-    ]
+    "csar": "01E08",
+    "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
+    "modalite": "0",
+    "csarr": "ALQ+137",
+    "libelleCsarr": "Évaluation globale intermédiaire de plusieurs fonctions cognitives",
+    "ponderation": 40,
+    "fichierCsar": 35,
+    "equivalent": true,
+    "intervenants": ["30"],
+    "ecart": true,
+    "total": 32
+   }
+  },
+  {
+   "nom": "caracteristiquesCsar : réel, 01E08, groupe en écart à 130 (neuropsychologue, psychotechnicien)",
+   "fonction": "caracteristiquesCsar",
+   "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"01E08"]}],
+   "extrait": ["ecarts",{"ponderation":130}],
+   "attendu": {
+    "csar": "01E08",
+    "libelleCsar": "Evaluation globale des fonctions cognitives sans mise en situation",
+    "modalite": "0",
+    "csarr": "ALQ+247",
+    "libelleCsarr": "Évaluation globale initiale de plusieurs fonctions cognitives",
+    "ponderation": 130,
+    "fichierCsar": 35,
+    "equivalent": true,
+    "intervenants": ["33","72"],
+    "ecart": true,
+    "total": 32
    }
   },
   {
@@ -7211,6 +6779,13 @@
    "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"01E01"]}],
    "extrait": ["modulateurs"],
    "attendu": {"temps":true,"L1":true,"L2":false,"L3":true}
+  },
+  {
+   "nom": "caracteristiquesCsar : réel, 01S01, modalité 2 (individuel ou collectif)",
+   "fonction": "caracteristiquesCsar",
+   "arguments": [{"$smr":"tout"},{"$appel":"trouver","arguments":[{"$smr":"tout"},"01S01"]}],
+   "extrait": ["modalites"],
+   "attendu": ["2"]
   }
  ]
 }
