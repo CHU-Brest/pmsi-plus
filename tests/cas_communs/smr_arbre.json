@@ -1,0 +1,2449 @@
+{
+ "module": "smr_arbre",
+ "non_portes": {},
+ "cas": [
+  {
+   "nom": "CM_ERREURS : CM 90, issue de l'orientation seulement",
+   "constante": "CM_ERREURS",
+   "attendu": "90"
+  },
+  {
+   "nom": "ORIENTATION : identifiant de la catégorie d'orientation",
+   "constante": "ORIENTATION",
+   "attendu": "orientation"
+  },
+  {
+   "nom": "PAGE_ORIENTATION : figure 4, page 19 du volume 1",
+   "constante": "PAGE_ORIENTATION",
+   "attendu": 19
+  },
+  {
+   "nom": "CONDITIONS_ARBRE : conditions du test du GN 0871 dans l'arbre",
+   "constante": "CONDITIONS_ARBRE",
+   "attendu": {
+    "mmpPrioritaire": "si la MMP et l'AE sont classantes, seul le code en MMP est retenu comme classant",
+    "quatreCaracteresDifferents": "les 4 premiers caractères du code classant en DAS doivent différer de ceux du code classant en MMP ou AE"
+   }
+  },
+  {
+   "nom": "FEUILLES : genres des feuilles (ensemble, dans l'ordre de déclaration)",
+   "constante": "FEUILLES",
+   "attendu": ["gn","gl","erreur","renvoi","grille"]
+  },
+  {
+   "nom": "SPECIAL : l'intitulé court du GR est une fonction",
+   "constante": "SPECIAL",
+   "attendu": {"gr":{"court":"$fonction"}}
+  },
+  {
+   "nom": "SYMBOLES : positions des tests d'entrée en GN",
+   "constante": "SYMBOLES",
+   "attendu": {
+    "MMP": {"texte":"MMP","titre":"La manifestation morbide principale (MMP) du RHS","variante":"serre"},
+    "AE": {"texte":"AE","titre":"L'affection étiologique (AE) du RHS"},
+    "MMPAE": {"texte":"MMP ou AE","lignes":["MMP","AE"],"titre":"La MMP ou l'AE du RHS","variante":"empile"},
+    "DAS": {
+     "texte": "DAS",
+     "titre": "L'un au moins des diagnostics associés significatifs (DAS) du RHS",
+     "variante": "serre"
+    }
+   }
+  },
+  {
+   "nom": "VARIABLES : légende des critères de l'arbre d'un GN",
+   "constante": "VARIABLES",
+   "attendu": {
+    "Âge": "âge du patient, au premier RHS du séjour en HC, à chaque RHS en HTP (1.2.3.5)",
+    "Score R spécialisé": "score de réadaptation spécialisée : pondérations des actes de la liste d'actes spécialisés du GN, par séjour et par jour (3.3.2.1)",
+    "Score R global": "score de réadaptation globale : pondérations des actes CSARR, codés ou transcodés du CSAR, et CCAM de réadaptation, par séjour et par jour (3.3.2.1)",
+    "Score R global par jour": "score de réadaptation globale de la semaine, par jour de présence (3.3.2.2)",
+    "Niveau C si": "le patient a-t-il une de ses caractéristiques en niveau C ? (4.2.1, figure 8)",
+    "Niveau B si": "le patient a-t-il une de ses caractéristiques en niveau B ? (4.2.1, figure 8)"
+   }
+  },
+  {
+   "nom": "enumeration : liste vide → chaîne vide",
+   "fonction": "enumeration",
+   "arguments": [[]],
+   "attendu": ""
+  },
+  {"nom":"enumeration : un élément","fonction":"enumeration","arguments":[["4"]],"attendu":"4"},
+  {
+   "nom": "enumeration : deux éléments liés par « et »",
+   "fonction": "enumeration",
+   "arguments": [["4","9"]],
+   "attendu": "4 et 9"
+  },
+  {
+   "nom": "enumeration : trois éléments, virgules puis « et »",
+   "fonction": "enumeration",
+   "arguments": [["4","7","9"]],
+   "attendu": "4, 7 et 9"
+  },
+  {
+   "nom": "enumeration : mot de liaison « ou »",
+   "fonction": "enumeration",
+   "arguments": [["a","b","c"],"ou"],
+   "attendu": "a, b ou c"
+  },
+  {
+   "nom": "enumeration : nombres mis en texte",
+   "fonction": "enumeration",
+   "arguments": [[1,2,3]],
+   "attendu": "1, 2 et 3"
+  },
+  {
+   "nom": "casDeLourdeur : tout en A → plancher A, aucun niveau",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["A","A","A","A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {"plancher":"A","niveaux":[]}
+  },
+  {
+   "nom": "casDeLourdeur : classes voisines de même niveau lues d'un tenant",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["C","C","B","A","A"],"cog":["A","A"],"phy":["A","B","B"],"chir":["A","A"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {
+    "plancher": "A",
+    "niveaux": [
+     {"niveau":"C","conditions":["âge de 0 à 12 ans"]},
+     {"niveau":"B","conditions":["âge de 13 à 17 ans","dépendance physique de 9 à 16"]}
+    ]
+   }
+  },
+  {
+   "nom": "casDeLourdeur : dernière classe d'âge ouverte → « âge ≥ N ans »",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["A","A","A","B","B"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {"plancher":"A","niveaux":[{"niveau":"B","conditions":["âge ≥ 18 ans"]}]}
+  },
+  {
+   "nom": "casDeLourdeur : null (sans objet) coupe une suite de classes de même niveau",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["C",null,"C","C","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {
+    "plancher": "A",
+    "niveaux": [{"niveau":"C","conditions":["âge de 0 à 3 ans","âge de 13 à 60 ans"]}]
+   }
+  },
+  {
+   "nom": "casDeLourdeur : plancher B (une variable jamais en A) ; seul le niveau C reste",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["B","B","B","B","B"],"cog":["B","C"],"phy":["A","B","B"],"chir":["A","A"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {"plancher":"B","niveaux":[{"niveau":"C","conditions":["dépendance cognitive de 7 à 8"]}]}
+  },
+  {
+   "nom": "casDeLourdeur : plancher C → aucun niveau",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["C","C","C","C","C"],"cog":["C","C"],"phy":["C","C","C"],"chir":["C","C"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {"plancher":"C","niveaux":[]}
+  },
+  {
+   "nom": "casDeLourdeur : règle combinée âge × dépendance physique (tranches jusqu'à, de… à, à partir de)",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {
+      "9999S": {
+       "age": ["A","A","A","A","A"],
+       "cog": ["A","A"],
+       "phy": ["A","B",[[0,17,"C"],[18,70,"B"],[71,null,"A"]]],
+       "chir": ["A","A"]
+      }
+     }
+    },
+    "9999S"
+   ],
+   "attendu": {
+    "plancher": "A",
+    "niveaux": [
+     {"niveau":"C","conditions":["dépendance physique de 13 à 16 et âge jusqu'à 17 ans"]},
+     {
+      "niveau": "B",
+      "conditions": ["dépendance physique de 9 à 12","dépendance physique de 13 à 16 et âge de 18 à 70 ans"]
+     }
+    ]
+   }
+  },
+  {
+   "nom": "casDeLourdeur : tranche [0, null] → « à partir de 0 ans »",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {
+      "9999S": {"age":["A","A","A","A","A"],"cog":["A","A"],"phy":["A","A",[[0,null,"B"]]],"chir":["A","A"]}
+     }
+    },
+    "9999S"
+   ],
+   "attendu": {
+    "plancher": "A",
+    "niveaux": [{"niveau":"B","conditions":["dépendance physique de 13 à 16 et âge à partir de 0 ans"]}]
+   }
+  },
+  {
+   "nom": "casDeLourdeur : règle combinée qui relève le minimum de la variable (aucune classe en A)",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {
+      "9999S": {
+       "age": ["A","A","A","A","A"],
+       "cog": ["A","A"],
+       "phy": [[[0,80,"C"],[81,null,"B"]],"B","B"],
+       "chir": ["A","A"]
+      }
+     }
+    },
+    "9999S"
+   ],
+   "attendu": {
+    "plancher": "B",
+    "niveaux": [{"niveau":"C","conditions":["dépendance physique de 4 à 8 et âge jusqu'à 80 ans"]}]
+   }
+  },
+  {
+   "nom": "casDeLourdeur : statut post-chirurgical seul (oui en B)",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["A","A","A","A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","B"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {"plancher":"A","niveaux":[{"niveau":"B","conditions":["statut post-chirurgical"]}]}
+  },
+  {
+   "nom": "casDeLourdeur : statut non post-chirurgical (non en B)",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["A","A","A","A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["B","A"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {"plancher":"A","niveaux":[{"niveau":"B","conditions":["statut non post-chirurgical"]}]}
+  },
+  {
+   "nom": "casDeLourdeur : chir en B des deux côtés → plancher B, la condition chir disparaît",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["A","C","A","A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["B","B"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {"plancher":"B","niveaux":[{"niveau":"C","conditions":["âge de 4 à 12 ans"]}]}
+  },
+  {
+   "nom": "casDeLourdeur : une seule variable toute en C fixe le plancher C",
+   "fonction": "casDeLourdeur",
+   "arguments": [
+    {
+     "classesAge": ["0_3","4_12","13_17","18_60","86_plus"],
+     "gl": {"9999S":{"age":["A","A","A","A","A"],"cog":["C","C"],"phy":["A","A","A"],"chir":["A","A"]}}
+    },
+    "9999S"
+   ],
+   "attendu": {"plancher":"C","niveaux":[]}
+  },
+  {
+   "nom": "casDeLourdeur : GR inconnu → exception",
+   "fonction": "casDeLourdeur",
+   "arguments": [{"classesAge":["0_3","4_12","13_17","18_60","86_plus"],"gl":{"9999S":{}}},"9999T"],
+   "attendu": {"$erreur":true}
+  },
+  {
+   "nom": "casDeLourdeur : GR 0147S, règle combinée (réel)",
+   "fonction": "casDeLourdeur",
+   "arguments": [{"$smr":"classification"},"0147S"],
+   "attendu": {
+    "plancher": "A",
+    "niveaux": [
+     {
+      "niveau": "C",
+      "conditions": ["âge de 0 à 3 ans","dépendance physique de 13 à 16 et âge jusqu'à 80 ans"]
+     },
+     {
+      "niveau": "B",
+      "conditions": [
+       "âge de 4 à 12 ans",
+       "dépendance cognitive de 7 à 8",
+       "dépendance physique de 9 à 12",
+       "dépendance physique de 13 à 16 et âge à partir de 81 ans"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "nom": "casDeLourdeur : GR 0147U, niveau C sans règle combinée (réel)",
+   "fonction": "casDeLourdeur",
+   "arguments": [{"$smr":"classification"},"0147U"],
+   "extrait": ["niveaux",{"niveau":"C"},"conditions"],
+   "attendu": ["âge de 0 à 3 ans","dépendance physique de 13 à 16"]
+  },
+  {
+   "nom": "casDeLourdeur : GR 0103S, plancher C (réel)",
+   "fonction": "casDeLourdeur",
+   "arguments": [{"$smr":"classification"},"0103S"],
+   "attendu": {"plancher":"C","niveaux":[]}
+  },
+  {
+   "nom": "casDeLourdeur : GR 1006U, niveau B sans condition d'âge, âges pédiatriques sans objet (réel)",
+   "fonction": "casDeLourdeur",
+   "arguments": [{"$smr":"classification"},"1006U"],
+   "extrait": ["niveaux",{"niveau":"B"},"conditions"],
+   "attendu": ["dépendance physique de 9 à 16"]
+  },
+  {
+   "nom": "casDeLourdeur : GR 1006P, GR pédiatrique, niveau B (réel)",
+   "fonction": "casDeLourdeur",
+   "arguments": [{"$smr":"classification"},"1006P"],
+   "extrait": ["niveaux",{"niveau":"B"},"conditions"],
+   "attendu": ["âge de 0 à 12 ans","dépendance physique de 9 à 16"]
+  },
+  {
+   "nom": "casDeLourdeur : GR 2303U, niveau C (réel)",
+   "fonction": "casDeLourdeur",
+   "arguments": [{"$smr":"classification"},"2303U"],
+   "extrait": ["niveaux",{"niveau":"C"},"conditions"],
+   "attendu": ["âge de 0 à 3 ans","dépendance cognitive de 7 à 8"]
+  },
+  {
+   "nom": "casDeLourdeur : GR 0127S, plancher B (réel)",
+   "fonction": "casDeLourdeur",
+   "arguments": [{"$smr":"classification"},"0127S"],
+   "extrait": ["plancher"],
+   "attendu": "B"
+  },
+  {
+   "nom": "construire : CM testées, sans la CM 90, triées",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["cms"],
+   "attendu": ["01","02","03","04","05","06","08","09","10","11","16","18","19","23","27"]
+  },
+  {
+   "nom": "construire : GN de la CM 01, triés",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["gnsParCm","01"],
+   "attendu": [
+    "0103",
+    "0106",
+    "0109",
+    "0115",
+    "0118",
+    "0121",
+    "0124",
+    "0127",
+    "0130",
+    "0134",
+    "0135",
+    "0137",
+    "0138",
+    "0139",
+    "0145",
+    "0146",
+    "0147",
+    "0148"
+   ]
+  },
+  {
+   "nom": "construire : départs du GN 0147 (HC par l'âge, HTP par l'âge)",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["departs","0147"],
+   "attendu": {"hc":"0147-hc-age","htp":"0147-htp-age","adultes":["S","T","U"]}
+  },
+  {
+   "nom": "construire : départs du GN 0103 (un seul type, HTP non subdivisée)",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["departs","0103"],
+   "attendu": {"hc":"0103S","htp":"0103LA","adultes":["S"]}
+  },
+  {
+   "nom": "construire : départs du GN 1006 (types pédiatriques)",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["departs","1006"],
+   "attendu": {"hc":"1006-hc-age","htp":"1006-htp-age","adultes":["S","T","U"]}
+  },
+  {
+   "nom": "construire : départs du GN 2303 (T et U)",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["departs","2303"],
+   "attendu": {"hc":"2303-hc-age","htp":"2303LA","adultes":["T","U"]}
+  },
+  {
+   "nom": "construire : fiche de la liste D-0103",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","listes","D-0103"],
+   "attendu": {
+    "libelle": "Etats végétatifs chroniques - Etats pauci-relationnels",
+    "nature": "diagnostics",
+    "codes": 2
+   }
+  },
+  {
+   "nom": "construire : liste sans libellé → libelle null (omis)",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","listes","D-9001"],
+   "attendu": {"nature":"diagnostics","codes":4}
+  },
+  {
+   "nom": "construire : erreur 300 de l'orientation, titre",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","o-cm-90","titre"],
+   "attendu": "Erreurs et recueils inclassables, erreur 300 « Aucune CM trouvée »"
+  },
+  {
+   "nom": "construire : erreur 300 de l'orientation, étiquette",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","o-cm-90","etiquette"],
+   "attendu": "CM 90"
+  },
+  {
+   "nom": "construire : orientation, deuxième intention testée d'abord",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","o-mmp-2e","branches"],
+   "attendu": [{"libelle":"Code orientant en deuxième intention","listes":[],"vers":"o-ae-2e"}]
+  },
+  {
+   "nom": "construire : orientation, AE en deuxième intention, « non » rejoint la MMP",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","o-ae-2e","sinon"],
+   "attendu": {"vers":"o-mmp","rejoint":true}
+  },
+  {
+   "nom": "construire : orientation, AE puis CM 90",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","o-ae","sinon"],
+   "attendu": {"vers":"o-cm-90"}
+  },
+  {
+   "nom": "construire : CM 01, erreur 301",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","01-erreur","etiquette"],
+   "attendu": "Erreur 301"
+  },
+  {
+   "nom": "construire : CM 02, aucun code erreur ne la nomme → « Non groupé »",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","02-erreur","etiquette"],
+   "attendu": "Non groupé"
+  },
+  {
+   "nom": "construire : CM 02, titre de l'erreur absente",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","02-erreur","titre"],
+   "attendu": "aucun code erreur de FG_erreurs ne nomme la CM 02"
+  },
+  {
+   "nom": "construire : CM 02, numéro d'erreur null (omis)",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","02-erreur","erreur"],
+   "attendu": null
+  },
+  {
+   "nom": "construire : CM 02, dernier test → erreur de la CM",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","02-1","sinon"],
+   "attendu": {"vers":"02-erreur"}
+  },
+  {
+   "nom": "construire : test 01-1, MMP ou AE",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","01-1","symbole"],
+   "attendu": "MMPAE"
+  },
+  {
+   "nom": "construire : test 01-1, branche vers le GN 0103",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","01-1","branches"],
+   "attendu": [
+    {
+     "libelle": "Etats végétatifs chroniques - Etats paucirelationnels (D-0103)",
+     "listes": ["D-0103"],
+     "vers": "0103"
+    }
+   ]
+  },
+  {
+   "nom": "construire : test 01-1, page de l'annexe 7.2",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","01-1","page"],
+   "attendu": 50
+  },
+  {
+   "nom": "construire : GN 0147, feuille de la CM 01",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147","cmd"],
+   "attendu": "01"
+  },
+  {
+   "nom": "construire : GN 0147, page du premier test qui y mène",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147","page"],
+   "attendu": 50
+  },
+  {
+   "nom": "construire : GN 0147 sans type pédiatrique, l'enfant rejoint le premier type",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147-hc-age","branches"],
+   "attendu": [
+    {
+     "libelle": "< 18 ans, le GN n'ayant pas de type pédiatrique : réadaptation spécialisée importante, sans test sur les scores (3.4.1.2)",
+     "listes": [],
+     "vers": "0147S",
+     "rejoint": true
+    }
+   ]
+  },
+  {
+   "nom": "construire : GN 0147, adultes testés sur le score spécialisé",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147-hc-age","sinon"],
+   "attendu": {"vers":"0147-hc-S"}
+  },
+  {
+   "nom": "construire : GN 1006 avec type pédiatrique",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","1006-hc-age","branches"],
+   "attendu": [{"libelle":"< 18 ans","listes":[],"vers":"1006P"}]
+  },
+  {
+   "nom": "construire : GN 0147, score R spécialisé et ses seuils",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147-hc-S","branches"],
+   "attendu": [{"libelle":"≥ 600 par séjour et ≥ 30 par jour","listes":[],"vers":"0147S"}]
+  },
+  {
+   "nom": "construire : GN 0147, liste d'actes spécialisés du test",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147-hc-S","listeSpe"],
+   "attendu": "0106_09_15_30_45_47_48"
+  },
+  {
+   "nom": "construire : GN 0147, score R global, sinon GR U",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147-hc-T","sinon"],
+   "attendu": {"vers":"0147U"}
+  },
+  {
+   "nom": "construire : GN 2303, seuil par séjour absent",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","2303-hc-T","branches"],
+   "attendu": [{"libelle":"≥ 30 par jour (pas de seuil par séjour)","listes":[],"vers":"2303T"}]
+  },
+  {
+   "nom": "construire : GR 0147S, suite vers le niveau C",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147S","suite"],
+   "attendu": {"vers":"0147S-C"}
+  },
+  {
+   "nom": "construire : GR 0147S, pas seul type",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147S","unique"],
+   "attendu": false
+  },
+  {
+   "nom": "construire : GR 0103S, seul type d'adultes",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0103S","unique"],
+   "attendu": true
+  },
+  {
+   "nom": "construire : GR 0103S, plancher C → GL directement",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0103S","suite"],
+   "attendu": {"vers":"0103SC"}
+  },
+  {
+   "nom": "construire : niveau C du GR 0147S",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147S-C","branches"],
+   "attendu": [
+    {
+     "libelle": "âge de 0 à 3 ans ou dépendance physique de 13 à 16 et âge jusqu'à 80 ans",
+     "listes": [],
+     "vers": "0147SC"
+    }
+   ]
+  },
+  {
+   "nom": "construire : niveau C du GR 0147S, page de l'annexe 7.5",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147S-C","page"],
+   "attendu": 66
+  },
+  {
+   "nom": "construire : niveau B du GR 0147S, sinon GL A",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147S-B","sinon"],
+   "attendu": {"vers":"0147SA"}
+  },
+  {
+   "nom": "construire : GL 0147SC et ses GME",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147SC","gmes"],
+   "attendu": ["0147SC1","0147SC2"]
+  },
+  {
+   "nom": "construire : GL 0103LA (HTP), GME en 0",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0103LA","gmes"],
+   "attendu": ["0103LA0"]
+  },
+  {
+   "nom": "construire : HTP du GN 0147 sans type pédiatrique",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147-htp-age","branches"],
+   "attendu": [
+    {
+     "libelle": "< 18 ans, le GN n'ayant pas de type pédiatrique : réadaptation très intense, sans test sur le score (3.4.2.2)",
+     "listes": [],
+     "vers": "0147IA"
+    }
+   ]
+  },
+  {
+   "nom": "construire : HTP du GN 0147, seuil très intense",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147-htp-I","branches"],
+   "attendu": [{"libelle":"≥ 150 (seuil très intense)","listes":[],"vers":"0147IA"}]
+  },
+  {
+   "nom": "construire : HTP du GN 0147, seuil intense, sinon modérée",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","0147-htp-J","sinon"],
+   "attendu": {"vers":"0147KA"}
+  },
+  {
+   "nom": "construire : HTP du GN 1006, type pédiatrique",
+   "fonction": "construire",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","noeuds","1006-htp-age","branches"],
+   "attendu": [{"libelle":"< 18 ans","listes":[],"vers":"1006HA"}]
+  },
+  {
+   "nom": "construire : déjà construit (_arbreSmr posé sur la classification) → rendu tel quel",
+   "fonction": "construire",
+   "arguments": [{"_arbreSmr":{"cms":["01"]}}],
+   "attendu": {"cms":["01"]}
+  },
+  {
+   "nom": "construire (fictif) : erreur 300 absente de FG_erreurs → titre sans son libellé",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","o-cm-90","titre"],
+   "attendu": "Erreurs et recueils inclassables, erreur 300"
+  },
+  {
+   "nom": "construire (fictif) : nœud à deux tests, premier en MMP ou AE, conditions en mots-clefs, sans écart",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","01-1"],
+   "attendu": {
+    "genre": "test",
+    "cmd": "01",
+    "page": 50,
+    "symbole": "MMPAE",
+    "branches": [{"libelle":"Lésions traumatiques (D-0901)","listes":["D-0901"],"vers":"01-1-2"}],
+    "sinon": {"vers":"01-2"},
+    "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+   }
+  },
+  {
+   "nom": "construire (fictif) : second test en DAS, son « non » rejoint le nœud suivant",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","01-1-2"],
+   "attendu": {
+    "genre": "test",
+    "cmd": "01",
+    "page": 50,
+    "symbole": "DAS",
+    "branches": [{"libelle":"Lésions associées (D-0902)","listes":["D-0902"],"vers":"0101"}],
+    "sinon": {"vers":"01-2","rejoint":true}
+   }
+  },
+  {
+   "nom": "construire (fictif) : texte du test sans libellé → libellé de la liste ; écart à l'annexe ; « non » vers l'erreur",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","01-2"],
+   "attendu": {
+    "genre": "test",
+    "cmd": "01",
+    "page": 51,
+    "symbole": "MMP",
+    "branches": [{"libelle":"Liste trois (D-0903)","listes":["D-0903"],"vers":"0102"}],
+    "sinon": {"vers":"01-erreur"},
+    "conditions": [],
+    "ecart": {"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}
+   }
+  },
+  {
+   "nom": "construire (fictif) : erreur de la CM, page du dernier test",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","01-erreur"],
+   "attendu": {
+    "genre": "erreur",
+    "cmd": "01",
+    "page": 51,
+    "etiquette": "Erreur 301",
+    "titre": "Aucun GN trouvé dans la CM 01",
+    "erreur": 301
+   }
+  },
+  {
+   "nom": "construire (fictif) : score spécialisé sans aucun seuil",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","0101-hc-S"],
+   "attendu": {
+    "genre": "critere",
+    "cmd": "0101",
+    "page": 60,
+    "variable": "Score R spécialisé",
+    "branches": [{"libelle":"sans seuil dans GR_infos","listes":[],"vers":"0101S"}],
+    "sinon": {"vers":"0101-hc-T"},
+    "listeSpe": "0101"
+   }
+  },
+  {
+   "nom": "construire (fictif) : score global sans seuil par jour",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","0101-hc-T","branches",0,"libelle"],
+   "attendu": "≥ 600 par séjour (pas de seuil par jour)"
+  },
+  {
+   "nom": "construire (fictif) : sans type pédiatrique, l'enfant rejoint le premier type (S)",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","0101-hc-age","branches"],
+   "attendu": [
+    {
+     "libelle": "< 18 ans, le GN n'ayant pas de type pédiatrique : réadaptation spécialisée importante, sans test sur les scores (3.4.1.2)",
+     "listes": [],
+     "vers": "0101S",
+     "rejoint": true
+    }
+   ]
+  },
+  {
+   "nom": "construire (fictif) : niveau B du GR 0101S, sinon le GL A",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","0101S-B"],
+   "attendu": {
+    "genre": "critere",
+    "cmd": "0101",
+    "page": 80,
+    "variable": "Niveau B si",
+    "branches": [{"libelle":"dépendance physique de 13 à 16","listes":[],"vers":"0101SB"}],
+    "sinon": {"vers":"0101SA"}
+   }
+  },
+  {
+   "nom": "construire (fictif) : GL 0101SA et ses GME",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","0101SA"],
+   "attendu": {"genre":"gl","cmd":"0101","page":80,"code":"0101SA","gmes":["0101SA1"]}
+  },
+  {
+   "nom": "construire (fictif) : GR seul type d'adultes (0102U)",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","noeuds","0102U"],
+   "attendu": {"genre":"gr","cmd":"0102","page":61,"code":"0102U","suite":{"vers":"0102UA"},"unique":true}
+  },
+  {
+   "nom": "construire (fictif) : départs du GN 0101",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["departs","0101"],
+   "attendu": {"hc":"0101-hc-age","htp":"0101LA","adultes":["S","T","U"]}
+  },
+  {
+   "nom": "construire (fictif) : fiches des listes (libellé vide omis, effectif 0 par défaut)",
+   "fonction": "construire",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "extrait": ["arbre","listes"],
+   "attendu": {
+    "D-0901": {"libelle":"Lésions traumatiques","nature":"diagnostics","codes":12},
+    "D-0902": {"nature":"diagnostics","codes":0},
+    "D-0903": {"libelle":"Liste trois","nature":"diagnostics","codes":0}
+   }
+  },
+  {
+   "nom": "profilArbre : les feuilles du profil",
+   "fonction": "profilArbre",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["feuilles"],
+   "attendu": ["gn","gl","erreur","renvoi","grille"]
+  },
+  {
+   "nom": "profilArbre : les variables du profil (Âge)",
+   "fonction": "profilArbre",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["variables","Âge"],
+   "attendu": "âge du patient, au premier RHS du séjour en HC, à chaque RHS en HTP (1.2.3.5)"
+  },
+  {
+   "nom": "profilArbre : texteFeuille, fonction du profil",
+   "fonction": "profilArbre",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["texteFeuille"],
+   "attendu": "$fonction"
+  },
+  {
+   "nom": "profilArbre : l'arbre est celui de construire (liste D-0112)",
+   "fonction": "profilArbre",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": ["arbre","listes","D-0112"],
+   "attendu": {"libelle":"Accidents vasculaires cérébraux","nature":"diagnostics","codes":45}
+  },
+  {
+   "nom": "texteFeuille : code d'abord",
+   "fonction": "texteFeuille",
+   "arguments": [{"code":"0147SC","etiquette":"x","texte":"y"}],
+   "attendu": "0147SC"
+  },
+  {
+   "nom": "texteFeuille : étiquette d'une erreur",
+   "fonction": "texteFeuille",
+   "arguments": [{"etiquette":"CM 90","texte":"y"}],
+   "attendu": "CM 90"
+  },
+  {
+   "nom": "texteFeuille : texte d'un renvoi",
+   "fonction": "texteFeuille",
+   "arguments": [{"texte":"CM de l'AE"}],
+   "attendu": "CM de l'AE"
+  },
+  {
+   "nom": "texteFeuille : code null → étiquette",
+   "fonction": "texteFeuille",
+   "arguments": [{"code":null,"etiquette":"Erreur 301"}],
+   "attendu": "Erreur 301"
+  },
+  {"nom":"texteFeuille : rien → null","fonction":"texteFeuille","arguments":[{}],"attendu":null},
+  {
+   "nom": "texteFeuille : GL 0147SC (réel)",
+   "fonction": "texteFeuille",
+   "arguments": [{"$noeud":"0147SC","arbre":"smr"}],
+   "attendu": "0147SC"
+  },
+  {
+   "nom": "texteFeuille : orientation, CM 90 (réel)",
+   "fonction": "texteFeuille",
+   "arguments": [{"$noeud":"o-cm-90","arbre":"smr"}],
+   "attendu": "CM 90"
+  },
+  {
+   "nom": "codesNoeud : GL → son code puis ses GME",
+   "fonction": "codesNoeud",
+   "arguments": [{"genre":"gl","code":"0147SC","gmes":["0147SC1","0147SC2"]}],
+   "attendu": ["0147SC","0147SC1","0147SC2"]
+  },
+  {
+   "nom": "codesNoeud : GN → son code",
+   "fonction": "codesNoeud",
+   "arguments": [{"genre":"gn","code":"0147"}],
+   "attendu": ["0147"]
+  },
+  {
+   "nom": "codesNoeud : GR → son code",
+   "fonction": "codesNoeud",
+   "arguments": [{"genre":"gr","code":"0147S"}],
+   "attendu": ["0147S"]
+  },
+  {
+   "nom": "codesNoeud : test → aucun code",
+   "fonction": "codesNoeud",
+   "arguments": [{"genre":"test","code":"x"}],
+   "attendu": []
+  },
+  {
+   "nom": "codesNoeud : erreur → aucun code",
+   "fonction": "codesNoeud",
+   "arguments": [{"genre":"erreur","etiquette":"CM 90"}],
+   "attendu": []
+  },
+  {
+   "nom": "codesNoeud : GL 0103LA (réel)",
+   "fonction": "codesNoeud",
+   "arguments": [{"$noeud":"0103LA","arbre":"smr"}],
+   "attendu": ["0103LA","0103LA0"]
+  },
+  {
+   "nom": "groupeDeRequete : « 01 » (CM)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["01"],
+   "attendu": "01"
+  },
+  {
+   "nom": "groupeDeRequete : « 0147 » (GN)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["0147"],
+   "attendu": "0147"
+  },
+  {
+   "nom": "groupeDeRequete : « 0147s » (GR)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["0147s"],
+   "attendu": "0147s"
+  },
+  {
+   "nom": "groupeDeRequete : « 0147sc » (GL)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["0147sc"],
+   "attendu": "0147sc"
+  },
+  {
+   "nom": "groupeDeRequete : « 0147sc2 » (GME)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["0147sc2"],
+   "attendu": "0147sc2"
+  },
+  {
+   "nom": "groupeDeRequete : « 0 » (un chiffre)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["0"],
+   "attendu": null
+  },
+  {
+   "nom": "groupeDeRequete : « 014 » (trois chiffres)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["014"],
+   "attendu": null
+  },
+  {
+   "nom": "groupeDeRequete : « 0147s2 » (GR suivi d'un chiffre)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["0147s2"],
+   "attendu": null
+  },
+  {
+   "nom": "groupeDeRequete : « 0147sc22 » (trop long)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["0147sc22"],
+   "attendu": null
+  },
+  {
+   "nom": "groupeDeRequete : « 0147S » (majuscule (la requête arrive compactée en minuscules))",
+   "fonction": "groupeDeRequete",
+   "arguments": ["0147S"],
+   "attendu": null
+  },
+  {
+   "nom": "groupeDeRequete : «  » (vide)",
+   "fonction": "groupeDeRequete",
+   "arguments": [""],
+   "attendu": null
+  },
+  {
+   "nom": "groupeDeRequete : « i634 » (code CIM-10)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["i634"],
+   "attendu": null
+  },
+  {
+   "nom": "groupeDeRequete : « 01c03 » (racine MCO)",
+   "fonction": "groupeDeRequete",
+   "arguments": ["01c03"],
+   "attendu": null
+  },
+  {
+   "nom": "natureDeCode : « I63.4 » (graphie)",
+   "fonction": "natureDeCode",
+   "arguments": ["I63.4"],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeCode : « i634 » (minuscules sans point)",
+   "fonction": "natureDeCode",
+   "arguments": ["i634"],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeCode : «  g 81 . 1  » (blancs retirés)",
+   "fonction": "natureDeCode",
+   "arguments": [" g 81 . 1 "],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeCode : « B24.+0 » (graphie avec +)",
+   "fonction": "natureDeCode",
+   "arguments": ["B24.+0"],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeCode : « B24+0 » (+ sans point)",
+   "fonction": "natureDeCode",
+   "arguments": ["B24+0"],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeCode : « I63 » (catégorie)",
+   "fonction": "natureDeCode",
+   "arguments": ["I63"],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeCode : « ALQ+247 » (CSARR)",
+   "fonction": "natureDeCode",
+   "arguments": ["ALQ+247"],
+   "attendu": null
+  },
+  {
+   "nom": "natureDeCode : « EBLA003 » (CCAM)",
+   "fonction": "natureDeCode",
+   "arguments": ["EBLA003"],
+   "attendu": null
+  },
+  {
+   "nom": "natureDeCode : « 0147 » (GN)",
+   "fonction": "natureDeCode",
+   "arguments": ["0147"],
+   "attendu": null
+  },
+  {
+   "nom": "natureDeCode : « D-0103 » (liste)",
+   "fonction": "natureDeCode",
+   "arguments": ["D-0103"],
+   "attendu": null
+  },
+  {"nom":"natureDeCode : «  » (vide)","fonction":"natureDeCode","arguments":[""],"attendu":null},
+  {
+   "nom": "natureDeCode : « Z » (lettre seule)",
+   "fonction": "natureDeCode",
+   "arguments": ["Z"],
+   "attendu": null
+  },
+  {
+   "nom": "idsCategories : réel, la CM 01 suivie de son premier GN, 0103",
+   "fonction": "idsCategories",
+   "arguments": [{"$smr":"classification"}],
+   "extrait": [2],
+   "attendu": "0103"
+  },
+  {
+   "nom": "idsCategories (fictif) : orientation, puis chaque CM suivie de ses GN triés",
+   "fonction": "idsCategories",
+   "arguments": [
+    {
+     "groupes": {
+      "CM": {
+       "90": ["Erreurs","Erreurs et recueils inclassables"],
+       "01": ["Syst. nerveux","Affections du système nerveux"]
+      },
+      "GN": {"0101":["GN un","Groupe nosologique un"],"0102":["GN deux","Groupe nosologique deux"]},
+      "GME": {"0101SA1":["",""],"0101SB1":["",""],"0102UA1":["",""],"0102UA2":["",""]}
+     },
+     "_testsParCm": {
+      "$map": [
+       [
+        "01",
+        [
+         {
+          "cm": "01",
+          "ordre": 1,
+          "gn": "0101",
+          "tests": [
+           {
+            "positions": ["MMP","AE"],
+            "liste": "0901",
+            "texte": "MMP ou AE D-0901 - Lésions traumatiques"
+           },
+           {"positions":["DAS"],"liste":"0902","texte":"DAS D-0902 - Lésions associées"}
+          ],
+          "conditions": ["mmpPrioritaire","quatreCaracteresDifferents"]
+         },
+         {
+          "cm": "01",
+          "ordre": 2,
+          "gn": "0102",
+          "tests": [{"positions":["MMP"],"liste":"0903","texte":"MMP D-0903"}]
+         }
+        ]
+       ]
+      ]
+     },
+     "_erreurs": {"$map":[]},
+     "erreurs": [[301,"Aucun GN trouvé dans la CM 01",true]],
+     "pages": {
+      "noeuds": {"01-1":50,"01-2":51},
+      "grHc": {"0101":60,"0102":61},
+      "grHtp": {"0101":70,"0102":71},
+      "gl": {"0101S":80}
+     },
+     "ecartsAnnexe": {"01-2":{"annexe":"MMP ou AE D-0903","fichier":"MMP D-0903"}},
+     "gr": {
+      "0101": {"hc":"STU","htp":"L","spe":[null,null],"glob":[600,null],"htpSeuils":[null,null]},
+      "0102": {"hc":"U","htp":"L","spe":[null,null],"glob":[null,null],"htpSeuils":[null,null]}
+     },
+     "gl": {
+      "0101S": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","B"],"chir":["A","A"]},
+      "0101T": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0101U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]},
+      "0102U": {"age":["A","A"],"cog":["A","A"],"phy":["A","A","A"],"chir":["A","A"]}
+     },
+     "classesAge": ["0_17","18_plus"],
+     "listes": {"0901":"Lésions traumatiques","0902":"","0903":"Liste trois"},
+     "effectifsListes": {"0901":12},
+     "gnListeSpe": {"0101":{"liste":"0101","speUnique":false}}
+    }
+   ],
+   "attendu": ["orientation","01","0101","0102"]
+  },
+  {
+   "nom": "resoudre : adresse vide []",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},[]],
+   "attendu": {}
+  },
+  {
+   "nom": "resoudre : premier élément null [null]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},[null]],
+   "attendu": {}
+  },
+  {
+   "nom": "resoudre : catégorie seule, cas omis [\"orientation\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["orientation"]],
+   "attendu": {"cmd":"orientation"}
+  },
+  {
+   "nom": "resoudre : nœud et cas numérique [\"orientation\", \"o-ae\", \"2\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["orientation","o-ae","2"]],
+   "attendu": {"cmd":"orientation","noeud":"o-ae","cas":2}
+  },
+  {
+   "nom": "resoudre : cas non numérique → null [\"01\", \"01-3\", \"x\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["01","01-3","x"]],
+   "attendu": {"cmd":"01","noeud":"01-3"}
+  },
+  {
+   "nom": "resoudre : cas 0 [\"0147\", \"0147S-C\", \"0\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["0147","0147S-C","0"]],
+   "attendu": {"cmd":"0147","noeud":"0147S-C","cas":0}
+  },
+  {
+   "nom": "resoudre : code de GR [\"0147S\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["0147S"]],
+   "attendu": {"cmd":"0147","noeud":"0147S"}
+  },
+  {
+   "nom": "resoudre : GR en minuscules [\"0147s\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["0147s"]],
+   "attendu": {"cmd":"0147","noeud":"0147S"}
+  },
+  {
+   "nom": "resoudre : code de GL [\"0147SC\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["0147SC"]],
+   "attendu": {"cmd":"0147","noeud":"0147SC"}
+  },
+  {
+   "nom": "resoudre : code de GME → son GL [\"0147sc2\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["0147sc2"]],
+   "attendu": {"cmd":"0147","noeud":"0147SC"}
+  },
+  {
+   "nom": "resoudre : type d'HTP → GL en A [\"0147I\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["0147I"]],
+   "attendu": {"cmd":"0147","noeud":"0147IA"}
+  },
+  {
+   "nom": "resoudre : type absent du GN → GN seul [\"0147Z\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["0147Z"]],
+   "attendu": {"cmd":"0147"}
+  },
+  {
+   "nom": "resoudre : GR absent du GN [\"0103T\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["0103T"]],
+   "attendu": {"cmd":"0103"}
+  },
+  {
+   "nom": "resoudre : GN inconnu [\"9999S\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["9999S"]],
+   "attendu": {"cmd":"9999S"}
+  },
+  {
+   "nom": "resoudre : illisible [\"abc\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["abc"]],
+   "attendu": {"cmd":"abc"}
+  },
+  {
+   "nom": "resoudre : trop long [\"0147SC22\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["0147SC22"]],
+   "attendu": {"cmd":"0147SC22"}
+  },
+  {
+   "nom": "resoudre : CM 90, pas une catégorie [\"90\"]",
+   "fonction": "resoudre",
+   "arguments": [{"$smr":"classification"},["90"]],
+   "attendu": {"cmd":"90"}
+  },
+  {
+   "nom": "origineChemin : orientation (o-cm-90)",
+   "fonction": "origineChemin",
+   "arguments": [{"$smr":"classification"},{"$noeud":"o-cm-90","arbre":"smr"}],
+   "attendu": "Chemin depuis le premier test de l'orientation :"
+  },
+  {
+   "nom": "origineChemin : erreur d'une CM (01-erreur)",
+   "fonction": "origineChemin",
+   "arguments": [{"$smr":"classification"},{"$noeud":"01-erreur","arbre":"smr"}],
+   "attendu": "Chemin depuis la racine de la CM 01 :"
+  },
+  {
+   "nom": "origineChemin : GN, feuille de sa CM (0147)",
+   "fonction": "origineChemin",
+   "arguments": [{"$smr":"classification"},{"$noeud":"0147","arbre":"smr"}],
+   "attendu": "Chemin depuis la racine de la CM 01 :"
+  },
+  {
+   "nom": "origineChemin : GL d'HC (0147SC)",
+   "fonction": "origineChemin",
+   "arguments": [{"$smr":"classification"},{"$noeud":"0147SC","arbre":"smr"}],
+   "attendu": "Chemin dans l'arbre du GN 0147, hospitalisation complète :"
+  },
+  {
+   "nom": "origineChemin : GL d'HTP (0147IA)",
+   "fonction": "origineChemin",
+   "arguments": [{"$smr":"classification"},{"$noeud":"0147IA","arbre":"smr"}],
+   "attendu": "Chemin dans l'arbre du GN 0147, hospitalisation à temps partiel :"
+  },
+  {
+   "nom": "origineChemin : GL d'HTP pédiatrique (1006HA)",
+   "fonction": "origineChemin",
+   "arguments": [{"$smr":"classification"},{"$noeud":"1006HA","arbre":"smr"}],
+   "attendu": "Chemin dans l'arbre du GN 1006, hospitalisation à temps partiel :"
+  },
+  {
+   "nom": "origineChemin : GN non subdivisé en HTP (0103LA)",
+   "fonction": "origineChemin",
+   "arguments": [{"$smr":"classification"},{"$noeud":"0103LA","arbre":"smr"}],
+   "attendu": "Le GN n'est pas subdivisé en HTP : chaque RHS d'HTP y va dans ce groupe, sans test (3.4.2.2)."
+  },
+  {
+   "nom": "origineChemin : GN non subdivisé en HTP (2303LA)",
+   "fonction": "origineChemin",
+   "arguments": [{"$smr":"classification"},{"$noeud":"2303LA","arbre":"smr"}],
+   "attendu": "Le GN n'est pas subdivisé en HTP : chaque RHS d'HTP y va dans ce groupe, sans test (3.4.2.2)."
+  },
+  {
+   "nom": "origineChemin : GL d'HC d'un GN à type unique (0103SC)",
+   "fonction": "origineChemin",
+   "arguments": [{"$smr":"classification"},{"$noeud":"0103SC","arbre":"smr"}],
+   "attendu": "Chemin dans l'arbre du GN 0103, hospitalisation complète :"
+  },
+  {
+   "nom": "codesDeListe : codes de la liste, dans l'ordre des lignes",
+   "fonction": "codesDeListe",
+   "arguments": [
+    {
+     "lignes": [
+      {"Code":"A00.0","Libellé":"UN","Listes":["0103","0112"]},
+      {"Code":"B01","Libellé":"DEUX","Listes":[]},
+      {"Code":"C02","Libellé":"TROIS","Listes":["0112"]},
+      {"Code":"B24.+0","Libellé":"QUATRE","Listes":["1803"]}
+     ]
+    },
+    "D-0112"
+   ],
+   "attendu": [{"Code":"A00.0","Libellé code":"UN"},{"Code":"C02","Libellé code":"TROIS"}]
+  },
+  {
+   "nom": "codesDeListe : liste sans code",
+   "fonction": "codesDeListe",
+   "arguments": [
+    {
+     "lignes": [
+      {"Code":"A00.0","Libellé":"UN","Listes":["0103","0112"]},
+      {"Code":"B01","Libellé":"DEUX","Listes":[]},
+      {"Code":"C02","Libellé":"TROIS","Listes":["0112"]},
+      {"Code":"B24.+0","Libellé":"QUATRE","Listes":["1803"]}
+     ]
+    },
+    "D-9999"
+   ],
+   "attendu": []
+  },
+  {
+   "nom": "codesDeListe : le code de liste doit porter « D- » (0112 → « 12 »)",
+   "fonction": "codesDeListe",
+   "arguments": [
+    {
+     "lignes": [
+      {"Code":"A00.0","Libellé":"UN","Listes":["0103","0112"]},
+      {"Code":"B01","Libellé":"DEUX","Listes":[]},
+      {"Code":"C02","Libellé":"TROIS","Listes":["0112"]},
+      {"Code":"B24.+0","Libellé":"QUATRE","Listes":["1803"]}
+     ]
+    },
+    "0112"
+   ],
+   "attendu": []
+  },
+  {
+   "nom": "codesDeListe : D-0103 (réel)",
+   "fonction": "codesDeListe",
+   "arguments": [{"$smr":"diagnostics"},"D-0103"],
+   "attendu": [
+    {"Code":"R40.10","Libellé code":"ETAT PAUCIRELATIONNEL"},
+    {"Code":"R40.20","Libellé code":"ETAT VEGETATIF CHRONIQUE"}
+   ]
+  },
+  {
+   "nom": "codesDeListe : D-0112, AVC, ligne de I63.4 (réel)",
+   "fonction": "codesDeListe",
+   "arguments": [{"$smr":"diagnostics"},"D-0112"],
+   "extrait": [{"Code":"I63.4"}],
+   "attendu": {"Code":"I63.4","Libellé code":"INFARCTUS CEREB. DU A UNE EMBOLIE DES ART. CEREB."}
+  },
+  {
+   "nom": "listesDuCode : codes qui commencent par la requête, avec leurs listes",
+   "fonction": "listesDuCode",
+   "arguments": [
+    {
+     "lignes": [
+      {"Code":"A00.0","Libellé":"UN","Listes":["0103","0112"]},
+      {"Code":"B01","Libellé":"DEUX","Listes":[]},
+      {"Code":"C02","Libellé":"TROIS","Listes":["0112"]},
+      {"Code":"B24.+0","Libellé":"QUATRE","Listes":["1803"]}
+     ]
+    },
+    "a0"
+   ],
+   "attendu": {"A00.0":{"libelle":"UN","listes":["D-0103","D-0112"]}}
+  },
+  {
+   "nom": "listesDuCode : code sans liste ignoré",
+   "fonction": "listesDuCode",
+   "arguments": [
+    {
+     "lignes": [
+      {"Code":"A00.0","Libellé":"UN","Listes":["0103","0112"]},
+      {"Code":"B01","Libellé":"DEUX","Listes":[]},
+      {"Code":"C02","Libellé":"TROIS","Listes":["0112"]},
+      {"Code":"B24.+0","Libellé":"QUATRE","Listes":["1803"]}
+     ]
+    },
+    "B01"
+   ],
+   "attendu": {}
+  },
+  {
+   "nom": "listesDuCode : requête vide → tous les codes à listes",
+   "fonction": "listesDuCode",
+   "arguments": [
+    {
+     "lignes": [
+      {"Code":"A00.0","Libellé":"UN","Listes":["0103","0112"]},
+      {"Code":"B01","Libellé":"DEUX","Listes":[]},
+      {"Code":"C02","Libellé":"TROIS","Listes":["0112"]},
+      {"Code":"B24.+0","Libellé":"QUATRE","Listes":["1803"]}
+     ]
+    },
+    ""
+   ],
+   "attendu": {
+    "A00.0": {"libelle":"UN","listes":["D-0103","D-0112"]},
+    "C02": {"libelle":"TROIS","listes":["D-0112"]},
+    "B24.+0": {"libelle":"QUATRE","listes":["D-1803"]}
+   }
+  },
+  {
+   "nom": "listesDuCode : « B24+0 » trouve B24.+0",
+   "fonction": "listesDuCode",
+   "arguments": [
+    {
+     "lignes": [
+      {"Code":"A00.0","Libellé":"UN","Listes":["0103","0112"]},
+      {"Code":"B01","Libellé":"DEUX","Listes":[]},
+      {"Code":"C02","Libellé":"TROIS","Listes":["0112"]},
+      {"Code":"B24.+0","Libellé":"QUATRE","Listes":["1803"]}
+     ]
+    },
+    "B24+0"
+   ],
+   "attendu": {"B24.+0":{"libelle":"QUATRE","listes":["D-1803"]}}
+  },
+  {
+   "nom": "listesDuCode : I63.4 (réel)",
+   "fonction": "listesDuCode",
+   "arguments": [{"$smr":"diagnostics"},"I63.4"],
+   "attendu": {"I63.4":{"libelle":"INFARCTUS CEREB. DU A UNE EMBOLIE DES ART. CEREB.","listes":["D-0112"]}}
+  },
+  {
+   "nom": "listesDuCode : i634 (réel)",
+   "fonction": "listesDuCode",
+   "arguments": [{"$smr":"diagnostics"},"i634"],
+   "extrait": ["I63.4","listes"],
+   "attendu": ["D-0112"]
+  },
+  {
+   "nom": "listesDuCode : G81.1, deux listes (réel)",
+   "fonction": "listesDuCode",
+   "arguments": [{"$smr":"diagnostics"},"G81.1"],
+   "extrait": ["G81.1","listes"],
+   "attendu": ["D-0150","D-0145"]
+  },
+  {
+   "nom": "listesDuCode : L89.2 (réel)",
+   "fonction": "listesDuCode",
+   "arguments": [{"$smr":"diagnostics"},"L89.2"],
+   "extrait": ["L89.2","listes"],
+   "attendu": ["D-0906"]
+  },
+  {
+   "nom": "listesDuCode : R06.0 (réel)",
+   "fonction": "listesDuCode",
+   "arguments": [{"$smr":"diagnostics"},"R06.0"],
+   "extrait": ["R06.0","listes"],
+   "attendu": ["D-2318"]
+  },
+  {
+   "nom": "listesDuCode : B24+0 → B24.+0 (réel)",
+   "fonction": "listesDuCode",
+   "arguments": [{"$smr":"diagnostics"},"B24+0"],
+   "extrait": ["B24.+0","listes"],
+   "attendu": ["D-1803"]
+  },
+  {
+   "nom": "listesDuCode : catégorie I63, dont I63.9 (réel)",
+   "fonction": "listesDuCode",
+   "arguments": [{"$smr":"diagnostics"},"I63"],
+   "extrait": ["I63.9"],
+   "attendu": {"libelle":"INFARCTUS CEREB., SAI","listes":["D-0112"]}
+  },
+  {
+   "nom": "listesDuCode : CSARR ALQ+247 → aucun (réel)",
+   "fonction": "listesDuCode",
+   "arguments": [{"$smr":"diagnostics"},"ALQ+247"],
+   "attendu": {}
+  },
+  {
+   "nom": "rangsDuGn : 0147 (un rang)",
+   "fonction": "rangsDuGn",
+   "arguments": [{"$smr":"classification"},"0147"],
+   "attendu": ["6"]
+  },
+  {
+   "nom": "rangsDuGn : plusieurs rangs, dans l'ordre des tests, en texte",
+   "fonction": "rangsDuGn",
+   "arguments": [
+    {
+     "tests": [
+      {"gn":"0134","ordre":14},
+      {"gn":"0147","ordre":15},
+      {"gn":"0134","ordre":16},
+      {"gn":"0134","ordre":2}
+     ]
+    },
+    "0134"
+   ],
+   "attendu": ["14","16","2"]
+  },
+  {
+   "nom": "rangsDuGn : 0103 (premier rang)",
+   "fonction": "rangsDuGn",
+   "arguments": [{"$smr":"classification"},"0103"],
+   "attendu": ["1"]
+  },
+  {
+   "nom": "rangsDuGn : 9999 (GN inconnu)",
+   "fonction": "rangsDuGn",
+   "arguments": [{"$smr":"classification"},"9999"],
+   "attendu": []
+  },
+  {
+   "nom": "particularitesGn : 0147 (règle combinée en S, HTP selon l'intensité)",
+   "fonction": "particularitesGn",
+   "arguments": [{"$smr":"classification"},"0147"],
+   "attendu": {
+    "adultes": ["S","T","U"],
+    "seuilManquant": false,
+    "combinees": ["0147S"],
+    "sansSeverite2": false,
+    "intensite": true
+   }
+  },
+  {
+   "nom": "particularitesGn : 0103, un seul type d'adultes (réel)",
+   "fonction": "particularitesGn",
+   "arguments": [{"$smr":"classification"},"0103"],
+   "extrait": ["adultes"],
+   "attendu": ["S"]
+  },
+  {
+   "nom": "particularitesGn : 1006, type pédiatrique sans règle combinée (réel)",
+   "fonction": "particularitesGn",
+   "arguments": [{"$smr":"classification"},"1006"],
+   "extrait": ["combinees"],
+   "attendu": []
+  },
+  {
+   "nom": "particularitesGn : 2303, seuil manquant (réel)",
+   "fonction": "particularitesGn",
+   "arguments": [{"$smr":"classification"},"2303"],
+   "extrait": ["seuilManquant"],
+   "attendu": true
+  },
+  {
+   "nom": "particularitesGn : 2303, sans sévérité 2 (réel)",
+   "fonction": "particularitesGn",
+   "arguments": [{"$smr":"classification"},"2303"],
+   "extrait": ["sansSeverite2"],
+   "attendu": true
+  },
+  {
+   "nom": "particularitesGn : 0109, règles combinées en S et T (réel)",
+   "fonction": "particularitesGn",
+   "arguments": [{"$smr":"classification"},"0109"],
+   "extrait": ["combinees"],
+   "attendu": ["0109S","0109T"]
+  },
+  {
+   "nom": "particularitesGn (fictif) : GR absent de GL_infos ignoré pour les règles combinées",
+   "fonction": "particularitesGn",
+   "arguments": [
+    {
+     "_arbreSmr": {"departs":{"$map":[["0101",{"hc":"0101-hc-age","htp":"0101LA","adultes":["S","T"]}]]}},
+     "gr": {"0101":{"hc":"STP","htp":"IJK","spe":[600,30],"glob":[null,30],"htpSeuils":[60,150]}},
+     "gl": {"0101S":{"phy":["A",[[0,80,"C"],[81,null,"B"]]]}},
+     "groupes": {"GN":{"0101":["",""]},"GME":{"0101SA1":["",""]}}
+    },
+    "0101"
+   ],
+   "attendu": {
+    "adultes": ["S","T"],
+    "seuilManquant": true,
+    "combinees": ["0101S"],
+    "sansSeverite2": true,
+    "intensite": true
+   }
+  }
+ ]
+}
