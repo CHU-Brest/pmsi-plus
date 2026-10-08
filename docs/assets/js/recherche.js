@@ -33,9 +33,10 @@ export function filtre(requete) {
   return (ligne) => motsClefs.every((mot) => ligne[COLONNE_CLE].includes(mot));
 }
 
-/** Ordre de deux textes, caractère par caractère (points de code), sans
- *  dépendre de la langue du navigateur : le tri des tableaux de codes reste
- *  le même partout, et la skill (Python) le reproduit à l'identique. */
+/** Ordre de deux textes, caractère par caractère (unités UTF-16, soit les
+ *  points de code pour les codes, tous en ASCII), sans dépendre de la langue
+ *  du navigateur : le tri des tableaux de codes reste le même partout, et la
+ *  skill (Python) le reproduit à l'identique. */
 export function comparer(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
