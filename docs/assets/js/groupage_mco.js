@@ -12,7 +12,7 @@
 // chargés en argument. Pendant MCO de smr.js. Partagé par la fiche code,
 // l'algorithme, les CMA, les codes et actes frontières, les tarifs.
 
-import { normaliser } from "./recherche.js";
+import { comparer, normaliser } from "./recherche.js";
 
 // ==== Graphie des codes ====
 
@@ -245,7 +245,7 @@ function calculerFrontieresDp(arbre, diagnostics) {
     }
     for (const [cat, codes] of parCategorie) {
       if (new Set(codes.map((c) => c.i)).size < 2) continue;
-      for (const c of codes.sort((a, b) => a.code.localeCompare(b.code))) {
+      for (const c of codes.sort((a, b) => comparer(a.code, b.code))) {
         const racines = [...racinesDepuis(arbre, n.branches[c.i].vers)].sort();
         lignes.push({
           CMD: n.cmd,
@@ -260,7 +260,7 @@ function calculerFrontieresDp(arbre, diagnostics) {
       }
     }
   }
-  lignes.sort((a, b) => a.CMD.localeCompare(b.CMD) || a._categorie.localeCompare(b._categorie) || a.Code.localeCompare(b.Code));
+  lignes.sort((a, b) => comparer(a.CMD, b.CMD) || comparer(a._categorie, b._categorie) || comparer(a.Code, b.Code));
   return lignes;
 }
 
@@ -332,7 +332,7 @@ function calculerFrontieresActes(arbre, actes) {
       }
     }
   }
-  lignes.sort((a, b) => a.CMD.localeCompare(b.CMD) || a.Code.localeCompare(b.Code));
+  lignes.sort((a, b) => comparer(a.CMD, b.CMD) || comparer(a.Code, b.Code));
   return lignes;
 }
 

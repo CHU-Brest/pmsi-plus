@@ -19,9 +19,7 @@
 import { chargerJeu, chargerJson } from "./donnees.js";
 import { nombre } from "./interface.js";
 import * as recherche from "./recherche.js";
-
-// Ordre de deux chaînes, pour sort().
-const comparer = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+import { comparer } from "./recherche.js";
 
 // ==== Graphie des codes ====
 
@@ -735,7 +733,7 @@ const COLONNES_ACTES = ["Liste", "Libellé liste", "GN couverts", "Code", "Nomen
 export function lignesActes(jeu, k) {
   if (!jeu._groupageLignes) {
     const lignes = [...jeu.lignes]
-      .sort((a, b) => a.CM.localeCompare(b.CM) || a.Liste.localeCompare(b.Liste) || a.Code.localeCompare(b.Code))
+      .sort((a, b) => comparer(a.CM, b.CM) || comparer(a.Liste, b.Liste) || comparer(a.Code, b.Code))
       .map((l) => ({
         Liste: l.Liste,
         "Libellé liste": l["Libellé liste"],

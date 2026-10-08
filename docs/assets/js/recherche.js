@@ -32,3 +32,10 @@ export function filtre(requete) {
   if (motsClefs.length === 0) return () => true;
   return (ligne) => motsClefs.every((mot) => ligne[COLONNE_CLE].includes(mot));
 }
+
+/** Ordre de deux textes, caractère par caractère (points de code), sans
+ *  dépendre de la langue du navigateur : le tri des tableaux de codes reste
+ *  le même partout, et la skill (Python) le reproduit à l'identique. */
+export function comparer(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
