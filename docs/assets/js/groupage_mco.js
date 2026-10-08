@@ -22,10 +22,11 @@ export const RE_CCAM = /^[A-Z]{4}\d{3}/;
 /** Une racine de GHM : « 01C03 ». */
 export const RE_RACINE = /^\d{2}[CKMZ]\d{2}$/;
 
-/** « g409 », « G40.9 » → « G40.9 » ; « aafa001 » → « AAFA001 ». */
+/** « g409 », « G40.9 » → « G40.9 » ; « aafa001 », « EBLA0030 » (chiffre de
+ *  phase), « AAFA001-00/0 » (forme des listes) → le code CCAM, 7 caractères. */
 export function graphie(saisie) {
   const c = saisie.trim().toUpperCase().replace(/\s+/g, "");
-  if (RE_CCAM.test(c)) return c;
+  if (RE_CCAM.test(c)) return c.slice(0, 7);
   const sansPoint = c.replace(/\./g, "");
   return sansPoint.length <= 3 ? sansPoint : `${sansPoint.slice(0, 3)}.${sansPoint.slice(3)}`;
 }
