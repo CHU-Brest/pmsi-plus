@@ -267,8 +267,10 @@ function calculerFrontieresDp(arbre, diagnostics) {
 
 const SYMBOLES_ACTES = new Set(["A", "A2", "Atous"]);
 
+/** Les types (C, K, M, Z) des racines de GHM d'une liste « 14C03, 14C09 » ;
+ *  ni le groupe d'erreur 90Z02Z ni un renvoi vers l'orientation n'en ont. */
 function typesDe(racines) {
-  return [...new Set(racines.split(", ").map((r) => (/^\d{2}[CKMZ]/.test(r) ? r[2] : "?")))].sort().join("");
+  return [...new Set(racines.split(", ").filter((r) => RE_RACINE.test(r)).map((r) => r[2]))].sort().join("");
 }
 
 /** Actes frontières : dans chaque CMD, les actes d'une même famille (4
@@ -319,7 +321,8 @@ function calculerFrontieresActes(arbre, actes) {
       // Le type de la racine (3e caractère : C chirurgical, K
       // interventionnel, M médical, Z indifférencié) change-t-il au sein de
       // la famille ? C'est la frontière qui pèse le plus sur la valorisation.
-      const types = new Set(membres.map((m) => typesDe(m.racines)));
+      // Un acte qui ne mène à aucune racine (erreur, renvoi) n'a pas de type.
+      const types = new Set(membres.map((m) => typesDe(m.racines)).filter(Boolean));
       for (const m of membres) {
         lignes.push({
           CMD: cmd,
