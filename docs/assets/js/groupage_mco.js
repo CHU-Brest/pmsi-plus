@@ -641,7 +641,7 @@ export function decompte(racines) {
     const n = racines.filter((r) => r[2] === type).length;
     return n ? [`${n} ${nom}${n > 1 ? "s" : ""}`] : [];
   });
-  return `${racines.length} racines : ${parType.join(", ")}`;
+  return `${racines.length} racine${racines.length > 1 ? "s" : ""} : ${parType.join(", ")}`;
 }
 
 // Au plus tant de voisins dans l'encadré d'un code ou d'un acte frontière :
