@@ -1,0 +1,243 @@
+{
+ "module": "recherche",
+ "non_portes": {},
+ "cas": [
+  {
+   "nom": "normaliser : accents et majuscules",
+   "fonction": "normaliser",
+   "arguments": ["Épilepsie GRAVE"],
+   "attendu": "epilepsie grave"
+  },
+  {
+   "nom": "indexer : colonnes jointes, normalisées, dans _recherche",
+   "fonction": "indexer",
+   "arguments": [[{"L":"Épilepsie grave","M":"x"}],["L","M"]],
+   "extrait": [0,"_recherche"],
+   "attendu": "epilepsie grave x"
+  },
+  {
+   "nom": "filtre : tous les mots, dans le désordre",
+   "fonction": "filtre",
+   "arguments": ["grave epi"],
+   "puis": [[{"_recherche":"epilepsie grave"}],[{"_recherche":"epilepsie"}]],
+   "attendu": [true,false]
+  },
+  {
+   "nom": "normaliser : null donne une chaîne vide",
+   "fonction": "normaliser",
+   "arguments": [null],
+   "attendu": ""
+  },
+  {"nom":"normaliser : chaîne vide","fonction":"normaliser","arguments":[""],"attendu":""},
+  {
+   "nom": "normaliser : 0 n'est pas vide (?? et non ||), rendu « 0 »",
+   "fonction": "normaliser",
+   "arguments": [0],
+   "attendu": "0"
+  },
+  {
+   "nom": "normaliser : un entier est mis en texte",
+   "fonction": "normaliser",
+   "arguments": [5071],
+   "attendu": "5071"
+  },
+  {
+   "nom": "normaliser : un décimal est mis en texte à la JS (1.5)",
+   "fonction": "normaliser",
+   "arguments": [1.5],
+   "attendu": "1.5"
+  },
+  {
+   "nom": "normaliser : \\p{Diacritic} retire aussi les signes isolés ^ ` ¨ ¯ ´ · ¸",
+   "fonction": "normaliser",
+   "arguments": ["a^b`c¨d¯e´f·g¸h"],
+   "attendu": "abcdefgh"
+  },
+  {
+   "nom": "normaliser : garde ~ _ ' et l'apostrophe typographique ’ (U+2019)",
+   "fonction": "normaliser",
+   "arguments": ["a~b_c'd’e"],
+   "attendu": "a~b_c'd’e"
+  },
+  {
+   "nom": "normaliser : retire les lettres modificatives ʼ (U+02BC) ˆ (U+02C6) ˜ (U+02DC)",
+   "fonction": "normaliser",
+   "arguments": ["aʼbˆc˜d"],
+   "attendu": "abcd"
+  },
+  {
+   "nom": "normaliser : point médian de l'écriture inclusive retiré",
+   "fonction": "normaliser",
+   "arguments": ["Patient·e·s"],
+   "attendu": "patientes"
+  },
+  {
+   "nom": "normaliser : ligatures et lettres sans décomposition gardées (œ, æ, ß, ø, ł), ẞ → ß",
+   "fonction": "normaliser",
+   "arguments": ["ŒDÈME Straße ẞ Æ Ø Ł"],
+   "attendu": "œdeme straße ß æ ø ł"
+  },
+  {
+   "nom": "normaliser : lettres décomposables hors du français (Å, ñ, ç, Ÿ, İ)",
+   "fonction": "normaliser",
+   "arguments": ["Ångström Ñ Ç Ÿ İ"],
+   "attendu": "angstrom n c y i"
+  },
+  {
+   "nom": "normaliser : diacritique combinant déjà décomposé (e + U+0301)",
+   "fonction": "normaliser",
+   "arguments": ["Céphalée"],
+   "attendu": "cephalee"
+  },
+  {
+   "nom": "normaliser : espaces ni rognés ni réduits (espace, U+00A0, tabulation)",
+   "fonction": "normaliser",
+   "arguments": ["  A B\tC  "],
+   "attendu": "  a b\tc  "
+  },
+  {
+   "nom": "normaliser : signes des codes gardés (. + -)",
+   "fonction": "normaliser",
+   "arguments": ["B24.+0 ALQ+247 D-0103"],
+   "attendu": "b24.+0 alq+247 d-0103"
+  },
+  {
+   "nom": "indexer : colonne absente ou nulle → vide, les espaces de jointure restent",
+   "fonction": "indexer",
+   "arguments": [[{"L":"A","M":null}],["L","M","N"]],
+   "extrait": [0,"_recherche"],
+   "attendu": "a  "
+  },
+  {
+   "nom": "indexer : nombres mis en texte, 0 compris",
+   "fonction": "indexer",
+   "arguments": [[{"GHS":5071,"n":0,"x":1.5}],["GHS","n","x"]],
+   "extrait": [0,"_recherche"],
+   "attendu": "5071 0 1.5"
+  },
+  {
+   "nom": "indexer : aucune colonne → _recherche vide",
+   "fonction": "indexer",
+   "arguments": [[{"L":"x"}],[]],
+   "extrait": [0,"_recherche"],
+   "attendu": ""
+  },
+  {
+   "nom": "indexer : chaque ligne indexée (deuxième ligne)",
+   "fonction": "indexer",
+   "arguments": [[{"L":"Un"},{"L":"Deux Œufs"}],["L"]],
+   "extrait": [1,"_recherche"],
+   "attendu": "deux œufs"
+  },
+  {
+   "nom": "indexer : rend les lignes, autres colonnes intactes (_recherche n'est pas projetée)",
+   "fonction": "indexer",
+   "arguments": [[{"L":"Été","N":2}],["L"]],
+   "attendu": [{"L":"Été","N":2}]
+  },
+  {"nom":"indexer : liste vide","fonction":"indexer","arguments":[[],["L"]],"attendu":[]},
+  {
+   "nom": "filtre : requête blanche → tout passe, même une ligne sans _recherche",
+   "fonction": "filtre",
+   "arguments": ["  \t "],
+   "puis": [[{}],[{"_recherche":""}]],
+   "attendu": [true,true]
+  },
+  {
+   "nom": "filtre : requête nulle → tout passe",
+   "fonction": "filtre",
+   "arguments": [null],
+   "puis": [[{"_recherche":"x"}]],
+   "attendu": [true]
+  },
+  {
+   "nom": "filtre : accents et majuscules de la requête normalisés",
+   "fonction": "filtre",
+   "arguments": ["ÉPI Grâve"],
+   "puis": [[{"_recherche":"epilepsie grave"}]],
+   "attendu": [true]
+  },
+  {
+   "nom": "filtre : la ligne n'est pas renormalisée (indexer d'abord)",
+   "fonction": "filtre",
+   "arguments": ["epi"],
+   "puis": [[{"_recherche":"Épilepsie"}],[{"_recherche":"épilepsie"}],[{"_recherche":"epilepsie"}]],
+   "attendu": [false,false,true]
+  },
+  {
+   "nom": "filtre : sous-chaînes, pas mots entiers (« age » dans « pontage »)",
+   "fonction": "filtre",
+   "arguments": ["âge"],
+   "puis": [[{"_recherche":"coronaropathies avec pontage"}]],
+   "attendu": [true]
+  },
+  {
+   "nom": "filtre : blancs séparateurs JS \\s (U+00A0, U+202F, tabulation, saut de ligne)",
+   "fonction": "filtre",
+   "arguments": ["grave epi lep\tsie\n"],
+   "puis": [[{"_recherche":"epilepsie grave"}],[{"_recherche":"epilepsie"}]],
+   "attendu": [true,false]
+  },
+  {
+   "nom": "filtre : U+FEFF est un blanc pour \\s en JS (il sépare deux mots)",
+   "fonction": "filtre",
+   "arguments": ["grave﻿epi"],
+   "puis": [[{"_recherche":"epilepsie grave"}]],
+   "attendu": [true]
+  },
+  {
+   "nom": "filtre : U+200B n'est pas un blanc (un seul mot)",
+   "fonction": "filtre",
+   "arguments": ["grave​epi"],
+   "puis": [[{"_recherche":"epilepsie grave"}]],
+   "attendu": [false]
+  },
+  {
+   "nom": "filtre : ligne sans _recherche et requête non vide → exception",
+   "fonction": "filtre",
+   "arguments": ["epi"],
+   "puis": [[{"L":"epilepsie"}]],
+   "attendu": {"$erreur":true}
+  },
+  {
+   "nom": "comparer : points de code, « + » (U+2B) avant « . » (U+2E)",
+   "fonction": "comparer",
+   "arguments": ["X10+1","X10.1"],
+   "attendu": -1
+  },
+  {"nom":"comparer : égalité","fonction":"comparer","arguments":["D-0103","D-0103"],"attendu":0},
+  {
+   "nom": "comparer : majuscule avant minuscule, chiffre avant lettre",
+   "fonction": "comparer",
+   "arguments": ["tous_04","Tous_05"],
+   "attendu": 1
+  },
+  {
+   "nom": "comparer : « _ » après les chiffres",
+   "fonction": "comparer",
+   "arguments": ["0106_09","01060"],
+   "attendu": 1
+  },
+  {
+   "nom": "indexer : ligne désignée par un champ (extrait par valeur)",
+   "fonction": "indexer",
+   "arguments": [[{"Code":"A00","L":"Choléra"},{"Code":"G40.9","L":"Épilepsie"}],["Code","L"]],
+   "extrait": [{"Code":"G40.9"},"_recherche"],
+   "attendu": "g40.9 epilepsie"
+  },
+  {
+   "nom": "filtre : U+0085 (NEL) n'est pas un blanc pour \\s en JS : un seul mot (str.split() de Python le coupe)",
+   "fonction": "filtre",
+   "arguments": ["graveepi"],
+   "puis": [[{"_recherche":"epilepsie grave"}],[{"_recherche":"graveepi"}]],
+   "attendu": [false,true]
+  },
+  {
+   "nom": "filtre : U+001C à U+001F ne sont pas des blancs pour \\s en JS : un seul mot (str.split() de Python les coupe)",
+   "fonction": "filtre",
+   "arguments": ["a\u001cb\u001dc\u001ed\u001fe"],
+   "puis": [[{"_recherche":"a b c d e"}],[{"_recherche":"a\u001cb\u001dc\u001ed\u001fe"}]],
+   "attendu": [false,true]
+  }
+ ]
+}
