@@ -411,7 +411,8 @@ export function transcodages(lignes, k) {
 export function citerIntervenants(codes, k) {
   const noms = codes.map((iv) => `${(k.intervenants[iv] ?? iv).toLowerCase()} (${iv})`);
   if (noms.length <= INTERVENANTS_CITES_MAX) return noms.join(", ");
-  return `${noms.slice(0, INTERVENANTS_CITES_MAX).join(", ")} et ${nombre(noms.length - INTERVENANTS_CITES_MAX)} autres`;
+  const autres = noms.length - INTERVENANTS_CITES_MAX;
+  return `${noms.slice(0, INTERVENANTS_CITES_MAX).join(", ")} et ${nombre(autres)} autre${autres > 1 ? "s" : ""}`;
 }
 
 /** Les deux tables du thème Transcodage et les écarts, une fois par jeu
