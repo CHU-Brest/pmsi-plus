@@ -1,0 +1,522 @@
+{
+ "module": "tarifs",
+ "non_portes": {
+  "chargerTarifs": "chargement par fetch : la skill lit groupage/tarifs.json elle-même",
+  "noteTarifs": "construit du DOM (paragraphe et lien) ; sa phrase sur la lecture des tarifs va dans references/mco.md",
+  "tableTarifs": "construit du DOM (table HTML) : la skill rend les données de groupesTarifs",
+  "euros": "mise en forme d'affichage (Intl fr-FR : espace fine U+202F, arrondi décimal 1.005 → 1,01) : la skill rend les montants en nombres JSON",
+  "jours": "mise en forme d'affichage (Intl fr-FR) : la skill rend les bornes en nombres JSON"
+ },
+ "cas": [
+  {
+   "nom": "parGhm : lignes regroupées par GHM, triées par numéro de GHS croissant",
+   "fonction": "parGhm",
+   "arguments": [
+    {
+     "lignes": [
+      {"GHS":30,"GHM":"99X991","Tarif":3},
+      {"GHS":20,"GHM":"99X992","Tarif":2},
+      {"GHS":10,"GHM":"99X991","Tarif":1},
+      {"GHS":25,"GHM":"99X991","Tarif":4}
+     ]
+    }
+   ],
+   "attendu": {
+    "99X991": [
+     {"GHS":10,"GHM":"99X991","Tarif":1},
+     {"GHS":25,"GHM":"99X991","Tarif":4},
+     {"GHS":30,"GHM":"99X991","Tarif":3}
+    ],
+    "99X992": [{"GHS":20,"GHM":"99X992","Tarif":2}]
+   }
+  },
+  {"nom":"parGhm : jeu sans ligne","fonction":"parGhm","arguments":[{"lignes":[]}],"attendu":{}},
+  {
+   "nom": "parGhm : 01C031, GHS triés par numéro : le 5071 après le 22 (réel)",
+   "fonction": "parGhm",
+   "arguments": [{"$jeu":"groupage/tarifs"}],
+   "extrait": ["01C031",1,"GHS"],
+   "attendu": 5071
+  },
+  {
+   "nom": "parGhm : GHM absent de l'arrêté (09Z02A, réel)",
+   "fonction": "parGhm",
+   "arguments": [{"$jeu":"groupage/tarifs"}],
+   "extrait": ["09Z02A"],
+   "attendu": null
+  },
+  {
+   "nom": "ghmDeRacine : GHM tarifés de la racine, triés par code (chiffres avant lettres)",
+   "fonction": "ghmDeRacine",
+   "arguments": [
+    {
+     "lignes": [
+      {"GHS":4,"GHM":"99X99Z"},
+      {"GHS":1,"GHM":"99X99T"},
+      {"GHS":2,"GHM":"99X991"},
+      {"GHS":3,"GHM":"99X99J"},
+      {"GHS":5,"GHM":"99X981"},
+      {"GHS":6,"GHM":"99X991"}
+     ]
+    },
+    "99X99"
+   ],
+   "attendu": ["99X991","99X99J","99X99T","99X99Z"]
+  },
+  {
+   "nom": "ghmDeRacine : racine 01C03 (réel)",
+   "fonction": "ghmDeRacine",
+   "arguments": [{"$jeu":"groupage/tarifs"},"01C03"],
+   "attendu": ["01C031","01C032","01C033","01C034"]
+  },
+  {
+   "nom": "ghmDeRacine : racine 09Z02, seul 09Z02B est tarifé (réel)",
+   "fonction": "ghmDeRacine",
+   "arguments": [{"$jeu":"groupage/tarifs"},"09Z02"],
+   "attendu": ["09Z02B"]
+  },
+  {
+   "nom": "ghmDeRacine : racine 05M09 (réel)",
+   "fonction": "ghmDeRacine",
+   "arguments": [{"$jeu":"groupage/tarifs"},"05M09"],
+   "attendu": ["05M091","05M092","05M093","05M094","05M09T"]
+  },
+  {
+   "nom": "ghmDeRacine : groupe d'erreur 90Z02 sans tarif (réel)",
+   "fonction": "ghmDeRacine",
+   "arguments": [{"$jeu":"groupage/tarifs"},"90Z02"],
+   "attendu": []
+  },
+  {
+   "nom": "ghmDeRacine : simple préfixe (01C0 → plusieurs racines, réel)",
+   "fonction": "ghmDeRacine",
+   "arguments": [{"$jeu":"groupage/tarifs"},"01C0"],
+   "attendu": [
+    "01C031",
+    "01C032",
+    "01C033",
+    "01C034",
+    "01C041",
+    "01C042",
+    "01C043",
+    "01C044",
+    "01C051",
+    "01C052",
+    "01C053",
+    "01C054",
+    "01C061",
+    "01C062",
+    "01C063",
+    "01C064",
+    "01C081",
+    "01C082",
+    "01C083",
+    "01C084",
+    "01C08J",
+    "01C091",
+    "01C092",
+    "01C093",
+    "01C094"
+   ]
+  },
+  {
+   "nom": "nombreGhs : GHS distincts, GHM inconnu ignoré",
+   "fonction": "nombreGhs",
+   "arguments": [
+    {
+     "lignes": [
+      {"GHS":10,"GHM":"99X991"},
+      {"GHS":90,"GHM":"99X991"},
+      {"GHS":20,"GHM":"99X992"},
+      {"GHS":90,"GHM":"99X992"}
+     ]
+    },
+    ["99X991","99X992","99X993"]
+   ],
+   "attendu": 3
+  },
+  {
+   "nom": "nombreGhs : aucun GHM",
+   "fonction": "nombreGhs",
+   "arguments": [{"lignes":[{"GHS":10,"GHM":"99X991"}]},[]],
+   "attendu": 0
+  },
+  {
+   "nom": "nombreGhs : racine 01C03, GHS 5071 compté une fois (réel)",
+   "fonction": "nombreGhs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["01C031","01C032","01C033","01C034"]],
+   "attendu": 5
+  },
+  {
+   "nom": "nombreGhs : 09Z02A sans tarif, 09Z02B (réel)",
+   "fonction": "nombreGhs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["09Z02A","09Z02B"]],
+   "attendu": 1
+  },
+  {
+   "nom": "groupesTarifs : GHS commun à tous les GHM donné une fois, en dernier, « Tous les GHM »",
+   "fonction": "groupesTarifs",
+   "arguments": [
+    {
+     "lignes": [
+      {"GHS":10,"GHM":"99X991","Tarif":100},
+      {"GHS":90,"GHM":"99X991","Tarif":50},
+      {"GHS":20,"GHM":"99X992","Tarif":200},
+      {"GHS":90,"GHM":"99X992","Tarif":50}
+     ]
+    },
+    ["99X991","99X992"]
+   ],
+   "attendu": {
+    "avecForfait": false,
+    "groupes": [
+     {"ghm":"99X991","lignes":[{"GHS":10,"GHM":"99X991","Tarif":100}]},
+     {"ghm":"99X992","lignes":[{"GHS":20,"GHM":"99X992","Tarif":200}]},
+     {
+      "ghms": ["99X991","99X992"],
+      "libelle": "Tous les GHM",
+      "lignes": [{"GHS":90,"GHM":"99X991","Tarif":50}]
+     }
+    ]
+   }
+  },
+  {
+   "nom": "groupesTarifs : GHM sans tarif signalé à sa place ; « Tous les GHM tarifés »",
+   "fonction": "groupesTarifs",
+   "arguments": [
+    {
+     "lignes": [
+      {"GHS":10,"GHM":"99X991","Tarif":100},
+      {"GHS":90,"GHM":"99X991","Tarif":50},
+      {"GHS":20,"GHM":"99X992","Tarif":200},
+      {"GHS":90,"GHM":"99X992","Tarif":50}
+     ]
+    },
+    ["99X991","99X990","99X992"]
+   ],
+   "attendu": {
+    "avecForfait": false,
+    "groupes": [
+     {"ghm":"99X991","lignes":[{"GHS":10,"GHM":"99X991","Tarif":100}]},
+     {"ghm":"99X990","sansTarif":true,"lignes":[]},
+     {"ghm":"99X992","lignes":[{"GHS":20,"GHM":"99X992","Tarif":200}]},
+     {
+      "ghms": ["99X991","99X992"],
+      "libelle": "Tous les GHM tarifés",
+      "lignes": [{"GHS":90,"GHM":"99X991","Tarif":50}]
+     }
+    ]
+   }
+  },
+  {
+   "nom": "groupesTarifs : la ligne commune est celle du premier GHM tarifé (montants différents)",
+   "fonction": "groupesTarifs",
+   "arguments": [
+    {
+     "lignes": [
+      {"GHS":10,"GHM":"99X991","Tarif":100},
+      {"GHS":90,"GHM":"99X991","Tarif":51},
+      {"GHS":20,"GHM":"99X992","Tarif":200},
+      {"GHS":90,"GHM":"99X992","Tarif":52}
+     ]
+    },
+    ["99X992","99X991"]
+   ],
+   "attendu": {
+    "avecForfait": false,
+    "groupes": [
+     {"ghm":"99X992","lignes":[{"GHS":20,"GHM":"99X992","Tarif":200}]},
+     {"ghm":"99X991","lignes":[{"GHS":10,"GHM":"99X991","Tarif":100}]},
+     {
+      "ghms": ["99X992","99X991"],
+      "libelle": "Tous les GHM",
+      "lignes": [{"GHS":90,"GHM":"99X992","Tarif":52}]
+     }
+    ]
+   }
+  },
+  {
+   "nom": "groupesTarifs : pas de ligne commune si un GHM n'a que des GHS communs",
+   "fonction": "groupesTarifs",
+   "arguments": [
+    {"lignes":[{"GHS":10,"GHM":"99X991"},{"GHS":90,"GHM":"99X991"},{"GHS":90,"GHM":"99X992"}]},
+    ["99X991","99X992"]
+   ],
+   "attendu": {
+    "avecForfait": false,
+    "groupes": [
+     {"ghm":"99X991","lignes":[{"GHS":10,"GHM":"99X991"},{"GHS":90,"GHM":"99X991"}]},
+     {"ghm":"99X992","lignes":[{"GHS":90,"GHM":"99X992"}]}
+    ]
+   }
+  },
+  {
+   "nom": "groupesTarifs : un seul GHM tarifé → jamais de ligne commune",
+   "fonction": "groupesTarifs",
+   "arguments": [{"lignes":[{"GHS":10,"GHM":"99X991"},{"GHS":90,"GHM":"99X991"}]},["99X991","99X990"]],
+   "attendu": {
+    "avecForfait": false,
+    "groupes": [
+     {"ghm":"99X991","lignes":[{"GHS":10,"GHM":"99X991"},{"GHS":90,"GHM":"99X991"}]},
+     {"ghm":"99X990","sansTarif":true,"lignes":[]}
+    ]
+   }
+  },
+  {
+   "nom": "groupesTarifs : un GHS commun à toute la racine passe après les GHS propres, même seul",
+   "fonction": "groupesTarifs",
+   "arguments": [
+    {
+     "lignes": [
+      {"GHS":10,"GHM":"99X991"},
+      {"GHS":50,"GHM":"99X991"},
+      {"GHS":10,"GHM":"99X992"},
+      {"GHS":60,"GHM":"99X992"}
+     ]
+    },
+    ["99X991"]
+   ],
+   "attendu": {
+    "avecForfait": false,
+    "groupes": [{"ghm":"99X991","lignes":[{"GHS":50,"GHM":"99X991"},{"GHS":10,"GHM":"99X991"}]}]
+   }
+  },
+  {
+   "nom": "groupesTarifs : sans GHS commun à la racine, ordre des numéros de GHS",
+   "fonction": "groupesTarifs",
+   "arguments": [
+    {
+     "lignes": [
+      {"GHS":10,"GHM":"99X991"},
+      {"GHS":50,"GHM":"99X991"},
+      {"GHS":10,"GHM":"99X992"},
+      {"GHS":60,"GHM":"99X992"},
+      {"GHS":70,"GHM":"99X993"}
+     ]
+    },
+    ["99X991"]
+   ],
+   "attendu": {
+    "avecForfait": false,
+    "groupes": [{"ghm":"99X991","lignes":[{"GHS":10,"GHM":"99X991"},{"GHS":50,"GHM":"99X991"}]}]
+   }
+  },
+  {
+   "nom": "groupesTarifs : colonne Forfait EXB seulement si une ligne en porte un non nul",
+   "fonction": "groupesTarifs",
+   "arguments": [
+    {
+     "lignes": [{"GHS":10,"GHM":"99X991","Forfait EXB":0},{"GHS":20,"GHM":"99X992","Forfait EXB":120.5}]
+    },
+    ["99X991","99X992"]
+   ],
+   "extrait": ["avecForfait"],
+   "attendu": true
+  },
+  {
+   "nom": "groupesTarifs : Forfait EXB nul ou absent → pas de colonne",
+   "fonction": "groupesTarifs",
+   "arguments": [
+    {"lignes":[{"GHS":10,"GHM":"99X991","Forfait EXB":0},{"GHS":20,"GHM":"99X992"}]},
+    ["99X991","99X992"]
+   ],
+   "extrait": ["avecForfait"],
+   "attendu": false
+  },
+  {
+   "nom": "groupesTarifs : le forfait d'un GHM absent de la liste ne compte pas",
+   "fonction": "groupesTarifs",
+   "arguments": [
+    {
+     "lignes": [{"GHS":10,"GHM":"99X991","Forfait EXB":0},{"GHS":20,"GHM":"99X992","Forfait EXB":120.5}]
+    },
+    ["99X991"]
+   ],
+   "extrait": ["avecForfait"],
+   "attendu": false
+  },
+  {
+   "nom": "groupesTarifs : aucun GHM",
+   "fonction": "groupesTarifs",
+   "arguments": [{"lignes":[{"GHS":10,"GHM":"99X991"}]},[]],
+   "attendu": {"avecForfait":false,"groupes":[]}
+  },
+  {
+   "nom": "groupesTarifs : aucun GHM tarifé",
+   "fonction": "groupesTarifs",
+   "arguments": [{"lignes":[]},["99X991","99X992"]],
+   "attendu": {
+    "avecForfait": false,
+    "groupes": [{"ghm":"99X991","sansTarif":true,"lignes":[]},{"ghm":"99X992","sansTarif":true,"lignes":[]}]
+   }
+  },
+  {
+   "nom": "groupesTarifs : racine 01C03, GHS 5071 commun aux quatre niveaux (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["01C031","01C032","01C033","01C034"]],
+   "attendu": {
+    "avecForfait": false,
+    "groupes": [
+     {
+      "ghm": "01C031",
+      "lignes": [
+       {
+        "GHS": 22,
+        "GHM": "01C031",
+        "Libellé": "Craniotomies pour traumatisme, âge supérieur à 17 ans, niveau 1",
+        "Borne basse": 0,
+        "Borne haute": 11,
+        "Tarif": 4203.57,
+        "Forfait EXB": 0,
+        "Tarif EXB": 0,
+        "Tarif EXH": 124.33
+       }
+      ]
+     },
+     {
+      "ghm": "01C032",
+      "lignes": [
+       {
+        "GHS": 23,
+        "GHM": "01C032",
+        "Libellé": "Craniotomies pour traumatisme, âge supérieur à 17 ans, niveau 2",
+        "Borne basse": 0,
+        "Borne haute": 19,
+        "Tarif": 7463.99,
+        "Forfait EXB": 0,
+        "Tarif EXB": 0,
+        "Tarif EXH": 102.74
+       }
+      ]
+     },
+     {
+      "ghm": "01C033",
+      "lignes": [
+       {
+        "GHS": 24,
+        "GHM": "01C033",
+        "Libellé": "Craniotomies pour traumatisme, âge supérieur à 17 ans, niveau 3",
+        "Borne basse": 0,
+        "Borne haute": 64,
+        "Tarif": 13468.58,
+        "Forfait EXB": 0,
+        "Tarif EXB": 0,
+        "Tarif EXH": 79.71
+       }
+      ]
+     },
+     {
+      "ghm": "01C034",
+      "lignes": [
+       {
+        "GHS": 25,
+        "GHM": "01C034",
+        "Libellé": "Craniotomies pour traumatisme, âge supérieur à 17 ans, niveau 4",
+        "Borne basse": 12,
+        "Borne haute": 124,
+        "Tarif": 18251.79,
+        "Forfait EXB": 0,
+        "Tarif EXB": 455.54,
+        "Tarif EXH": 338.13
+       }
+      ]
+     },
+     {
+      "ghms": ["01C031","01C032","01C033","01C034"],
+      "libelle": "Tous les GHM",
+      "lignes": [
+       {
+        "GHS": 5071,
+        "GHM": "01C031",
+        "Libellé": "Craniotomies pour traumatisme, âge supérieur à 17 ans, niveau 1",
+        "Borne basse": 0,
+        "Borne haute": 0,
+        "Tarif": 2263.2,
+        "Forfait EXB": 0,
+        "Tarif EXB": 0,
+        "Tarif EXH": 0
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "nom": "groupesTarifs : 01C031 seul, GHS 5071 (commun à la racine) après le GHS 22 (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["01C031"]],
+   "extrait": ["groupes",0,"lignes",1,"GHS"],
+   "attendu": 5071
+  },
+  {
+   "nom": "groupesTarifs : cases de 09Z02 dans l'arbre, 09Z02A sans tarif, à sa place (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["09Z02A","09Z02B"]],
+   "extrait": ["groupes",{"ghm":"09Z02A"}],
+   "attendu": {"ghm":"09Z02A","sansTarif":true,"lignes":[]}
+  },
+  {
+   "nom": "groupesTarifs : cases de 09Z02, GHS de 09Z02B (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["09Z02A","09Z02B"]],
+   "extrait": ["groupes",{"ghm":"09Z02B"},"lignes",0,"GHS"],
+   "attendu": 3570
+  },
+  {
+   "nom": "groupesTarifs : racine 05M09, GHS 5298 commun aux cinq GHM, en ligne commune (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["05M091","05M092","05M093","05M094","05M09T"]],
+   "extrait": ["groupes",{"libelle":"Tous les GHM"},"lignes",0,"GHS"],
+   "attendu": 5298
+  },
+  {
+   "nom": "groupesTarifs : racine 05M09, 05M09T : premier GHS 1757 (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["05M091","05M092","05M093","05M094","05M09T"]],
+   "extrait": ["groupes",{"ghm":"05M09T"},"lignes",0,"GHS"],
+   "attendu": 1757
+  },
+  {
+   "nom": "groupesTarifs : racine 05M09, 05M09T : second GHS 5038 (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["05M091","05M092","05M093","05M094","05M09T"]],
+   "extrait": ["groupes",{"ghm":"05M09T"},"lignes",1,"GHS"],
+   "attendu": 5038
+  },
+  {
+   "nom": "groupesTarifs : 01M121 seul, GHS 5095 de toute la racine en dernier, après le GHS 8946 (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["01M121"]],
+   "extrait": ["groupes",0,"lignes",2,"GHS"],
+   "attendu": 5095
+  },
+  {
+   "nom": "groupesTarifs : 01M121 seul, deuxième GHS 8946 (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["01M121"]],
+   "extrait": ["groupes",0,"lignes",1,"GHS"],
+   "attendu": 8946
+  },
+  {
+   "nom": "groupesTarifs : 01M121 et 01M122, GHS 5095 en ligne commune (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["01M121","01M122"]],
+   "extrait": ["groupes",{"libelle":"Tous les GHM"},"lignes",0,"GHS"],
+   "attendu": 5095
+  },
+  {
+   "nom": "groupesTarifs : 01M121 et 01M122, 01M121 garde 238 puis 8946 (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["01M121","01M122"]],
+   "extrait": ["groupes",{"ghm":"01M121"},"lignes",1,"GHS"],
+   "attendu": 8946
+  },
+  {
+   "nom": "groupesTarifs : 01M121 et 01M122, pas de troisième ligne sous 01M121 : le 5095 n'est que dans la ligne commune (réel)",
+   "fonction": "groupesTarifs",
+   "arguments": [{"$jeu":"groupage/tarifs"},["01M121","01M122"]],
+   "extrait": ["groupes",{"ghm":"01M121"},"lignes",2],
+   "attendu": null
+  }
+ ]
+}
