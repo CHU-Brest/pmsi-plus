@@ -6149,7 +6149,7 @@
    "attendu": ["17K08","28Z10","28Z22"]
   },
   {
-   "nom": "[à trancher] donneesFicheActe : réel, JLNL002 : JLNL006 compté parmi les voisins vers d'autres racines alors qu'il mène à 28Z10, comme JLNL002-00/2",
+   "nom": "donneesFicheActe : réel, JLNL002 : un voisin compte s'il diffère d'une des lignes du code (JLNL006 → 28Z10, comme JLNL002-00/2)",
    "fonction": "donneesFicheActe",
    "arguments": [{"$json":"groupage/arbre"},"JLNL002",{"$lignes":"groupage/actes"}],
    "extrait": ["voisins",{"Code":"JLNL006-00/0"},"Racines"],
