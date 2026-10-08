@@ -1,0 +1,1859 @@
+{
+ "module": "arbre_graphe",
+ "non_portes": {
+  "suiteDeColonne": "dessin seulement (marques « non », « puis », « oui » sous une étape) : la skill suit les parents de preparer et cheminVers",
+  "issue": "dessin seulement (mot au bout d'une ligne du chemin) : le rôle de chaque étape est déjà dans cheminVers"
+ },
+ "cas": [
+  {
+   "nom": "preparer : rend l'arbre, marqué prêt (MCO)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"mco"}],
+   "extrait": ["_pret"],
+   "attendu": true
+  },
+  {
+   "nom": "preparer : arbre fictif, parents d'une feuille : « oui » des cas 0 et 2 (rejoint), puis « suite »",
+   "fonction": "preparer",
+   "arguments": [
+    {
+     "$appel": "smr_arbre.profilArbre",
+     "arguments": [
+      {
+       "_arbreSmr": {
+        "arbre": {
+         "noeuds": {
+          "7": {"genre":"test","symbole":"DAS","branches":[{"libelle":"Sept","listes":[],"vers":"z"}]},
+          "r": {
+           "genre": "critere",
+           "variable": "Âge",
+           "branches": [{"libelle":"< 18 ans","listes":[],"vers":"t"}],
+           "sinon": {"vers":"u"}
+          },
+          "t": {
+           "genre": "test",
+           "symbole": "MMP",
+           "branches": [
+            {"libelle":"Un (D-0001)","listes":["D-0001"],"vers":"g"},
+            {"libelle":"Deux","listes":[],"vers":"h"},
+            {"libelle":"Trois","listes":[],"vers":"g","rejoint":true}
+           ],
+           "sinon": {"vers":"f","rejoint":true}
+          },
+          "u": {"genre":"gr","code":"9901S","suite":{"vers":"g"}},
+          "f": {"genre":"gn","code":"9901"},
+          "g": {"genre":"gl","code":"9901SA","gmes":["9901SA1"]},
+          "h": {"genre":"gn","code":"9902"},
+          "a": {"genre":"test","symbole":"AE","branches":[{"libelle":"A","listes":[],"vers":"z"}]},
+          "z": {"genre":"gn","code":"9903"}
+         },
+         "listes": {"D-0001":{"libelle":"Liste un","nature":"diagnostics"}}
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "extrait": ["_parents","g"],
+   "attendu": [
+    {"de":"t","role":"oui","i":0,"rejoint":false},
+    {"de":"t","role":"oui","i":2,"rejoint":true},
+    {"de":"u","role":"suite","rejoint":false}
+   ]
+  },
+  {
+   "nom": "preparer : arbre fictif, parent par « non » rejoint",
+   "fonction": "preparer",
+   "arguments": [
+    {
+     "$appel": "smr_arbre.profilArbre",
+     "arguments": [
+      {
+       "_arbreSmr": {
+        "arbre": {
+         "noeuds": {
+          "7": {"genre":"test","symbole":"DAS","branches":[{"libelle":"Sept","listes":[],"vers":"z"}]},
+          "r": {
+           "genre": "critere",
+           "variable": "Âge",
+           "branches": [{"libelle":"< 18 ans","listes":[],"vers":"t"}],
+           "sinon": {"vers":"u"}
+          },
+          "t": {
+           "genre": "test",
+           "symbole": "MMP",
+           "branches": [
+            {"libelle":"Un (D-0001)","listes":["D-0001"],"vers":"g"},
+            {"libelle":"Deux","listes":[],"vers":"h"},
+            {"libelle":"Trois","listes":[],"vers":"g","rejoint":true}
+           ],
+           "sinon": {"vers":"f","rejoint":true}
+          },
+          "u": {"genre":"gr","code":"9901S","suite":{"vers":"g"}},
+          "f": {"genre":"gn","code":"9901"},
+          "g": {"genre":"gl","code":"9901SA","gmes":["9901SA1"]},
+          "h": {"genre":"gn","code":"9902"},
+          "a": {"genre":"test","symbole":"AE","branches":[{"libelle":"A","listes":[],"vers":"z"}]},
+          "z": {"genre":"gn","code":"9903"}
+         },
+         "listes": {"D-0001":{"libelle":"Liste un","nature":"diagnostics"}}
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "extrait": ["_parents","f"],
+   "attendu": [{"de":"t","role":"non","rejoint":true}]
+  },
+  {
+   "nom": "preparer : arbre fictif, ordre des nœuds du JS : la clef entière « 7 » avant « a »",
+   "fonction": "preparer",
+   "arguments": [
+    {
+     "$appel": "smr_arbre.profilArbre",
+     "arguments": [
+      {
+       "_arbreSmr": {
+        "arbre": {
+         "noeuds": {
+          "7": {"genre":"test","symbole":"DAS","branches":[{"libelle":"Sept","listes":[],"vers":"z"}]},
+          "r": {
+           "genre": "critere",
+           "variable": "Âge",
+           "branches": [{"libelle":"< 18 ans","listes":[],"vers":"t"}],
+           "sinon": {"vers":"u"}
+          },
+          "t": {
+           "genre": "test",
+           "symbole": "MMP",
+           "branches": [
+            {"libelle":"Un (D-0001)","listes":["D-0001"],"vers":"g"},
+            {"libelle":"Deux","listes":[],"vers":"h"},
+            {"libelle":"Trois","listes":[],"vers":"g","rejoint":true}
+           ],
+           "sinon": {"vers":"f","rejoint":true}
+          },
+          "u": {"genre":"gr","code":"9901S","suite":{"vers":"g"}},
+          "f": {"genre":"gn","code":"9901"},
+          "g": {"genre":"gl","code":"9901SA","gmes":["9901SA1"]},
+          "h": {"genre":"gn","code":"9902"},
+          "a": {"genre":"test","symbole":"AE","branches":[{"libelle":"A","listes":[],"vers":"z"}]},
+          "z": {"genre":"gn","code":"9903"}
+         },
+         "listes": {"D-0001":{"libelle":"Liste un","nature":"diagnostics"}}
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "extrait": ["_parents","z"],
+   "attendu": [{"de":"7","role":"oui","i":0,"rejoint":false},{"de":"a","role":"oui","i":0,"rejoint":false}]
+  },
+  {
+   "nom": "preparer : arbre fictif, racine sans parent",
+   "fonction": "preparer",
+   "arguments": [
+    {
+     "$appel": "smr_arbre.profilArbre",
+     "arguments": [
+      {
+       "_arbreSmr": {
+        "arbre": {
+         "noeuds": {
+          "7": {"genre":"test","symbole":"DAS","branches":[{"libelle":"Sept","listes":[],"vers":"z"}]},
+          "r": {
+           "genre": "critere",
+           "variable": "Âge",
+           "branches": [{"libelle":"< 18 ans","listes":[],"vers":"t"}],
+           "sinon": {"vers":"u"}
+          },
+          "t": {
+           "genre": "test",
+           "symbole": "MMP",
+           "branches": [
+            {"libelle":"Un (D-0001)","listes":["D-0001"],"vers":"g"},
+            {"libelle":"Deux","listes":[],"vers":"h"},
+            {"libelle":"Trois","listes":[],"vers":"g","rejoint":true}
+           ],
+           "sinon": {"vers":"f","rejoint":true}
+          },
+          "u": {"genre":"gr","code":"9901S","suite":{"vers":"g"}},
+          "f": {"genre":"gn","code":"9901"},
+          "g": {"genre":"gl","code":"9901SA","gmes":["9901SA1"]},
+          "h": {"genre":"gn","code":"9902"},
+          "a": {"genre":"test","symbole":"AE","branches":[{"libelle":"A","listes":[],"vers":"z"}]},
+          "z": {"genre":"gn","code":"9903"}
+         },
+         "listes": {"D-0001":{"libelle":"Liste un","nature":"diagnostics"}}
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "extrait": ["_parents","r"],
+   "attendu": null
+  },
+  {
+   "nom": "preparer : plusieurs parents, dont des renvois « rejoint » (MCO p13-17)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"mco"}],
+   "extrait": ["_parents","p13-17"],
+   "attendu": [
+    {"de":"p13-3","role":"oui","i":0,"rejoint":false},
+    {"de":"p13-5","role":"oui","i":0,"rejoint":true},
+    {"de":"p13-7","role":"oui","i":0,"rejoint":true},
+    {"de":"p13-9","role":"oui","i":0,"rejoint":true},
+    {"de":"p13-11","role":"oui","i":0,"rejoint":true},
+    {"de":"p13-13","role":"oui","i":0,"rejoint":true},
+    {"de":"p13-15","role":"oui","i":0,"rejoint":true}
+   ]
+  },
+  {
+   "nom": "preparer : deux parents par « non », aucun « rejoint » (MCO p79-17, case 22M02)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"mco"}],
+   "extrait": ["_parents","p79-17"],
+   "attendu": [{"de":"p79-14","role":"non","rejoint":false},{"de":"p79-15","role":"non","rejoint":false}]
+  },
+  {
+   "nom": "preparer : un seul parent, « oui » du cas 0 (MCO p20-11, case 01C03)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"mco"}],
+   "extrait": ["_parents","p20-11"],
+   "attendu": [{"de":"p20-10","role":"oui","i":0,"rejoint":false}]
+  },
+  {
+   "nom": "preparer : parents d'un nœud rejoint (SMR o-mmp)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["_parents","o-mmp"],
+   "attendu": [{"de":"o-mmp-2e","role":"non","rejoint":false},{"de":"o-ae-2e","role":"non","rejoint":true}]
+  },
+  {
+   "nom": "preparer : parents d'un GR, dont l'âge sans type pédiatrique (SMR 0147S)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["_parents","0147S"],
+   "attendu": [
+    {"de":"0147-hc-S","role":"oui","i":0,"rejoint":false},
+    {"de":"0147-hc-age","role":"oui","i":0,"rejoint":true}
+   ]
+  },
+  {
+   "nom": "preparer : parent par « suite » d'une étape sans condition (SMR 0147S-C, sous le GR)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["_parents","0147S-C"],
+   "attendu": [{"de":"0147S","role":"suite","rejoint":false}]
+  },
+  {
+   "nom": "preparer : deux parents par « oui » (SMR 0147IA)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["_parents","0147IA"],
+   "attendu": [
+    {"de":"0147-htp-I","role":"oui","i":0,"rejoint":false},
+    {"de":"0147-htp-age","role":"oui","i":0,"rejoint":false}
+   ]
+  },
+  {
+   "nom": "preparer : premier test de l'orientation, sans parent (SMR o-mmp-2e)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["_parents","o-mmp-2e"],
+   "attendu": null
+  },
+  {
+   "nom": "preparer : identifiant posé sur le nœud (SMR 0147S)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["noeuds","0147S","_id"],
+   "attendu": "0147S"
+  },
+  {
+   "nom": "preparer : texte de recherche, test : symbole, libellé, liste et son libellé (MCO p20-10)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"mco"}],
+   "extrait": ["noeuds","p20-10","_recherche"],
+   "attendu": "dr traumatisme cranien (d-092) d-092 traumatismes craniens"
+  },
+  {
+   "nom": "preparer : texte de recherche, critère : variable et libellé (MCO p79-14)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"mco"}],
+   "extrait": ["noeuds","p79-14","_recherche"],
+   "attendu": "ds =0 jour"
+  },
+  {
+   "nom": "preparer : texte de recherche, case de GHM : racine puis ses GHM (MCO p20-11)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"mco"}],
+   "extrait": ["noeuds","p20-11","_recherche"],
+   "attendu": "01c03 01c031 01c032 01c033 01c034"
+  },
+  {
+   "nom": "preparer : texte de recherche, test MMP ou AE et libellé de sa liste (SMR 01-1)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["noeuds","01-1","_recherche"],
+   "attendu": "mmp ou ae etats vegetatifs chroniques - etats paucirelationnels (d-0103) d-0103 etats vegetatifs chroniques - etats pauci-relationnels"
+  },
+  {
+   "nom": "preparer : texte de recherche, critère à seuils (SMR 0147-hc-S)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["noeuds","0147-hc-S","_recherche"],
+   "attendu": "score r specialise ≥ 600 par sejour et ≥ 30 par jour"
+  },
+  {
+   "nom": "preparer : texte de recherche, GR : intitulé court puis son code (SMR 0147S)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["noeuds","0147S","_recherche"],
+   "attendu": "gr 0147s 0147s"
+  },
+  {
+   "nom": "preparer : texte de recherche, GL : code puis GME (SMR 0147SC)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["noeuds","0147SC","_recherche"],
+   "attendu": "0147sc 0147sc1 0147sc2"
+  },
+  {
+   "nom": "preparer : texte de recherche, GN : son code (SMR 0147)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["noeuds","0147","_recherche"],
+   "attendu": "0147"
+  },
+  {
+   "nom": "preparer : texte de recherche, grille : son texte (SMR o-cm-mmp)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["noeuds","o-cm-mmp","_recherche"],
+   "attendu": "cm de la mmp"
+  },
+  {
+   "nom": "preparer : texte de recherche, erreur : étiquette (SMR o-cm-90)",
+   "fonction": "preparer",
+   "arguments": [{"$profil":"smr"}],
+   "extrait": ["noeuds","o-cm-90","_recherche"],
+   "attendu": "cm 90"
+  },
+  {
+   "nom": "cheminVers : depuis null → aucun pas (feuille en tête de colonne)",
+   "fonction": "cheminVers",
+   "arguments": [
+    {
+     "_parents": {
+      "$map": [
+       ["b",[{"de":"a","role":"oui","i":0,"rejoint":false}]],
+       ["c",[{"de":"x","role":"non","rejoint":true},{"de":"b","role":"non","rejoint":false}]],
+       ["x",[{"de":"a","role":"suite","rejoint":false}]]
+      ]
+     }
+    },
+    null
+   ],
+   "attendu": []
+  },
+  {
+   "nom": "cheminVers : remonte par le trait qui porte l'étape, jamais par un renvoi « rejoint »",
+   "fonction": "cheminVers",
+   "arguments": [
+    {
+     "_parents": {
+      "$map": [
+       ["b",[{"de":"a","role":"oui","i":0,"rejoint":false}]],
+       ["c",[{"de":"x","role":"non","rejoint":true},{"de":"b","role":"non","rejoint":false}]],
+       ["x",[{"de":"a","role":"suite","rejoint":false}]]
+      ]
+     }
+    },
+    {"de":"c","role":"oui","i":1}
+   ],
+   "attendu": [
+    {"de":"a","role":"oui","i":0,"rejoint":false},
+    {"de":"b","role":"non","rejoint":false},
+    {"de":"c","role":"oui","i":1}
+   ]
+  },
+  {
+   "nom": "cheminVers : sans parent, le seul pas donné",
+   "fonction": "cheminVers",
+   "arguments": [
+    {
+     "_parents": {
+      "$map": [
+       ["b",[{"de":"a","role":"oui","i":0,"rejoint":false}]],
+       ["c",[{"de":"x","role":"non","rejoint":true},{"de":"b","role":"non","rejoint":false}]],
+       ["x",[{"de":"a","role":"suite","rejoint":false}]]
+      ]
+     }
+    },
+    {"de":"a","role":"non"}
+   ],
+   "attendu": [{"de":"a","role":"non"}]
+  },
+  {
+   "nom": "cheminVers : tous les parents « rejoint » → le premier",
+   "fonction": "cheminVers",
+   "arguments": [
+    {
+     "_parents": {
+      "$map": [["c",[{"de":"x","role":"non","rejoint":true},{"de":"y","role":"non","rejoint":true}]]]
+     }
+    },
+    {"de":"c","role":"oui","i":0}
+   ],
+   "attendu": [{"de":"x","role":"non","rejoint":true},{"de":"c","role":"oui","i":0}]
+  },
+  {
+   "nom": "cheminVers : boucle arrêtée au premier nœud déjà vu",
+   "fonction": "cheminVers",
+   "arguments": [
+    {
+     "_parents": {
+      "$map": [
+       ["a",[{"de":"b","role":"oui","i":0,"rejoint":false}]],
+       ["b",[{"de":"a","role":"non","rejoint":false}]]
+      ]
+     }
+    },
+    {"de":"a","role":"oui","i":0}
+   ],
+   "attendu": [{"de":"b","role":"oui","i":0,"rejoint":false},{"de":"a","role":"oui","i":0}]
+  },
+  {
+   "nom": "cheminVers : vers 01C03, depuis la racine de la CMD 01 (MCO p20-11)",
+   "fonction": "cheminVers",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"mco"}]},
+    {"de":"p20-10","role":"oui","i":0,"rejoint":false}
+   ],
+   "attendu": [
+    {"de":"p20-1","role":"oui","i":0,"rejoint":false},
+    {"de":"p20-2","role":"oui","i":0,"rejoint":false},
+    {"de":"p20-3","role":"non","rejoint":false},
+    {"de":"p20-5","role":"oui","i":0,"rejoint":false},
+    {"de":"p20-6","role":"non","rejoint":false},
+    {"de":"p20-10","role":"oui","i":0,"rejoint":false}
+   ]
+  },
+  {
+   "nom": "cheminVers : 22M02 par sa première arête d'entrée, « non » de DS =0 jour (MCO p79-14)",
+   "fonction": "cheminVers",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"mco"}]},
+    {"de":"p79-14","role":"non","rejoint":false}
+   ],
+   "attendu": [
+    {"de":"p79-1","role":"oui","i":0,"rejoint":false},
+    {"de":"p79-2","role":"non","rejoint":false},
+    {"de":"p79-6","role":"non","rejoint":false},
+    {"de":"p79-8","role":"non","rejoint":false},
+    {"de":"p79-13","role":"suite","rejoint":false},
+    {"de":"p79-14","role":"non","rejoint":false}
+   ]
+  },
+  {
+   "nom": "cheminVers : 22M02 par sa seconde arête d'entrée, « non » de l'AG (MCO p79-15)",
+   "fonction": "cheminVers",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"mco"}]},
+    {"de":"p79-15","role":"non","rejoint":false}
+   ],
+   "attendu": [
+    {"de":"p79-1","role":"oui","i":0,"rejoint":false},
+    {"de":"p79-2","role":"non","rejoint":false},
+    {"de":"p79-6","role":"non","rejoint":false},
+    {"de":"p79-8","role":"non","rejoint":false},
+    {"de":"p79-13","role":"suite","rejoint":false},
+    {"de":"p79-14","role":"oui","i":0,"rejoint":false},
+    {"de":"p79-15","role":"non","rejoint":false}
+   ]
+  },
+  {
+   "nom": "cheminVers : depuis un renvoi « rejoint » (p13-5 → p13-17) : on remonte p13-5 par son trait (MCO)",
+   "fonction": "cheminVers",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"mco"}]},
+    {"de":"p13-5","role":"oui","i":0,"rejoint":true}
+   ],
+   "attendu": [
+    {"de":"p13-1","role":"oui","i":0,"rejoint":false},
+    {"de":"p13-2","role":"oui","i":0,"rejoint":false},
+    {"de":"p13-3","role":"non","rejoint":false},
+    {"de":"p13-5","role":"oui","i":0,"rejoint":true}
+   ]
+  },
+  {
+   "nom": "cheminVers : chemin entier vers le GL 0147SC, depuis l'âge (SMR)",
+   "fonction": "cheminVers",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"smr"}]},
+    {"de":"0147S-C","role":"oui","i":0,"rejoint":false}
+   ],
+   "attendu": [
+    {"de":"0147-hc-age","role":"non","rejoint":false},
+    {"de":"0147-hc-S","role":"oui","i":0,"rejoint":false},
+    {"de":"0147S","role":"suite","rejoint":false},
+    {"de":"0147S-C","role":"oui","i":0,"rejoint":false}
+   ]
+  },
+  {
+   "nom": "cheminVers : 0147IA par le seuil très intense (SMR)",
+   "fonction": "cheminVers",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"smr"}]},
+    {"de":"0147-htp-I","role":"oui","i":0,"rejoint":false}
+   ],
+   "attendu": [
+    {"de":"0147-htp-age","role":"non","rejoint":false},
+    {"de":"0147-htp-I","role":"oui","i":0,"rejoint":false}
+   ]
+  },
+  {
+   "nom": "cheminVers : 0147IA par l'âge < 18 ans, départ de l'arbre d'HTP (SMR)",
+   "fonction": "cheminVers",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"smr"}]},
+    {"de":"0147-htp-age","role":"oui","i":0,"rejoint":false}
+   ],
+   "attendu": [{"de":"0147-htp-age","role":"oui","i":0,"rejoint":false}]
+  },
+  {
+   "nom": "cheminVers : GN 0871 par son second test, en DAS (SMR 08-5-2)",
+   "fonction": "cheminVers",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"smr"}]},
+    {"de":"08-5-2","role":"oui","i":0,"rejoint":false}
+   ],
+   "attendu": [
+    {"de":"08-1","role":"non","rejoint":false},
+    {"de":"08-2","role":"non","rejoint":false},
+    {"de":"08-3","role":"non","rejoint":false},
+    {"de":"08-4","role":"non","rejoint":false},
+    {"de":"08-5","role":"oui","i":0,"rejoint":false},
+    {"de":"08-5-2","role":"oui","i":0,"rejoint":false}
+   ]
+  },
+  {
+   "nom": "libelleEtape : « oui » d'un critère → variable et libellé",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"critere","variable":"Âge","branches":[{"libelle":"<18 ans","listes":[],"vers":"z"}]},
+    {"de":"n","role":"oui","i":0}
+   ],
+   "attendu": {"variable":"Âge","libelle":"<18 ans"}
+  },
+  {
+   "nom": "libelleEtape : « oui » d'un test → variable null (omise), libellé du cas pris",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {
+     "genre": "test",
+     "symbole": "DP",
+     "branches": [
+      {"libelle":"Migraine (D-0101)","listes":["D-0101"]},
+      {"libelle":"Épilepsie (D-0103)","listes":["D-0103"]}
+     ]
+    },
+    {"de":"n","role":"oui","i":1}
+   ],
+   "attendu": {"libelle":"Épilepsie (D-0103)"}
+  },
+  {
+   "nom": "libelleEtape : libellé vide → titre du symbole",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"test","symbole":"A","branches":[{"libelle":"","listes":[]}]},
+    {"de":"n","role":"oui","i":0}
+   ],
+   "attendu": {"libelle":"L'un au moins des actes du RSS"}
+  },
+  {
+   "nom": "libelleEtape : libellé vide, symbole inconnu → chaîne vide",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"test","symbole":"ZZ","branches":[{"libelle":"","listes":[]}]},
+    {"de":"n","role":"oui","i":0}
+   ],
+   "attendu": {"libelle":""}
+  },
+  {
+   "nom": "libelleEtape : « non » d'une étape à une condition → cette condition",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"critere","variable":"DS","branches":[{"libelle":"<2 jours","listes":[]}]},
+    {"de":"n","role":"non"}
+   ],
+   "attendu": {"variable":"DS","libelle":"<2 jours"}
+  },
+  {
+   "nom": "libelleEtape : « non » d'une colonne de cas → énumère les cas écartés (listes, sinon libellé)",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {
+     "genre": "test",
+     "symbole": "DP",
+     "branches": [
+      {"libelle":"Deux listes","listes":["D-0101","D-0102"]},
+      {"libelle":"Sans liste","listes":[]},
+      {"libelle":"Une liste","listes":["D-0103"]}
+     ]
+    },
+    {"de":"n","role":"non"}
+   ],
+   "attendu": {"texte":"DP — 3 cas : aucun des cas (D-0101, D-0102 ; Sans liste ; D-0103)"}
+  },
+  {
+   "nom": "libelleEtape : « puis » → null (lu à l'intitulé)",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"gnn","suite":{"vers":"z"}},
+    {"de":"n","role":"suite"}
+   ],
+   "attendu": null
+  },
+  {
+   "nom": "libelleEtape : « oui » d'une étape propre au champ → null",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"gnn","branches":[{"libelle":"x","listes":[]}]},
+    {"de":"n","role":"oui","i":0}
+   ],
+   "attendu": null
+  },
+  {
+   "nom": "libelleEtape : « non » d'une étape à une condition, libellé vide → titre du symbole",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"test","symbole":"A","branches":[{"libelle":"","listes":[]}]},
+    {"de":"n","role":"non"}
+   ],
+   "attendu": {"libelle":"L'un au moins des actes du RSS"}
+  },
+  {
+   "nom": "libelleEtape : « non » d'une étape à une condition, libellé vide, symbole inconnu → chaîne vide",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"test","symbole":"ZZ","branches":[{"libelle":"","listes":[]}]},
+    {"de":"n","role":"non"}
+   ],
+   "attendu": {"libelle":""}
+  },
+  {
+   "nom": "libelleEtape : « oui » du test DRbarre de 01C03 : le symbole n'est pas rendu (MCO p20-10) (le symbole se lit à part)",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {"$profil":"mco"},
+    {"$noeud":"p20-10","arbre":"mco"},
+    {"de":"p20-10","role":"oui","i":0,"rejoint":false}
+   ],
+   "attendu": {"libelle":"Traumatisme crânien (D-092)"}
+  },
+  {
+   "nom": "libelleEtape : critère DS, « non » (MCO p79-14)",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {"$profil":"mco"},
+    {"$noeud":"p79-14","arbre":"mco"},
+    {"de":"p79-14","role":"non","rejoint":false}
+   ],
+   "attendu": {"variable":"DS","libelle":"=0 jour"}
+  },
+  {
+   "nom": "libelleEtape : deuxième intention (SMR o-mmp-2e) : la position MMP n'est pas rendue (le symbole se lit à part)",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {"$profil":"smr"},
+    {"$noeud":"o-mmp-2e","arbre":"smr"},
+    {"de":"o-mmp-2e","role":"oui","i":0,"rejoint":false}
+   ],
+   "attendu": {"libelle":"Code orientant en deuxième intention"}
+  },
+  {
+   "nom": "libelleEtape : niveau C, « non » (SMR 0147S-C)",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {"$profil":"smr"},
+    {"$noeud":"0147S-C","arbre":"smr"},
+    {"de":"0147S-C","role":"non","rejoint":false}
+   ],
+   "attendu": {
+    "variable": "Niveau C si",
+    "libelle": "âge de 0 à 3 ans ou dépendance physique de 13 à 16 et âge jusqu'à 80 ans"
+   }
+  },
+  {
+   "nom": "libelleEtape : GR, « puis » (SMR 0147S)",
+   "fonction": "libelleEtape",
+   "arguments": [
+    {"$profil":"smr"},
+    {"$noeud":"0147S","arbre":"smr"},
+    {"de":"0147S","role":"suite","rejoint":false}
+   ],
+   "attendu": null
+  },
+  {
+   "nom": "resume : test à une condition → symbole et libellé",
+   "fonction": "resume",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {
+     "genre": "test",
+     "symbole": "DP",
+     "branches": [{"libelle":"Épilepsie (D-0103)","listes":["D-0103"]}]
+    }
+   ],
+   "attendu": "DP Épilepsie (D-0103)"
+  },
+  {
+   "nom": "resume : test à plusieurs cas → nombre de cas",
+   "fonction": "resume",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {
+     "genre": "test",
+     "symbole": "DP",
+     "branches": [{"libelle":"a","listes":[]},{"libelle":"b","listes":[]},{"libelle":"c","listes":[]}]
+    }
+   ],
+   "attendu": "DP — 3 cas"
+  },
+  {
+   "nom": "resume : test sans branche → « 0 cas »",
+   "fonction": "resume",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"test","symbole":"A"}
+   ],
+   "attendu": "A — 0 cas"
+  },
+  {
+   "nom": "resume : critère à une condition",
+   "fonction": "resume",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"critere","variable":"Âge","branches":[{"libelle":"<18 ans","listes":[]}]}
+   ],
+   "attendu": "Âge <18 ans"
+  },
+  {
+   "nom": "resume : critère au libellé vide → la variable seule, sans espace final",
+   "fonction": "resume",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"critere","variable":"Âge","branches":[{"libelle":"","listes":[]}]}
+   ],
+   "attendu": "Âge"
+  },
+  {
+   "nom": "resume : étape propre au champ → intitulé court (texte)",
+   "fonction": "resume",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"gnn"}
+   ],
+   "attendu": "Détermination du groupe du nouveau-né"
+  },
+  {
+   "nom": "resume : genre inconnu, sans intitulé → chaîne vide",
+   "fonction": "resume",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"autre"}
+   ],
+   "attendu": ""
+  },
+  {
+   "nom": "resume : test au symbole inconnu → exception",
+   "fonction": "resume",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"test","symbole":"ZZ","branches":[{"libelle":"a","listes":[]}]}
+   ],
+   "attendu": {"$erreur":true}
+  },
+  {
+   "nom": "resume : symbole DRbarre, « DP ou DAS, sauf le DR » rendu « DR » (profil MCO) (le symbole se lit à part)",
+   "fonction": "resume",
+   "arguments": [
+    {"$profil":"mco"},
+    {
+     "genre": "test",
+     "symbole": "DRbarre",
+     "branches": [{"libelle":"Traumatisme crânien (D-092)","listes":["D-092"],"vers":"x"}]
+    }
+   ],
+   "attendu": "DR Traumatisme crânien (D-092)"
+  },
+  {
+   "nom": "resume : symbole A2, « deux au moins des actes » rendu « A » (profil MCO) (le symbole se lit à part)",
+   "fonction": "resume",
+   "arguments": [
+    {"$profil":"mco"},
+    {
+     "genre": "test",
+     "symbole": "A2",
+     "branches": [
+      {
+       "libelle": "Itv. maj. multiple sur le genou ou la hanche (A-061)",
+       "listes": ["A-061"],
+       "vers": "x"
+      }
+     ]
+    }
+   ],
+   "attendu": "A Itv. maj. multiple sur le genou ou la hanche (A-061)"
+  },
+  {
+   "nom": "resume : symbole Atous, « tous les actes » rendu « A » (profil MCO) (le symbole se lit à part)",
+   "fonction": "resume",
+   "arguments": [
+    {"$profil":"mco"},
+    {
+     "genre": "test",
+     "symbole": "Atous",
+     "branches": [{"libelle":"Amygdalectomie ou adénoïdectomie isolée (A-021)","listes":["A-021"],"vers":"x"}]
+    }
+   ],
+   "attendu": "A Amygdalectomie ou adénoïdectomie isolée (A-021)"
+  },
+  {
+   "nom": "resume : symbole D2, « deux au moins des diagnostics » rendu « D » (profil MCO) (le symbole se lit à part)",
+   "fonction": "resume",
+   "arguments": [
+    {"$profil":"mco"},
+    {
+     "genre": "test",
+     "symbole": "D2",
+     "branches": [
+      {
+       "libelle": "Complication infectieuse de la maladie à VIH (D-129)",
+       "listes": ["D-129"],
+       "vers": "x"
+      }
+     ]
+    }
+   ],
+   "attendu": "D Complication infectieuse de la maladie à VIH (D-129)"
+  },
+  {
+   "nom": "resume : case de GHM → sa racine (profil MCO, nœud fictif)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"mco"},{"genre":"ghm","racine":"01C03","haut":null,"bas":"1"}],
+   "attendu": "01C03"
+  },
+  {
+   "nom": "resume : erreur → son groupe (profil MCO, nœud fictif)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"mco"},{"genre":"erreur","racine":"90Z02Z"}],
+   "attendu": "90Z02Z"
+  },
+  {
+   "nom": "resume : renvoi → son texte (profil MCO, nœud fictif)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"mco"},{"genre":"renvoi","texte":"CM27 CMD26 CMD25 CMD01-23"}],
+   "attendu": "CM27 CMD26 CMD25 CMD01-23"
+  },
+  {
+   "nom": "resume : inversion → intitulé court (profil MCO, nœud fictif)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"mco"},{"genre":"inversion","suite":{"vers":"x"}}],
+   "attendu": "Inversion DP/DR"
+  },
+  {
+   "nom": "resume : groupe du nouveau-né → intitulé court (profil MCO, nœud fictif)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"mco"},{"genre":"gnn","libelle":"égal","suite":{"vers":"x"}}],
+   "attendu": "Détermination du groupe du nouveau-né"
+  },
+  {
+   "nom": "resume : actes sans relation → intitulé court (profil MCO, nœud fictif)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"mco"},{"genre":"sans_relation","suite":{"vers":"x"}}],
+   "attendu": "Actes sans relation avec le diagnostic principal"
+  },
+  {
+   "nom": "resume : GR, intitulé court calculé (SMR 0147S)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"smr"},{"$noeud":"0147S","arbre":"smr"}],
+   "attendu": "GR 0147S"
+  },
+  {
+   "nom": "resume : GL (SMR 0147SC)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"smr"},{"$noeud":"0147SC","arbre":"smr"}],
+   "attendu": "0147SC"
+  },
+  {
+   "nom": "resume : erreur de l'orientation, étiquette (SMR o-cm-90)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"smr"},{"$noeud":"o-cm-90","arbre":"smr"}],
+   "attendu": "CM 90"
+  },
+  {
+   "nom": "resume : test MMP ou AE (SMR 01-1)",
+   "fonction": "resume",
+   "arguments": [{"$profil":"smr"},{"$noeud":"01-1","arbre":"smr"}],
+   "attendu": "MMP ou AE Etats végétatifs chroniques - Etats paucirelationnels (D-0103)"
+  },
+  {
+   "nom": "noeudsCorrespondants : « 01C03 » (racine de GHM, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"01C03"],
+   "attendu": [{"n":{"$noeud":"p20-11"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 01c03 » (racine en minuscules, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"01c03"],
+   "attendu": [{"n":{"$noeud":"p20-11"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 01 C 03 » (blancs retirés, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"01 C 03"],
+   "attendu": [{"n":{"$noeud":"p20-11"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 09Z02 » (racine à deux cases, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"09Z02"],
+   "attendu": [{"n":{"$noeud":"p50-4"}},{"n":{"$noeud":"p50-5"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 05M09 » (racine, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"05M09"],
+   "attendu": [{"n":{"$noeud":"p35-17"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 28Z01 » (racine des séances, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"28Z01"],
+   "attendu": [{"n":{"$noeud":"p10-5"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 01M2 » (début de racine, MCO), première case",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"01M2"],
+   "extrait": [0],
+   "attendu": {"n":{"$noeud":"p21-17"}}
+  },
+  {
+   "nom": "noeudsCorrespondants : « 90Z02Z » (groupe d'erreur, à chaque CMD, MCO), première erreur",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"90Z02Z"],
+   "extrait": [0],
+   "attendu": {"n":{"$noeud":"p10-12"}}
+  },
+  {
+   "nom": "noeudsCorrespondants : « D-0103 » (liste : seul le cas qui la teste, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"D-0103"],
+   "attendu": [{"n":{"$noeud":"p21-16"},"i":2}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « d0103 » (liste sans tiret, minuscule, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"d0103"],
+   "attendu": [{"n":{"$noeud":"p21-16"},"i":2}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « D 0103 » (liste avec blanc, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"D 0103"],
+   "attendu": [{"n":{"$noeud":"p21-16"},"i":2}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « D-010 » (liste comparée code pour code (pas D-0101…), MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"D-010"],
+   "attendu": []
+  },
+  {
+   "nom": "noeudsCorrespondants : « A-180 » (liste d'actes, test à une condition, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"A-180"],
+   "attendu": [{"n":{"$noeud":"p10-4"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « a180 » (liste d'actes sans tiret, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"a180"],
+   "attendu": [{"n":{"$noeud":"p10-4"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « épilepsie » (texte : le cas de la colonne qui répond, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"épilepsie"],
+   "attendu": [{"n":{"$noeud":"p21-16"},"i":2}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « EPILEPSIE » (texte sans accent, majuscules, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"EPILEPSIE"],
+   "attendu": [{"n":{"$noeud":"p21-16"},"i":2}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « dp epilepsie » (texte qui répond au test mais à aucun cas seul, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"dp epilepsie"],
+   "attendu": [{"n":{"$noeud":"p21-16"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « Nb Séances » (critère, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"Nb Séances"],
+   "attendu": [{"n":{"$noeud":"p10-1"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « cmd01-23 » (renvoi : feuille sans code, trouvée par son texte, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"cmd01-23"],
+   "attendu": [{"n":{"$noeud":"p11-22"}},{"n":{"$noeud":"p13-16"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « G40.9 » (code CIM-10 : aucune étape (les listes du code se cherchent à part), MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"G40.9"],
+   "attendu": []
+  },
+  {
+   "nom": "noeudsCorrespondants : « zzz » (rien, MCO)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"mco"},"zzz"],
+   "attendu": []
+  },
+  {
+   "nom": "noeudsCorrespondants : « 0147 » (GN entier : feuille, GR et GL, SMR)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"0147"],
+   "attendu": [
+    {"n":{"$noeud":"0147"}},
+    {"n":{"$noeud":"0147UA"}},
+    {"n":{"$noeud":"0147UB"}},
+    {"n":{"$noeud":"0147UC"}},
+    {"n":{"$noeud":"0147U"}},
+    {"n":{"$noeud":"0147TA"}},
+    {"n":{"$noeud":"0147TB"}},
+    {"n":{"$noeud":"0147TC"}},
+    {"n":{"$noeud":"0147T"}},
+    {"n":{"$noeud":"0147SA"}},
+    {"n":{"$noeud":"0147SB"}},
+    {"n":{"$noeud":"0147SC"}},
+    {"n":{"$noeud":"0147S"}},
+    {"n":{"$noeud":"0147LA"}},
+    {"n":{"$noeud":"0147JA"}},
+    {"n":{"$noeud":"0147KA"}},
+    {"n":{"$noeud":"0147IA"}}
+   ]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 0147S » (GR et ses GL, SMR)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"0147S"],
+   "attendu": [
+    {"n":{"$noeud":"0147SA"}},
+    {"n":{"$noeud":"0147SB"}},
+    {"n":{"$noeud":"0147SC"}},
+    {"n":{"$noeud":"0147S"}}
+   ]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 0147sc » (GL, SMR)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"0147sc"],
+   "attendu": [{"n":{"$noeud":"0147SC"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 0147SC2 » (GME → son GL, SMR)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"0147SC2"],
+   "attendu": [{"n":{"$noeud":"0147SC"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « 10 » (CM 10, SMR), premier : le GN 1003, clef entière du JS avant les autres",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"10"],
+   "extrait": [0],
+   "attendu": {"n":{"$noeud":"1003"}}
+  },
+  {
+   "nom": "noeudsCorrespondants : « 10 » (CM 10, SMR), cinquième : 1003UA, après les quatre GN à clef entière",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"10"],
+   "extrait": [4],
+   "attendu": {"n":{"$noeud":"1003UA"}}
+  },
+  {
+   "nom": "noeudsCorrespondants : « 100 » (trois chiffres : pas un code de groupe, cherché en texte, SMR), premier",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"100"],
+   "extrait": [0],
+   "attendu": {"n":{"$noeud":"10-1"}}
+  },
+  {
+   "nom": "noeudsCorrespondants : « D-0103 » (liste, SMR)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"D-0103"],
+   "attendu": [{"n":{"$noeud":"01-1"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « végétatif » (texte, SMR)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"végétatif"],
+   "attendu": [{"n":{"$noeud":"01-1"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « CM 90 » (erreur de l'orientation, par son étiquette, SMR)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"CM 90"],
+   "attendu": [{"n":{"$noeud":"o-cm-90"}}]
+  },
+  {
+   "nom": "noeudsCorrespondants : « erreur 300 » (le titre d'une feuille n'est pas cherché, SMR)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"erreur 300"],
+   "attendu": []
+  },
+  {
+   "nom": "noeudsCorrespondants : « I63.4 » (code CIM-10 : aucune étape, SMR)",
+   "fonction": "noeudsCorrespondants",
+   "arguments": [{"$profil":"smr"},"I63.4"],
+   "attendu": []
+  },
+  {
+   "nom": "casDesListes : cas qui testent l'une des listes ; i null pour un test à une condition",
+   "fonction": "casDesListes",
+   "arguments": [
+    {
+     "noeuds": {
+      "2": {"_id":"2","nom":"2","branches":[{"libelle":"z","listes":["A-3"]}]},
+      "10": {"_id":"10","nom":"10","branches":[{"libelle":"z","listes":["A-3"]}]},
+      "b": {"_id":"b","nom":"b","branches":[{"libelle":"x","listes":["D-2"]}]},
+      "a": {
+       "_id": "a",
+       "nom": "a",
+       "branches": [{"libelle":"x","listes":["D-1"]},{"libelle":"y","listes":["D-2","A-3"]}]
+      },
+      "c": {"_id":"c","nom":"c","genre":"ghm"}
+     }
+    },
+    {"$set":["D-2"]},
+    []
+   ],
+   "attendu": [
+    {"n":{"nom":"b","branches":[{"libelle":"x","listes":["D-2"]}]}},
+    {
+     "n": {
+      "nom": "a",
+      "branches": [{"libelle":"x","listes":["D-1"]},{"libelle":"y","listes":["D-2","A-3"]}]
+     },
+     "i": 1
+    }
+   ]
+  },
+  {
+   "nom": "casDesListes : sauf ceux déjà trouvés (par nœud et cas)",
+   "fonction": "casDesListes",
+   "arguments": [
+    {
+     "noeuds": {
+      "2": {"_id":"2","nom":"2","branches":[{"libelle":"z","listes":["A-3"]}]},
+      "10": {"_id":"10","nom":"10","branches":[{"libelle":"z","listes":["A-3"]}]},
+      "b": {"_id":"b","nom":"b","branches":[{"libelle":"x","listes":["D-2"]}]},
+      "a": {
+       "_id": "a",
+       "nom": "a",
+       "branches": [{"libelle":"x","listes":["D-1"]},{"libelle":"y","listes":["D-2","A-3"]}]
+      },
+      "c": {"_id":"c","nom":"c","genre":"ghm"}
+     }
+    },
+    {"$set":["D-2"]},
+    [{"n":{"_id":"a"},"i":1}]
+   ],
+   "attendu": [{"n":{"nom":"b","branches":[{"libelle":"x","listes":["D-2"]}]}}]
+  },
+  {
+   "nom": "casDesListes : ordre des nœuds du JS, clefs entières d'abord (« 2 », « 10 », puis les autres)",
+   "fonction": "casDesListes",
+   "arguments": [
+    {
+     "noeuds": {
+      "2": {"_id":"2","nom":"2","branches":[{"libelle":"z","listes":["A-3"]}]},
+      "10": {"_id":"10","nom":"10","branches":[{"libelle":"z","listes":["A-3"]}]},
+      "b": {"_id":"b","nom":"b","branches":[{"libelle":"x","listes":["D-2"]}]},
+      "a": {
+       "_id": "a",
+       "nom": "a",
+       "branches": [{"libelle":"x","listes":["D-1"]},{"libelle":"y","listes":["D-2","A-3"]}]
+      },
+      "c": {"_id":"c","nom":"c","genre":"ghm"}
+     }
+    },
+    {"$set":["A-3"]},
+    []
+   ],
+   "attendu": [
+    {"n":{"nom":"2","branches":[{"libelle":"z","listes":["A-3"]}]}},
+    {"n":{"nom":"10","branches":[{"libelle":"z","listes":["A-3"]}]}},
+    {
+     "n": {
+      "nom": "a",
+      "branches": [{"libelle":"x","listes":["D-1"]},{"libelle":"y","listes":["D-2","A-3"]}]
+     },
+     "i": 1
+    }
+   ]
+  },
+  {
+   "nom": "casDesListes : aucune liste",
+   "fonction": "casDesListes",
+   "arguments": [
+    {
+     "noeuds": {
+      "2": {"_id":"2","nom":"2","branches":[{"libelle":"z","listes":["A-3"]}]},
+      "10": {"_id":"10","nom":"10","branches":[{"libelle":"z","listes":["A-3"]}]},
+      "b": {"_id":"b","nom":"b","branches":[{"libelle":"x","listes":["D-2"]}]},
+      "a": {
+       "_id": "a",
+       "nom": "a",
+       "branches": [{"libelle":"x","listes":["D-1"]},{"libelle":"y","listes":["D-2","A-3"]}]
+      },
+      "c": {"_id":"c","nom":"c","genre":"ghm"}
+     }
+    },
+    {"$set":[]},
+    []
+   ],
+   "attendu": []
+  },
+  {
+   "nom": "casDesListes : D-0103, cas 2 de la colonne du DP de la CMD 01 (MCO)",
+   "fonction": "casDesListes",
+   "arguments": [{"$appel":"preparer","arguments":[{"$profil":"mco"}]},{"$set":["D-0103"]},[]],
+   "attendu": [{"n":{"$noeud":"p21-16"},"i":2}]
+  },
+  {
+   "nom": "casDesListes : D-0103 déjà trouvé par la recherche → rien de plus (MCO)",
+   "fonction": "casDesListes",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"mco"}]},
+    {"$set":["D-0103"]},
+    {"$appel":"noeudsCorrespondants","arguments":[{"$profil":"mco"},"D-0103"]}
+   ],
+   "attendu": []
+  },
+  {
+   "nom": "casDesListes : listes de G40.9 (D-0103, D-304, D-306) et de I10 (D-0510, D-304, D-307), MCO",
+   "fonction": "casDesListes",
+   "arguments": [
+    {"$appel":"preparer","arguments":[{"$profil":"mco"}]},
+    {"$set":["D-0103","D-304","D-306","D-0510","D-307"]},
+    []
+   ],
+   "attendu": [
+    {"n":{"$noeud":"p17-14"}},
+    {"n":{"$noeud":"p17-22"}},
+    {"n":{"$noeud":"p17-28"}},
+    {"n":{"$noeud":"p18-3"}},
+    {"n":{"$noeud":"p18-7"}},
+    {"n":{"$noeud":"p18-9"}},
+    {"n":{"$noeud":"p18-13"}},
+    {"n":{"$noeud":"p18-15"}},
+    {"n":{"$noeud":"p18-19"}},
+    {"n":{"$noeud":"p18-21"}},
+    {"n":{"$noeud":"p18-25"}},
+    {"n":{"$noeud":"p18-27"}},
+    {"n":{"$noeud":"p21-16"},"i":2},
+    {"n":{"$noeud":"p35-12"},"i":9}
+   ]
+  },
+  {
+   "nom": "casDesListes : D-0112, AVC : trois tests, i null (une condition chacun) (SMR)",
+   "fonction": "casDesListes",
+   "arguments": [{"$appel":"preparer","arguments":[{"$profil":"smr"}]},{"$set":["D-0112"]},[]],
+   "attendu": [{"n":{"$noeud":"01-5-2"}},{"n":{"$noeud":"01-6-2"}},{"n":{"$noeud":"01-7"}}]
+  },
+  {
+   "nom": "trierResultats : par catégorie dans l'ordre du sélecteur, puis page, puis cas (null avant 0)",
+   "fonction": "trierResultats",
+   "arguments": [
+    {"categories":[{"id":"orientation"},{"id":"28"},{"id":"01"}]},
+    [
+     {"n":{"nom":"a","cmd":"01","page":20},"i":2},
+     {"n":{"nom":"b","cmd":"28","page":11},"i":null},
+     {"n":{"nom":"c","cmd":"01","page":20},"i":null},
+     {"n":{"nom":"d","cmd":"28","page":10},"i":null},
+     {"n":{"nom":"e","cmd":"01","page":20},"i":0},
+     {"n":{"nom":"f","cmd":"orientation","page":9},"i":null}
+    ]
+   ],
+   "attendu": [
+    {"n":{"nom":"f","cmd":"orientation","page":9}},
+    {"n":{"nom":"d","cmd":"28","page":10}},
+    {"n":{"nom":"b","cmd":"28","page":11}},
+    {"n":{"nom":"c","cmd":"01","page":20}},
+    {"n":{"nom":"e","cmd":"01","page":20},"i":0},
+    {"n":{"nom":"a","cmd":"01","page":20},"i":2}
+   ]
+  },
+  {
+   "nom": "trierResultats : page absente comptée 0 ; ordre gardé à égalité",
+   "fonction": "trierResultats",
+   "arguments": [
+    {"categories":[{"id":"orientation"},{"id":"28"},{"id":"01"}]},
+    [
+     {"n":{"nom":"a","cmd":"01","page":3},"i":null},
+     {"n":{"nom":"b","cmd":"01"},"i":null},
+     {"n":{"nom":"c","cmd":"01"},"i":null}
+    ]
+   ],
+   "attendu": [{"n":{"nom":"b","cmd":"01"}},{"n":{"nom":"c","cmd":"01"}},{"n":{"nom":"a","cmd":"01","page":3}}]
+  },
+  {
+   "nom": "trierResultats : catégorie inconnue (NaN) → départage par page puis cas",
+   "fonction": "trierResultats",
+   "arguments": [
+    {"categories":[{"id":"orientation"},{"id":"28"},{"id":"01"}]},
+    [
+     {"n":{"nom":"a","cmd":"99","page":5},"i":null},
+     {"n":{"nom":"b","cmd":"99","page":2},"i":1},
+     {"n":{"nom":"c","cmd":"99","page":2},"i":null}
+    ]
+   ],
+   "attendu": [
+    {"n":{"nom":"c","cmd":"99","page":2}},
+    {"n":{"nom":"b","cmd":"99","page":2},"i":1},
+    {"n":{"nom":"a","cmd":"99","page":5}}
+   ]
+  },
+  {
+   "nom": "trierResultats : liste vide",
+   "fonction": "trierResultats",
+   "arguments": [{"categories":[{"id":"orientation"},{"id":"28"},{"id":"01"}]},[]],
+   "attendu": []
+  },
+  {
+   "nom": "resumeResultat : case 01C03 située par les deux dernières conditions (MCO p20-11, i=null) : le symbole DRbarre n'est pas rendu (le symbole se lit à part)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"mco"},{"$noeud":"p20-11","arbre":"mco"},null],
+   "attendu": "01C03 (01C031, 01C032, 01C033, 01C034) — Âge <18 ans : non · Traumatisme crânien (D-092)"
+  },
+  {
+   "nom": "resumeResultat : cas 0 du test DRbarre, « DR » puis la case (MCO p20-10, i=0) (le symbole se lit à part)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"mco"},{"$noeud":"p20-10","arbre":"mco"},0],
+   "attendu": "DR Traumatisme crânien (D-092) → 01C03"
+  },
+  {
+   "nom": "resumeResultat : test DRbarre à une condition qui mène à une case → « DR … → 01C03 » (MCO p20-10, i=null) (le symbole se lit à part)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"mco"},{"$noeud":"p20-10","arbre":"mco"},null],
+   "attendu": "DR Traumatisme crânien (D-092) → 01C03"
+  },
+  {
+   "nom": "resumeResultat : critère qui ne mène pas à une case : pas de « → » (MCO p79-14, i=null)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"mco"},{"$noeud":"p79-14","arbre":"mco"},null],
+   "attendu": "DS =0 jour"
+  },
+  {
+   "nom": "resumeResultat : critère, cas 0 → variable en préfixe, cible qui n'est pas une case (MCO p79-14, i=0)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"mco"},{"$noeud":"p79-14","arbre":"mco"},0],
+   "attendu": "DS =0 jour"
+  },
+  {
+   "nom": "resumeResultat : cas 0 d'une colonne qui mène à une case (profil MCO, nœud fictif, i=0)",
+   "fonction": "resumeResultat",
+   "arguments": [
+    {"$profil":"mco"},
+    {
+     "genre": "test",
+     "symbole": "DP",
+     "branches": [
+      {"libelle":"Un (D-0101)","listes":["D-0101"],"vers":"p20-11"},
+      {"libelle":"Deux","listes":[],"vers":"p20-10"}
+     ]
+    },
+    0
+   ],
+   "attendu": "DP Un (D-0101) → 01C03"
+  },
+  {
+   "nom": "resumeResultat : cas 1 d'une colonne qui ne mène pas à une case (profil MCO, nœud fictif, i=1)",
+   "fonction": "resumeResultat",
+   "arguments": [
+    {"$profil":"mco"},
+    {
+     "genre": "test",
+     "symbole": "DP",
+     "branches": [
+      {"libelle":"Un (D-0101)","listes":["D-0101"],"vers":"p20-11"},
+      {"libelle":"Deux","listes":[],"vers":"p20-10"}
+     ]
+    },
+    1
+   ],
+   "attendu": "DP Deux"
+  },
+  {
+   "nom": "resumeResultat : colonne entière → son résumé (profil MCO, nœud fictif, i=null)",
+   "fonction": "resumeResultat",
+   "arguments": [
+    {"$profil":"mco"},
+    {
+     "genre": "test",
+     "symbole": "DP",
+     "branches": [
+      {"libelle":"Un (D-0101)","listes":["D-0101"],"vers":"p20-11"},
+      {"libelle":"Deux","listes":[],"vers":"p20-10"}
+     ]
+    },
+    null
+   ],
+   "attendu": "DP — 2 cas"
+  },
+  {
+   "nom": "resumeResultat : erreur : son code n'est pas répété ; sans parent, sans contexte (profil MCO, nœud fictif)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"mco"},{"genre":"erreur","racine":"90Z02Z"},null],
+   "attendu": "90Z02Z"
+  },
+  {
+   "nom": "resumeResultat : renvoi sans code : son texte (profil MCO, nœud fictif)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"mco"},{"genre":"renvoi","texte":"CM27 CMD26 CMD25 CMD01-23"},null],
+   "attendu": "CM27 CMD26 CMD25 CMD01-23"
+  },
+  {
+   "nom": "resumeResultat : symbole inconnu, cas 0 → préfixe vide (profil SMR, nœud fictif vers 0147)",
+   "fonction": "resumeResultat",
+   "arguments": [
+    {"$profil":"smr"},
+    {"genre":"test","symbole":"ZZ","branches":[{"libelle":"L","listes":[],"vers":"0147"}]},
+    0
+   ],
+   "attendu": " L → 0147"
+  },
+  {
+   "nom": "resumeResultat : feuille dont la dernière étape est le « non » d'une colonne de cas (arbre fictif)",
+   "fonction": "resumeResultat",
+   "arguments": [
+    {
+     "$appel": "smr_arbre.profilArbre",
+     "arguments": [
+      {
+       "_arbreSmr": {
+        "arbre": {
+         "noeuds": {
+          "r": {
+           "_id": "r",
+           "genre": "critere",
+           "variable": "Âge",
+           "branches": [{"libelle":"< 18 ans","listes":[],"vers":"t"}],
+           "sinon": {"vers":"g"}
+          },
+          "t": {
+           "_id": "t",
+           "genre": "test",
+           "symbole": "MMP",
+           "branches": [
+            {"libelle":"Un (D-0001)","listes":["D-0001"],"vers":"g"},
+            {"libelle":"Deux (D-0002)","listes":["D-0002"],"vers":"g"}
+           ],
+           "sinon": {"vers":"f"}
+          },
+          "f": {"_id":"f","genre":"gn","code":"9901"},
+          "g": {"_id":"g","genre":"gn","code":"9902"}
+         },
+         "listes": {},
+         "_parents": {
+          "$map": [
+           ["t",[{"de":"r","role":"oui","i":0,"rejoint":false}]],
+           ["f",[{"de":"t","role":"non","rejoint":false}]],
+           [
+            "g",
+            [
+             {"de":"t","role":"oui","i":0,"rejoint":false},
+             {"de":"t","role":"oui","i":1,"rejoint":false},
+             {"de":"r","role":"non","rejoint":false}
+            ]
+           ]
+          ]
+         }
+        }
+       }
+      }
+     ]
+    },
+    {"_id":"f","genre":"gn","code":"9901"},
+    null
+   ],
+   "attendu": "9901 — Âge < 18 ans · MMP — 2 cas : non"
+  },
+  {
+   "nom": "resumeResultat : GL situé par le GR et le niveau C (SMR 0147SC, i=null)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"smr"},{"$noeud":"0147SC","arbre":"smr"},null],
+   "attendu": "0147SC (0147SC1, 0147SC2) — GR 0147S · Niveau C si âge de 0 à 3 ans ou dépendance physique de 13 à 16 et âge jusqu'à 80 ans"
+  },
+  {
+   "nom": "resumeResultat : GL A, deux « non » (SMR 0147SA, i=null)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"smr"},{"$noeud":"0147SA","arbre":"smr"},null],
+   "attendu": "0147SA (0147SA1, 0147SA2) — Niveau C si âge de 0 à 3 ans ou dépendance physique de 13 à 16 et âge jusqu'à 80 ans : non · Niveau B si âge de 4 à 12 ans, dépendance cognitive de 7 à 8, dépendance physique de 9 à 12 ou dépendance physique de 13 à 16 et âge à partir de 81 ans : non"
+  },
+  {
+   "nom": "resumeResultat : GN, feuille de sa CM (SMR 0147, i=null) : les positions MMP et AE ne sont pas rendues (le symbole se lit à part)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"smr"},{"$noeud":"0147","arbre":"smr"},null],
+   "attendu": "0147 — Hémiplégies (D-0150) · Accidents vasculaires cérébraux (D-0112)"
+  },
+  {
+   "nom": "resumeResultat : GL d'HTP sans test : sans contexte (SMR 0103LA, i=null)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"smr"},{"$noeud":"0103LA","arbre":"smr"},null],
+   "attendu": "0103LA (0103LA0)"
+  },
+  {
+   "nom": "resumeResultat : GL atteint par deux traits : le premier parent (SMR 0147IA, i=null)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"smr"},{"$noeud":"0147IA","arbre":"smr"},null],
+   "attendu": "0147IA (0147IA0) — Âge < 18 ans, le GN n'ayant pas de type pédiatrique : réadaptation très intense, sans test sur le score (3.4.2.2) : non · Score R global par jour ≥ 150 (seuil très intense)"
+  },
+  {
+   "nom": "resumeResultat : erreur sans code : son étiquette (SMR o-cm-90, i=null)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"smr"},{"$noeud":"o-cm-90","arbre":"smr"},null],
+   "attendu": "CM 90"
+  },
+  {
+   "nom": "resumeResultat : GR : intitulé court (SMR 0147S, i=null)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"smr"},{"$noeud":"0147S","arbre":"smr"},null],
+   "attendu": "GR 0147S"
+  },
+  {
+   "nom": "resumeResultat : critère qui mène à un GL (SMR 0147S-C, i=null)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"smr"},{"$noeud":"0147S-C","arbre":"smr"},null],
+   "attendu": "Niveau C si âge de 0 à 3 ans ou dépendance physique de 13 à 16 et âge jusqu'à 80 ans → 0147SC"
+  },
+  {
+   "nom": "resumeResultat : test MMP ou AE, cas 0 → GN (SMR 01-1, i=0)",
+   "fonction": "resumeResultat",
+   "arguments": [{"$profil":"smr"},{"$noeud":"01-1","arbre":"smr"},0],
+   "attendu": "MMP ou AE Etats végétatifs chroniques - Etats paucirelationnels (D-0103) → 0103"
+  },
+  {
+   "nom": "natureDeListe : la fiche de la liste l'emporte sur son code (A-1)",
+   "fonction": "natureDeListe",
+   "arguments": [
+    {
+     "listes": {"A-1":{"nature":"diagnostics"},"D-2":{"nature":"actes"},"D-3":{"libelle":"x","nature":null}}
+    },
+    "A-1"
+   ],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeListe : la fiche de la liste l'emporte sur son code (D-2)",
+   "fonction": "natureDeListe",
+   "arguments": [
+    {
+     "listes": {"A-1":{"nature":"diagnostics"},"D-2":{"nature":"actes"},"D-3":{"libelle":"x","nature":null}}
+    },
+    "D-2"
+   ],
+   "attendu": "actes"
+  },
+  {
+   "nom": "natureDeListe : nature null → selon le code",
+   "fonction": "natureDeListe",
+   "arguments": [
+    {
+     "listes": {"A-1":{"nature":"diagnostics"},"D-2":{"nature":"actes"},"D-3":{"libelle":"x","nature":null}}
+    },
+    "D-3"
+   ],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeListe : liste absente en A- → actes",
+   "fonction": "natureDeListe",
+   "arguments": [
+    {
+     "listes": {"A-1":{"nature":"diagnostics"},"D-2":{"nature":"actes"},"D-3":{"libelle":"x","nature":null}}
+    },
+    "A-999"
+   ],
+   "attendu": "actes"
+  },
+  {
+   "nom": "natureDeListe : liste absente en D- → diagnostics",
+   "fonction": "natureDeListe",
+   "arguments": [
+    {
+     "listes": {"A-1":{"nature":"diagnostics"},"D-2":{"nature":"actes"},"D-3":{"libelle":"x","nature":null}}
+    },
+    "D-999"
+   ],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeListe : « a- » minuscule n'est pas une liste d'actes",
+   "fonction": "natureDeListe",
+   "arguments": [
+    {
+     "listes": {"A-1":{"nature":"diagnostics"},"D-2":{"nature":"actes"},"D-3":{"libelle":"x","nature":null}}
+    },
+    "a-999"
+   ],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeListe : liste nommée « CMD 09 » → diagnostics",
+   "fonction": "natureDeListe",
+   "arguments": [
+    {
+     "listes": {"A-1":{"nature":"diagnostics"},"D-2":{"nature":"actes"},"D-3":{"libelle":"x","nature":null}}
+    },
+    "CMD 09"
+   ],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeListe : A-002, craniotomies (MCO)",
+   "fonction": "natureDeListe",
+   "arguments": [{"$appel":"preparer","arguments":[{"$profil":"mco"}]},"A-002"],
+   "attendu": "actes"
+  },
+  {
+   "nom": "natureDeListe : D-0103, épilepsies (MCO)",
+   "fonction": "natureDeListe",
+   "arguments": [{"$appel":"preparer","arguments":[{"$profil":"mco"}]},"D-0103"],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeListe : D-0112, AVC (SMR)",
+   "fonction": "natureDeListe",
+   "arguments": [{"$appel":"preparer","arguments":[{"$profil":"smr"}]},"D-0112"],
+   "attendu": "diagnostics"
+  },
+  {
+   "nom": "natureDeListe : liste en A- absente de l'arbre SMR → actes",
+   "fonction": "natureDeListe",
+   "arguments": [{"$appel":"preparer","arguments":[{"$profil":"smr"}]},"A-0001"],
+   "attendu": "actes"
+  },
+  {
+   "nom": "contexteDeListe : hors d'une étape (nœud null) → null",
+   "fonction": "contexteDeListe",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    null,
+    "D-0103"
+   ],
+   "attendu": null
+  },
+  {
+   "nom": "contexteDeListe : aucune branche ne teste la liste → null",
+   "fonction": "contexteDeListe",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"branches":[{"libelle":"x","listes":["D-1"]}]},
+    "D-0103"
+   ],
+   "attendu": null
+  },
+  {
+   "nom": "contexteDeListe : étape sans branche → null",
+   "fonction": "contexteDeListe",
+   "arguments": [
+    {
+     "symboles": {
+      "DP": {"texte":"DP","titre":"Le diagnostic principal du RSS"},
+      "A": {"texte":"A","titre":"L'un au moins des actes du RSS"}
+     },
+     "feuilles": {"$set":["ghm","erreur"]},
+     "special": {"gnn":{"court":"Détermination du groupe du nouveau-né"}}
+    },
+    {"genre":"gnn"},
+    "D-0103"
+   ],
+   "attendu": null
+  },
+  {
+   "nom": "contexteDeListe : profil sans contexteDeListe → null (MCO p20-10, D-092)",
+   "fonction": "contexteDeListe",
+   "arguments": [{"$profil":"mco"},{"$noeud":"p20-10","arbre":"mco"},"D-092"],
+   "attendu": null
+  },
+  {
+   "nom": "contexteDeListe : profil SMR sans contexteDeListe → null (01-1, D-0103)",
+   "fonction": "contexteDeListe",
+   "arguments": [{"$profil":"smr"},{"$noeud":"01-1","arbre":"smr"},"D-0103"],
+   "attendu": null
+  }
+ ]
+}
