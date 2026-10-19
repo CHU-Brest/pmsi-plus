@@ -288,6 +288,10 @@ const PADDING_CELLULE = 32;
 // ça : aucune valeur ne dépasse quelques caractères. 10 px et non moins :
 // dans les polices de repli les plus larges (DejaVu Sans, sous Linux), un
 // GHM à « M » tient 59 px pour 6 caractères (14M03D) et débordait à 9,2.
+// Une colonne nommée comme une colonne de codes (COLONNES_CODES) suit la
+// même règle même quand une valeur dépasse ces quelques caractères
+// (« P04.2 / P04.3 / P04.4 / P96.1 si sevrage ») : ce sont les libellés
+// qu'on accepte de voir tronqués, jamais les codes.
 const CARACTERE_CODE_PX = 10;
 const LONGUEUR_MAX_IDENTIFIANT = 20;
 
@@ -332,8 +336,10 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible, fo
         somme += longueur;
         if (longueur > plusLong) plusLong = longueur;
       }
+      const identifiants =
+        plusLong <= LONGUEUR_MAX_IDENTIFIANT || COLONNES_CODES.test(normaliser(c));
       largeurContenu =
-        !vedette && plusLong <= LONGUEUR_MAX_IDENTIFIANT
+        !vedette && identifiants
           ? plusLong * CARACTERE_CODE_PX + PADDING_CELLULE
           : largeurTexte(lignes.length ? somme / lignes.length : 0);
     }
