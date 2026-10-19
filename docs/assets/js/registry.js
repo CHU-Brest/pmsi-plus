@@ -50,6 +50,13 @@ const REGISTRY = [
     resume: "Germes et leurs codes CIM-10, avec et sans sepsis.",
   },
   {
+    section: "CIM-10",
+    slug: "codes-o-p",
+    titre: "Codes O → P (mère → nouveau-né)",
+    module: "codes_op",
+    resume: "Codes O de la mère → codes P du nouveau-né qui en découlent.",
+  },
+  {
     champ: "mco",
     section: "HDJ",
     slug: "acte",
