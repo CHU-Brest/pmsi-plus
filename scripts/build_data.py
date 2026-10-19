@@ -53,6 +53,7 @@ JEUX: tuple[Jeu, ...] = (
     Jeu("intox", "medicaments.xlsx"),
     Jeu("intox", "substances.xlsx"),
     Jeu("germes", "germes.xlsx"),
+    Jeu("codes_op", "codes_op.xlsx"),
     Jeu("actes", "actes.xlsx"),
     Jeu("contextes", "contextes.xlsx"),
     Jeu("acronymes", "acronymes.xlsx"),
