@@ -45,6 +45,7 @@ class Jeu:
     theme: str  # sous-dossier commun à data/<theme>/ et docs/assets/data/<theme>/
     fichier: str  # nom du xlsx (ou csv) dans data/<theme>/
     feuille: str | None = None  # feuille du classeur à lire ; None : la feuille active
+    sortie: str | None = None  # nom du JSON écrit ; None : celui du classeur
 
 
 # La seule liste à tenir à jour : ajouter un référentiel, c'est ajouter une
@@ -54,6 +55,9 @@ JEUX: tuple[Jeu, ...] = (
     Jeu("intox", "substances.xlsx"),
     Jeu("germes", "germes.xlsx"),
     Jeu("codes_op", "codes_op.xlsx"),
+    Jeu("complications", "liste_code_complications.xlsx", feuille="Code complications actes", sortie="complications"),
+    Jeu("complications", "liste_code_complications.xlsx", feuille="codes T", sortie="codes_t"),
+    Jeu("complications", "liste_code_complications.xlsx", feuille="Code Y de circonstances", sortie="codes_y"),
     Jeu("actes", "actes.xlsx"),
     Jeu("contextes", "contextes.xlsx"),
     Jeu("acronymes", "acronymes.xlsx"),
@@ -304,7 +308,7 @@ def convertir(jeu: Jeu) -> None:
 
     dossier_sortie = DOSSIER_SORTIE / jeu.theme
     dossier_sortie.mkdir(parents=True, exist_ok=True)
-    cible = dossier_sortie / f"{source.stem}.json"
+    cible = dossier_sortie / f"{jeu.sortie or source.stem}.json"
 
     # Format colonnaire (en-têtes une fois + lignes en tableaux) plutôt
     # qu'un objet par ligne : ces jeux répètent jusqu'à 19 clefs identiques

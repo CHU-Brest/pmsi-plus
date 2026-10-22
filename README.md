@@ -13,6 +13,7 @@ individuelle — sont repris ici :
 | commun | CIM-10 | Intox CIM-10 | médicaments → codes CIM-10 d'intoxication ; effets nocifs par substance |
 | commun | CIM-10 | Germes CIM-10 | germes → code CIM-10, avec et sans sepsis |
 | commun | CIM-10 | Codes O → P (mère → nouveau-né) | codes O de la mère → codes P du nouveau-né qui en découlent, avec libellés CIM-10 |
+| MCO | CIM-10 | Complications des actes | complications d'actes médicaux ou chirurgicaux → code CIM-10, type de code et codes à associer (T, Y, code plus précis), avec le niveau de CMA de la liste de l'ATIH ; tables des codes T et des codes Y de circonstances |
 | MCO | HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
 | MCO | HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
 | MCO | HDJ | Contexte patient | codes CIM-10 de contexte et justification |
@@ -37,7 +38,7 @@ Ce dépôt est public : rien de ce qui touche à l'activité de l'établissement
 patient n'y a sa place, même agrégé ou censuré. Un thème qui n'est pas un référentiel
 générique de codage ne rejoint pas ce dépôt.
 
-Les référentiels publiés ici (intoxications, germes, codes O → P, actes CCAM, contexte patient,
+Les référentiels publiés ici (intoxications, germes, codes O → P, complications des actes, actes CCAM, contexte patient,
 listes de la fonction groupage, acronymes) sont des tables de correspondance codes/référentiels maintenues par le DIM —
 aucune ne porte de donnée patient. L'algorithme de la fonction groupage est la transcription
 du volume 3 du Manuel des GHM, document public de l'ATIH ; les tarifs des GHS sont ceux de l'arrêté
@@ -56,6 +57,8 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   intox/substances.xlsx
   germes/germes.xlsx
   codes_op/codes_op.xlsx      correspondance codes O (mère) → codes P (nouveau-né), feuille « avec libellés CIM » de la V3 du DIM, en-tête nommé
+  complications/liste_code_complications.xlsx   complications des actes, codes T et codes Y de circonstances : trois feuilles, chacune lue
+                              dans son propre JSON ; la colonne CMA du classeur est remplacée sur le site par le niveau de la liste de l'ATIH
   actes/actes.xlsx
   contextes/contextes.xlsx
   acronymes/acronymes.xlsx
