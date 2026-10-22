@@ -57,6 +57,7 @@ const REGISTRY = [
     resume: "Codes O de la mère → codes P du nouveau-né qui en découlent.",
   },
   {
+    champ: "mco",
     section: "CIM-10",
     slug: "complications",
     titre: "Complications des actes",
