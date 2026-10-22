@@ -17,17 +17,22 @@ const COLONNES_CHERCHABLES = [
 ];
 
 /** Le niveau de CMA saisi dans le classeur cède la place à celui de la
- *  liste des CMA de l'ATIH en vigueur : vide pour un code qui n'est pas une
- *  CMA, et pour une famille de codes (« I21.- », « S% »). */
+ *  liste des CMA de l'ATIH en vigueur, code par code quand la cellule en
+ *  porte plusieurs (« L08.8 ou L08.0 », « G62.8 +G72.8 ») : vide pour un
+ *  code qui n'est pas une CMA, un code non terminal (« T81.3 ») et une
+ *  famille de codes (« I21.- », « S% »). */
 function poserNiveauxCma(lignes, cma) {
   const niveaux = new Map(cma.lignes.map((l) => [l.Code, l.Niveau]));
-  for (const l of lignes) l.CMA = niveaux.get(l["Code CIM10"]) ?? null;
+  for (const l of lignes) {
+    const trouves = l["Code CIM10"].split(/\s*(?:\+|ou)\s*/).map((c) => niveaux.get(c)).filter(Boolean);
+    l.CMA = [...new Set(trouves)].join(" / ") || null;
+  }
 }
 
 /** Champ de recherche et tableau d'un jeu, sous `titre`. */
-function sectionCherchable(conteneur, jeu, { titre, id, exemple }) {
+function sectionCherchable(conteneur, jeu, { titre, id, exemple, raccourci = true }) {
   const zoneResultats = el("div", {});
-  const champ = champMotsClefs({ id, exemple, onInput: (valeur) => afficher(valeur) });
+  const champ = champMotsClefs({ id, exemple, raccourci, onInput: (valeur) => afficher(valeur) });
 
   conteneur.append(el("h2", {}, titre), el("div", { class: "barre-outils" }, champ), zoneResultats);
 
@@ -70,7 +75,7 @@ export async function rendre(conteneur) {
     el(
       "p",
       {},
-      "Niveau de CMA : celui de la liste des CMA de la fonction groupage MCO en vigueur ; vide pour un code qui n'est pas une CMA, ou pour une famille de codes (« I21.- », « S% »)."
+      "Niveau de CMA : celui de la liste des CMA de la fonction groupage MCO en vigueur, pour chaque code de la cellule ; vide pour un code qui n'est pas une CMA, un code non terminal (« T81.3 ») ou une famille de codes (« I21.- », « S% »)."
     ),
     el(
       "p",
@@ -96,5 +101,6 @@ export async function rendre(conteneur) {
     titre: "Codes Y de circonstances",
     id: "complications_codes_y",
     exemple: "ex. : endoscopie",
+    raccourci: false,
   });
 }
