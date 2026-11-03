@@ -295,6 +295,11 @@ const PADDING_CELLULE = 32;
 const CARACTERE_CODE_PX = 10;
 const LONGUEUR_MAX_IDENTIFIANT = 20;
 
+// Commentaires (codes O → P) : lus en entier, jamais tronqués ni réservés à
+// l'infobulle. La colonne se dimensionne comme une colonne de codes, sur sa
+// valeur la plus longue, et sans plafond : le tableau défile plutôt.
+const COLONNES_ENTIERES = /^commentaire/;
+
 // Colonne « vedette » : le libellé ou le nom est le texte qui identifie la
 // ligne pour l'utilisateur, contrairement aux colonnes voisines (code,
 // justification, catégorie...) qui peuvent être aussi longues en moyenne
@@ -326,6 +331,7 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible, fo
     const largeurEntete = largeurEnteteTexte(c.length);
     let largeurContenu;
     const vedette = estColonneVedette(c);
+    const entiere = COLONNES_ENTIERES.test(normaliser(c));
     if (colonnesCases.has(c)) {
       largeurContenu = LARGEUR_MIN;
     } else {
@@ -339,13 +345,13 @@ function largeursColonnes(colonnes, colonnesCases, lignes, largeurDisponible, fo
       const identifiants =
         plusLong <= LONGUEUR_MAX_IDENTIFIANT || COLONNES_CODES.test(normaliser(c));
       largeurContenu =
-        !vedette && identifiants
+        entiere || (!vedette && identifiants)
           ? plusLong * CARACTERE_CODE_PX + PADDING_CELLULE
           : largeurTexte(lignes.length ? somme / lignes.length : 0);
     }
     let largeur = Math.max(largeurEntete, largeurContenu);
     if (vedette) largeur *= FACTEUR_COLONNE_VEDETTE;
-    const plafond = vedette ? LARGEUR_MAX_TEXTE_VEDETTE : LARGEUR_MAX_TEXTE;
+    const plafond = entiere ? Infinity : vedette ? LARGEUR_MAX_TEXTE_VEDETTE : LARGEUR_MAX_TEXTE;
     naturelles.set(c, Math.min(plafond, Math.max(LARGEUR_MIN, largeur)));
   }
 
