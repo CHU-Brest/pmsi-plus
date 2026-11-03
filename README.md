@@ -12,7 +12,7 @@ individuelle — sont repris ici :
 |---|---|---|---|
 | commun | CIM-10 | Intox CIM-10 | médicaments → codes CIM-10 d'intoxication ; effets nocifs par substance |
 | commun | CIM-10 | Germes CIM-10 | germes → code CIM-10, avec et sans sepsis |
-| commun | CIM-10 | Codes O → P (mère → nouveau-né) | codes O de la mère → codes P du nouveau-né qui en découlent, avec libellés CIM-10 |
+| commun | CIM-10 | Codes O → P (mère → nouveau-né) | codes O de la mère → codes P du nouveau-né qui en découlent, avec mots-clés et commentaire ; coche « D'emblée » quand la traduction est directe, sinon interprétation du codeur/TIM |
 | MCO | CIM-10 | Complications des actes | complications d'actes médicaux ou chirurgicaux → code CIM-10, type de code et codes à associer (T, Y, code plus précis), avec le niveau de CMA de la liste de l'ATIH ; tables des codes T et des codes Y de circonstances |
 | MCO | HDJ | Actes CCAM | actes et caractéristiques (classants annexe 8, FFM, SE1-SE8) |
 | MCO | HDJ | Médicaments de la RH et LES | mode d'emploi du VIDAL Hoptimal (aucune donnée tabulée) |
@@ -56,7 +56,7 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   intox/medicaments.xlsx
   intox/substances.xlsx
   germes/germes.xlsx
-  codes_op/codes_op.xlsx      correspondance codes O (mère) → codes P (nouveau-né), feuille « avec libellés CIM » de la V3 du DIM, en-tête nommé
+  codes_op/codes_op.xlsx      correspondance codes O (mère) → codes P (nouveau-né), classeur du DIM tel que livré (V3) ; feuille « classement par codes O », dont le vert sur « Affection / Mots-clés » devient la colonne « D'emblée »
   complications/liste_code_complications.xlsx   complications des actes, codes T et codes Y de circonstances : trois feuilles, chacune lue
                               dans son propre JSON ; la colonne CMA du classeur est remplacée sur le site par le niveau de la liste de l'ATIH
   actes/actes.xlsx
