@@ -4,7 +4,7 @@
 
 import { chargerJeu } from "../donnees.js";
 import * as recherche from "../recherche.js";
-import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
+import { el, fraicheur, champMotsClefs, resultats, jour } from "../interface.js";
 
 const COLONNES_CHERCHABLES = [
   "Libellé complication",
@@ -63,10 +63,9 @@ export async function rendre(conteneur) {
   conteneur.innerHTML = "";
   conteneur.append(
     el("h1", {}, "Complications des actes"),
-    fraicheur([
-      { libelle: complications.libelle, millesime: complications.millesime },
-      { libelle: cma.libelle, millesime: cma.millesime },
-    ]),
+    // Le drapeau date le classeur du service ; la liste des CMA de l'ATIH a
+    // sa date dans la note du niveau de CMA.
+    fraicheur([{ libelle: complications.libelle, millesime: complications.millesime }]),
     el(
       "p",
       {},
@@ -75,7 +74,7 @@ export async function rendre(conteneur) {
     el(
       "p",
       {},
-      "Niveau de CMA : celui de la liste des CMA de la fonction groupage MCO en vigueur, pour chaque code de la cellule ; vide pour un code qui n'est pas une CMA, un code non terminal (« T81.3 ») ou une famille de codes (« I21.- », « S% »)."
+      `Niveau de CMA : celui de la liste des CMA de la fonction groupage MCO en vigueur (données du ${jour(cma.millesime)}), pour chaque code de la cellule ; vide pour un code qui n'est pas une CMA, un code non terminal (« T81.3 ») ou une famille de codes (« I21.- », « S% »).`
     ),
     el(
       "p",
