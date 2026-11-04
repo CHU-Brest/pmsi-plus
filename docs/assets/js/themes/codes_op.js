@@ -4,7 +4,7 @@ import { chargerJeu } from "../donnees.js";
 import * as recherche from "../recherche.js";
 import { el, fraicheur, champMotsClefs, resultats } from "../interface.js";
 
-const COLONNES_CHERCHABLES = ["Code O", "Libellé O", "Équivalents", "Code P", "Libellé P"];
+const COLONNES_CHERCHABLES = ["Code O Mère", "Affection / Mots-clés", "Code P nouveau-né", "Commentaire"];
 
 export async function rendre(conteneur) {
   const jeu = await chargerJeu(
@@ -21,6 +21,11 @@ export async function rendre(conteneur) {
   conteneur.append(
     el("h1", {}, "Codes O → P (mère → nouveau-né)"),
     fraicheur([{ libelle: jeu.libelle, millesime: jeu.millesime }]),
+    el(
+      "p",
+      {},
+      "Coché « D'emblée » : le code O se traduit d'emblée en code P. Non coché : la traduction demande l'interprétation et la vigilance du codeur/TIM (voir le commentaire)."
+    ),
     el("hr", { class: "separateur" })
   );
 

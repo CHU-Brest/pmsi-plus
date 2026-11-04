@@ -45,6 +45,7 @@ class Jeu:
     theme: str  # sous-dossier commun à data/<theme>/ et docs/assets/data/<theme>/
     fichier: str  # nom du xlsx (ou csv) dans data/<theme>/
     feuille: str | None = None  # feuille du classeur à lire ; None : la feuille active
+    sortie: str | None = None  # nom du JSON écrit ; None : celui du classeur
 
 
 # La seule liste à tenir à jour : ajouter un référentiel, c'est ajouter une
@@ -53,7 +54,10 @@ JEUX: tuple[Jeu, ...] = (
     Jeu("intox", "medicaments.xlsx"),
     Jeu("intox", "substances.xlsx"),
     Jeu("germes", "germes.xlsx"),
-    Jeu("codes_op", "codes_op.xlsx"),
+    Jeu("codes_op", "codes_op.xlsx", feuille="classement par codes O"),
+    Jeu("complications", "liste_code_complications.xlsx", feuille="Code complications actes", sortie="complications"),
+    Jeu("complications", "liste_code_complications.xlsx", feuille="codes T", sortie="codes_t"),
+    Jeu("complications", "liste_code_complications.xlsx", feuille="Code Y de circonstances", sortie="codes_y"),
     Jeu("actes", "actes.xlsx"),
     Jeu("contextes", "contextes.xlsx"),
     Jeu("acronymes", "acronymes.xlsx"),
@@ -149,6 +153,27 @@ def renommer(fichier: str, entetes: list[str]) -> list[str]:
     return [attendus[e] for e in lus]
 
 
+# Surlignage porteur de sens, relu en colonne booléenne placée juste après
+# la colonne lue : (colonne lue, couleur ARGB, colonne ajoutée).
+# Correspondance codes O → P du DIM : une
+# cellule « Affection / Mots-clés » en vert marque un code O qui se traduit
+# d'emblée en code P ; sans surlignage, une traduction qui demande
+# l'interprétation du codeur/TIM. Toute autre couleur arrête la conversion.
+SURLIGNAGES = {"codes_op.xlsx": ("Affection / Mots-clés", "FF92D050", "D'emblée")}
+
+
+def surlignee(cellule, couleur: str, ou: str) -> bool:
+    """La cellule est-elle surlignée de `couleur` ? Sans remplissage : non ;
+    un autre remplissage arrête la conversion."""
+    remplissage = cellule.fill if cellule is not None else None  # EmptyCell : fill None
+    if remplissage is None or remplissage.fill_type is None:
+        return False
+    fond = remplissage.fgColor
+    if remplissage.fill_type == "solid" and fond.type == "rgb" and fond.rgb == couleur:
+        return True
+    raise ErreurDonnees(f"{ou} : surlignage inattendu ({remplissage.fill_type}, {fond.type} {fond.value})")
+
+
 def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
     """Une ligne par ligne non vide de la feuille (la feuille active par
     défaut), clefs = en-têtes."""
@@ -165,12 +190,16 @@ def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
         # feuille sans rien dire. On lit jusqu'à la dernière cellule.
         feuille.reset_dimensions()
         ligne_entete = LIGNE_ENTETE.get(chemin.name, 1)
-        lignes = feuille.iter_rows(min_row=ligne_entete, values_only=True)
-        entetes = [str(c).strip() if c is not None else "" for c in next(lignes)]
+        lignes = feuille.iter_rows(min_row=ligne_entete)
+        entetes = [str(c.value).strip() if c.value is not None else "" for c in next(lignes)]
         if chemin.name in COLONNES_XLSX:
             entetes = renommer(chemin.name, entetes)
+        surlignage = SURLIGNAGES.get(chemin.name)
+        if surlignage and surlignage[0] not in entetes:
+            raise ErreurDonnees(f"{chemin.name} : pas de colonne « {surlignage[0]} » ({', '.join(entetes)})")
         resultat = []
-        for n, ligne in enumerate(lignes, start=ligne_entete + 1):
+        for n, cellules in enumerate(lignes, start=ligne_entete + 1):
+            ligne = tuple(c.value for c in cellules)
             if all(v is None for v in ligne):
                 continue
             # Sans étendue déclarée, une ligne s'arrête à sa dernière
@@ -180,10 +209,15 @@ def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
                 raise ErreurDonnees(f"{chemin.name}, ligne {n} : valeur hors des colonnes de l'en-tête")
             ligne = (*ligne, *[None] * (len(entetes) - len(ligne)))
             enregistrement = {}
-            for entete, v in zip(entetes, ligne):
+            for i, (entete, v) in enumerate(zip(entetes, ligne)):
                 if entete in COLONNES_TEXTE_VIDE_SI_NULLE and v is None:
                     v = ""
                 enregistrement[entete] = _valeur(v)
+                # La colonne booléenne suit celle qu'elle relit.
+                if surlignage and entete == surlignage[0]:
+                    _, couleur, nom = surlignage
+                    cellule = cellules[i] if i < len(cellules) else None
+                    enregistrement[nom] = surlignee(cellule, couleur, f"{chemin.name}, ligne {n}")
             resultat.append(enregistrement)
         return resultat
     finally:
@@ -304,7 +338,7 @@ def convertir(jeu: Jeu) -> None:
 
     dossier_sortie = DOSSIER_SORTIE / jeu.theme
     dossier_sortie.mkdir(parents=True, exist_ok=True)
-    cible = dossier_sortie / f"{source.stem}.json"
+    cible = dossier_sortie / f"{jeu.sortie or source.stem}.json"
 
     # Format colonnaire (en-têtes une fois + lignes en tableaux) plutôt
     # qu'un objet par ligne : ces jeux répètent jusqu'à 19 clefs identiques

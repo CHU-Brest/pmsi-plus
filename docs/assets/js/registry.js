@@ -58,6 +58,14 @@ const REGISTRY = [
   },
   {
     champ: "mco",
+    section: "CIM-10",
+    slug: "complications",
+    titre: "Complications des actes",
+    module: "complications",
+    resume: "Complications d'actes médicaux ou chirurgicaux : code CIM-10, codes T et Y à associer.",
+  },
+  {
+    champ: "mco",
     section: "HDJ",
     slug: "acte",
     titre: "Actes CCAM",

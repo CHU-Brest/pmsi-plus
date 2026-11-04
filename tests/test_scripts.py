@@ -27,6 +27,12 @@ class CodeCim(unittest.TestCase):
         self.assertEqual(build_smr.code_cim("C169+0"), "C16.9+0")
 
 
+class Sorties(unittest.TestCase):
+    def test_un_json_par_jeu(self):
+        cibles = [(j.theme, j.sortie or Path(j.fichier).stem) for j in build_data.JEUX]
+        self.assertEqual(len(cibles), len(set(cibles)))
+
+
 class EnteteTarifs(unittest.TestCase):
     ATTENDU = list(build_data.COLONNES_XLSX["tarifs.xlsx"])
 
