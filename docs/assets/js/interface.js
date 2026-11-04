@@ -46,7 +46,8 @@ export function squelette() {
 
 // ==== Fraîcheur des données ====
 
-function jour(iso) {
+/** « 2026-11-04 » → « 04/11/2026 ». */
+export function jour(iso) {
   const [a, m, j] = iso.split("-");
   return `${j}/${m}/${a}`;
 }
