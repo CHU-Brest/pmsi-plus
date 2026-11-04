@@ -58,7 +58,10 @@ data/                        sources de vérité : xlsx tels que fournis par le 
   germes/germes.xlsx
   codes_op/codes_op.xlsx      correspondance codes O (mère) → codes P (nouveau-né), classeur du DIM tel que livré (V3) ; feuille « classement par codes O », dont le vert sur « Affection / Mots-clés » devient la colonne « D'emblée »
   complications/liste_code_complications.xlsx   complications des actes, codes T et codes Y de circonstances : trois feuilles, chacune lue
-                              dans son propre JSON ; la colonne CMA du classeur est remplacée sur le site par le niveau de la liste de l'ATIH
+                              dans son propre JSON ; la colonne CMA du classeur est remplacée sur le site par le niveau de la liste de l'ATIH.
+                              Classeur du service tel qu'il est travaillé, jamais retouché : build_data.py nomme ses colonnes
+                              (intitulé A raccourci, colonne H « Remarques », en-tête de la feuille « codes T ») et retire les
+                              espaces superflus des codes ; un intitulé changé arrête la conversion
   actes/actes.xlsx
   contextes/contextes.xlsx
   acronymes/acronymes.xlsx
