@@ -114,11 +114,19 @@ COLONNES_TEXTE_VIDE_SI_NULLE = {"_caracteristiques"}
 # feuilles (GHS, suppléments, forfaits, secteurs public et privé). Trois
 # lignes de titre y précèdent l'en-tête, dont les intitulés courent sur
 # plusieurs lignes (« TARIF\n(en euros) ») : ils sont relus sous des noms
-# courts. Un intitulé ajouté, ôté ou déplacé par l'ATIH arrête la conversion,
-# plutôt que de publier une colonne de montants sous le nom d'une autre.
+# courts.
+#
+# Complications des actes : le classeur est celui du service, publié tel
+# qu'il est travaillé. L'intitulé de la colonne A y porte une note (que le
+# site affiche à part), la colonne H n'a pas d'intitulé et la feuille
+# « codes T » n'a pas de ligne d'en-tête : le script les nomme.
+#
+# COLONNES_XLSX : intitulés lus → noms publiés, par (classeur, feuille). Un
+# intitulé ajouté, ôté ou déplacé arrête la conversion, plutôt que de publier
+# une colonne sous le nom d'une autre.
 LIGNE_ENTETE = {"tarifs.xlsx": 4}
 COLONNES_XLSX = {
-    "tarifs.xlsx": {
+    ("tarifs.xlsx", "Tarifs public"): {
         "GHS": "GHS",
         "GHM": "GHM",
         "LIBELLE": "Libellé",
@@ -128,8 +136,23 @@ COLONNES_XLSX = {
         "FORFAIT EXB": "Forfait EXB",
         "TARIF EXB (en euros)": "Tarif EXB",
         "TARIF EXH (en euros)": "Tarif EXH",
-    }
+    },
+    ("liste_code_complications.xlsx", "Code complications actes"): {
+        "Libellé complication d'actes médicaux ou chirurgicaux ATTENTION les libellés des codes CIM habituels ne sont pas ici les libellé exacts": "Libellé complication",
+        "Code CIM10": "Code CIM10",
+        "CMA": "CMA",
+        "Type de codes": "Type de codes",
+        "Codes à associer systématiquement": "Codes à associer systématiquement",
+        "Proposition de code plus précis le cas échéant à associer ou substituer": "Proposition de code plus précis le cas échéant à associer ou substituer",
+        "Référence": "Référence",
+        "": "Remarques",
+    },
 }
+# Feuilles sans ligne d'en-tête : noms de leurs colonnes, données dès la
+# première ligne.
+SANS_ENTETE = {("liste_code_complications.xlsx", "codes T"): ("Code T", "Libellé", "Précision")}
+# Colonne de codes saisie à la main, dont les espaces superflus sont retirés.
+COLONNES_CODES = {("liste_code_complications.xlsx", "Code complications actes"): "Code CIM10"}
 
 
 class ErreurDonnees(Exception):
@@ -142,15 +165,23 @@ def _valeur(v: object) -> object:
     return v
 
 
-def renommer(fichier: str, entetes: list[str]) -> list[str]:
-    """Intitulés de l'ATIH → noms courts de COLONNES_XLSX, dans le même ordre."""
-    attendus = COLONNES_XLSX[fichier]
+def renommer(cle: tuple[str, str | None], entetes: list[str]) -> list[str]:
+    """Intitulés lus → noms de COLONNES_XLSX[cle], dans le même ordre."""
+    attendus = COLONNES_XLSX[cle]
     lus = [" ".join(e.split()) for e in entetes]
-    while lus and not lus[-1]:  # cellules vides au bout de la ligne d'en-tête
+    # La ligne d'en-tête s'arrête à sa dernière cellule remplie : une colonne
+    # sans intitulé au bout (« ») n'y est pas, des cellules vides en trop si.
+    lus += [""] * (len(attendus) - len(lus))
+    while len(lus) > len(attendus) and not lus[-1]:
         lus.pop()
     if lus != list(attendus):
-        raise ErreurDonnees(f"{fichier} : en-tête inattendu {lus}, attendu {list(attendus)}")
+        raise ErreurDonnees(f"{cle[0]}, feuille {cle[1]} : en-tête inattendu {lus}, attendu {list(attendus)}")
     return [attendus[e] for e in lus]
+
+
+def nettoyer_code(code: str) -> str:
+    """« A41.2      » → « A41.2 », « K28 .- » → « K28.- »."""
+    return re.sub(r"\s+\.", ".", code.strip())
 
 
 # Surlignage porteur de sens, relu en colonne booléenne placée juste après
@@ -189,11 +220,18 @@ def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
         # déclare (balise <dimension>) : fausse, elle tronquerait la
         # feuille sans rien dire. On lit jusqu'à la dernière cellule.
         feuille.reset_dimensions()
-        ligne_entete = LIGNE_ENTETE.get(chemin.name, 1)
-        lignes = feuille.iter_rows(min_row=ligne_entete)
-        entetes = [str(c.value).strip() if c.value is not None else "" for c in next(lignes)]
-        if chemin.name in COLONNES_XLSX:
-            entetes = renommer(chemin.name, entetes)
+        cle = (chemin.name, nom_feuille)
+        if cle in SANS_ENTETE:
+            ligne_entete = 0
+            lignes = feuille.iter_rows()
+            entetes = list(SANS_ENTETE[cle])
+        else:
+            ligne_entete = LIGNE_ENTETE.get(chemin.name, 1)
+            lignes = feuille.iter_rows(min_row=ligne_entete)
+            entetes = [str(c.value).strip() if c.value is not None else "" for c in next(lignes)]
+            if cle in COLONNES_XLSX:
+                entetes = renommer(cle, entetes)
+        colonne_code = COLONNES_CODES.get(cle)
         surlignage = SURLIGNAGES.get(chemin.name)
         if surlignage and surlignage[0] not in entetes:
             raise ErreurDonnees(f"{chemin.name} : pas de colonne « {surlignage[0]} » ({', '.join(entetes)})")
@@ -212,6 +250,8 @@ def lire(chemin: Path, nom_feuille: str | None = None) -> list[dict]:
             for i, (entete, v) in enumerate(zip(entetes, ligne)):
                 if entete in COLONNES_TEXTE_VIDE_SI_NULLE and v is None:
                     v = ""
+                if entete == colonne_code and isinstance(v, str):
+                    v = nettoyer_code(v)
                 enregistrement[entete] = _valeur(v)
                 # La colonne booléenne suit celle qu'elle relit.
                 if surlignage and entete == surlignage[0]:

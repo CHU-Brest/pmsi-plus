@@ -13,7 +13,7 @@ const COLONNES_CHERCHABLES = [
   "Codes à associer systématiquement",
   "Proposition de code plus précis le cas échéant à associer ou substituer",
   "Référence",
-  "Extrait AGORA",
+  "Remarques",
 ];
 
 /** Le niveau de CMA saisi dans le classeur cède la place à celui de la

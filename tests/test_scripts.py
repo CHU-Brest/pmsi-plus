@@ -34,15 +34,36 @@ class Sorties(unittest.TestCase):
 
 
 class EnteteTarifs(unittest.TestCase):
-    ATTENDU = list(build_data.COLONNES_XLSX["tarifs.xlsx"])
+    CLE = ("tarifs.xlsx", "Tarifs public")
+    ATTENDU = list(build_data.COLONNES_XLSX[CLE])
 
     def test_intitules_sur_plusieurs_lignes_et_cellules_vides_au_bout(self):
         lus = [e.replace("TARIF (en euros)", "TARIF\n(en euros)") for e in self.ATTENDU] + ["", ""]
-        self.assertEqual(build_data.renommer("tarifs.xlsx", lus)[5], "Tarif")
+        self.assertEqual(build_data.renommer(self.CLE, lus)[5], "Tarif")
 
     def test_colonne_deplacee(self):
         with self.assertRaises(build_data.ErreurDonnees):
-            build_data.renommer("tarifs.xlsx", self.ATTENDU[1:] + self.ATTENDU[:1])
+            build_data.renommer(self.CLE, self.ATTENDU[1:] + self.ATTENDU[:1])
+
+
+class EnteteComplications(unittest.TestCase):
+    CLE = ("liste_code_complications.xlsx", "Code complications actes")
+    LUS = list(build_data.COLONNES_XLSX[CLE])[:-1]  # la colonne H, sans intitulé, n'est pas lue
+
+    def test_colonne_sans_intitule_au_bout(self):
+        noms = build_data.renommer(self.CLE, self.LUS)
+        self.assertEqual((noms[0], noms[-1]), ("Libellé complication", "Remarques"))
+
+    def test_colonne_ajoutee(self):
+        with self.assertRaises(build_data.ErreurDonnees):
+            build_data.renommer(self.CLE, self.LUS + ["Spécialité"])
+
+
+class NettoyerCode(unittest.TestCase):
+    def test_espaces_superflus(self):
+        self.assertEqual(build_data.nettoyer_code("A41.2            "), "A41.2")
+        self.assertEqual(build_data.nettoyer_code("K28 .-               "), "K28.-")
+        self.assertEqual(build_data.nettoyer_code("G62.8 +G72.8"), "G62.8 +G72.8")
 
 
 def ligne_tarif(**remplace):
